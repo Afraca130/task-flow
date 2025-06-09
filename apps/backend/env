@@ -1,0 +1,19 @@
+# Application
+NODE_ENV=development
+PORT=3001
+FRONTEND_URL=http://localhost:3000
+
+# Database
+DB_HOST=localhost
+DB_PORT=5432
+DB_USERNAME=postgres
+DB_PASSWORD=password
+DB_NAME=taskflow
+
+# JWT
+JWT_SECRET=your-jwt-secret-key-here
+JWT_EXPIRES_IN=24h
+
+# Other services
+REDIS_HOST=localhost
+REDIS_PORT=6379 
