@@ -56,4 +56,434 @@
   body {
     @apply bg-background text-foreground;
   }
+}
+
+:root {
+  --foreground-rgb: 0, 0, 0;
+  --background-start-rgb: 214, 219, 220;
+  --background-end-rgb: 255, 255, 255;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --foreground-rgb: 255, 255, 255;
+    --background-start-rgb: 0, 0, 0;
+    --background-end-rgb: 0, 0, 0;
+  }
+}
+
+body {
+  color: rgb(var(--foreground-rgb));
+  background: linear-gradient(
+      to bottom,
+      transparent,
+      rgb(var(--background-end-rgb))
+    )
+    rgb(var(--background-start-rgb));
+}
+
+/* JIRA 스타일 UI 커스텀 스타일 */
+.jira-style {
+  /* Design Tokens - Atlassian Design System 기반 */
+  --color-primary: #0052CC;
+  --color-primary-hover: #0146B3;
+  --color-primary-pressed: #003366;
+  --color-background-neutral: #FAFBFC;
+  --color-background-card: #FFFFFF;
+  --color-background-hover: #F4F5F7;
+  --color-background-selected: #DEEBFF;
+  --color-text-primary: #172B4D;
+  --color-text-secondary: #6B778C;
+  --color-text-subtle: #97A0AF;
+  --color-border: #DFE1E6;
+  --color-border-focus: #4C9AFF;
+  
+  /* Status Colors */
+  --color-todo: #DDD6FE;
+  --color-inprogress: #FEF3C7;
+  --color-done: #D1FAE5;
+  --color-error: #FFEBE6;
+  
+  /* Spacing - 8px Grid System */
+  --space-50: 4px;
+  --space-100: 8px;
+  --space-150: 12px;
+  --space-200: 16px;
+  --space-300: 24px;
+  --space-400: 32px;
+  --space-500: 40px;
+  --space-600: 48px;
+  
+  /* Typography */
+  --font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', sans-serif;
+  --font-size-small: 12px;
+  --font-size-body: 14px;
+  --font-size-heading: 16px;
+  --font-size-large: 20px;
+  
+  /* Elevation */
+  --shadow-card: 0 1px 3px rgba(9, 30, 66, 0.25);
+  --shadow-raised: 0 4px 8px rgba(9, 30, 66, 0.15);
+  --shadow-modal: 0 8px 32px rgba(9, 30, 66, 0.25);
+  
+  /* Border Radius */
+  --radius-small: 3px;
+  --radius-medium: 6px;
+  --radius-large: 8px;
+}
+
+/* Kanban Board 스타일 */
+.kanban-board {
+  background: var(--color-background-neutral);
+  min-height: calc(100vh - 120px);
+}
+
+.kanban-column {
+  background: var(--color-background-card);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-large);
+  box-shadow: var(--shadow-card);
+  transition: all 0.2s ease;
+}
+
+.kanban-column:hover {
+  box-shadow: var(--shadow-raised);
+}
+
+.task-card {
+  background: var(--color-background-card);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-medium);
+  transition: all 0.2s ease;
+  cursor: pointer;
+}
+
+.task-card:hover {
+  box-shadow: var(--shadow-raised);
+  border-color: var(--color-border-focus);
+  transform: translateY(-1px);
+}
+
+.task-card:active {
+  transform: translateY(0);
+}
+
+/* Priority Badge 스타일 */
+.priority-high {
+  background: #FFEBE6;
+  color: #BF2600;
+  border: 1px solid #FFB8A3;
+}
+
+.priority-medium {
+  background: #FFF4E6;
+  color: #974F0C;
+  border: 1px solid #FFD6A3;
+}
+
+.priority-low {
+  background: #E3FCEF;
+  color: #006644;
+  border: 1px solid #B8E6CC;
+}
+
+/* Status Badge 스타일 */
+.status-todo {
+  background: var(--color-todo);
+  color: #6B46C1;
+  border: 1px solid #C4B5FD;
+}
+
+.status-inprogress {
+  background: var(--color-inprogress);
+  color: #D97706;
+  border: 1px solid #FDE68A;
+}
+
+.status-done {
+  background: var(--color-done);
+  color: #059669;
+  border: 1px solid #A7F3D0;
+}
+
+/* Avatar 스타일 */
+.user-avatar {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 600;
+  font-size: 0.75rem;
+  color: white;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+/* 사이드바 네비게이션 */
+.nav-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 8px 12px;
+  border-radius: var(--radius-medium);
+  cursor: pointer;
+  transition: all 0.2s ease;
+  font-size: var(--font-size-body);
+  color: var(--color-text-primary);
+}
+
+.nav-item:hover {
+  background: var(--color-background-hover);
+}
+
+.nav-item.active {
+  background: var(--color-background-selected);
+  color: var(--color-primary);
+}
+
+.nav-icon {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+/* 모달 스타일 */
+.modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(9, 30, 66, 0.54);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  animation: fadeIn 0.3s ease;
+}
+
+.modal {
+  background: var(--color-background-card);
+  border-radius: var(--radius-large);
+  box-shadow: var(--shadow-modal);
+  max-width: 90vw;
+  max-height: 90vh;
+  overflow: hidden;
+  animation: slideIn 0.3s ease;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes slideIn {
+  from { 
+    opacity: 0;
+    transform: scale(0.9) translateY(-20px);
+  }
+  to { 
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+}
+
+/* 드래그 앤 드롭 효과 */
+.task-card.dragging {
+  opacity: 0.5;
+  transform: rotate(5deg);
+}
+
+.kanban-column.drag-over {
+  background: var(--color-background-selected);
+  border: 2px dashed var(--color-primary);
+}
+
+/* 스크롤바 스타일 */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: var(--color-background-neutral);
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--color-border);
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--color-text-subtle);
+}
+
+/* 포커스 스타일 */
+.task-card:focus,
+.nav-item:focus,
+button:focus {
+  outline: 2px solid var(--color-border-focus);
+  outline-offset: 2px;
+}
+
+/* 반응형 유틸리티 */
+@media (max-width: 768px) {
+  .kanban-board {
+    flex-direction: column;
+    gap: 16px;
+  }
+  
+  .kanban-column {
+    min-width: auto;
+    width: 100%;
+  }
+  
+  .modal {
+    max-width: 95vw;
+    max-height: 95vh;
+  }
+}
+
+/* 접근성 */
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+/* 로딩 애니메이션 */
+.loading-spinner {
+  display: inline-block;
+  width: 20px;
+  height: 20px;
+  border: 3px solid rgba(255, 255, 255, 0.3);
+  border-radius: 50%;
+  border-top-color: #fff;
+  animation: spin 1s ease-in-out infinite;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+/* 테마 변수 */
+.light-theme {
+  --color-primary: #0052CC;
+  --color-background-neutral: #FAFBFC;
+  --color-background-card: #FFFFFF;
+  --color-text-primary: #172B4D;
+  --color-text-secondary: #6B778C;
+  --color-border: #DFE1E6;
+}
+
+.dark-theme {
+  --color-primary: #4C9AFF;
+  --color-background-neutral: #1D2125;
+  --color-background-card: #22272B;
+  --color-text-primary: #B6C2CF;
+  --color-text-secondary: #9FADBC;
+  --color-border: #454F59;
+}
+
+/* 트랜지션 */
+* {
+  transition: background-color 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+/* 버튼 스타일 */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 16px;
+  border-radius: var(--radius-medium);
+  font-size: var(--font-size-body);
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  border: none;
+  text-decoration: none;
+}
+
+.btn-primary {
+  background: var(--color-primary);
+  color: white;
+}
+
+.btn-primary:hover {
+  background: var(--color-primary-hover);
+}
+
+.btn-primary:active {
+  background: var(--color-primary-pressed);
+}
+
+.btn-secondary {
+  background: var(--color-background-card);
+  color: var(--color-text-primary);
+  border: 1px solid var(--color-border);
+}
+
+.btn-secondary:hover {
+  background: var(--color-background-hover);
+}
+
+/* 검색 바 스타일 */
+.search-input {
+  width: 100%;
+  padding: 8px 12px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-medium);
+  font-size: var(--font-size-body);
+  background: var(--color-background-neutral);
+  transition: all 0.2s ease;
+}
+
+.search-input:focus {
+  outline: none;
+  border-color: var(--color-border-focus);
+  box-shadow: 0 0 0 2px rgba(76, 154, 255, 0.2);
+}
+
+/* 카드 hover 효과 */
+.card-hover:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+/* 라벨 스타일 */
+.label {
+  display: inline-block;
+  padding: 4px 8px;
+  border-radius: 12px;
+  font-size: 11px;
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.label-backend {
+  background: #E3F2FD;
+  color: #1976D2;
+}
+
+.label-frontend {
+  background: #F3E5F5;
+  color: #7B1FA2;
+}
+
+.label-design {
+  background: #FFF3E0;
+  color: #F57C00;
+}
+
+.label-auth {
+  background: #F1F8E9;
+  color: #689F38;
 } 

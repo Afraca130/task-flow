@@ -24,23 +24,32 @@ export class HttpExceptionFilter implements ExceptionFilter {
     const status = exception.getStatus();
 
     const exceptionResponse = exception.getResponse();
-    const error = typeof exceptionResponse === 'string' 
-      ? { message: exceptionResponse }
-      : exceptionResponse;
+    let message = exception.message;
+    let details = undefined;
+
+    // 예외 응답이 객체인 경우 메시지와 세부사항 추출
+    if (typeof exceptionResponse === 'object' && exceptionResponse !== null) {
+      const errorObj = exceptionResponse as any;
+      message = errorObj.message || exception.message;
+      if (errorObj.message && Array.isArray(errorObj.message)) {
+        details = errorObj.message;
+        message = '입력 데이터 검증에 실패했습니다.';
+      }
+    }
 
     this.logger.error(
-      `HTTP Exception: ${exception.message}`,
+      `HTTP Exception: ${message}`,
       exception.stack,
     );
 
     const errorResponse = ApiResponseDto.error(
-      exception.message,
+      message,
       {
         statusCode: status,
         timestamp: new Date().toISOString(),
         path: request.url,
         method: request.method,
-        error,
+        details,
       },
     );
 

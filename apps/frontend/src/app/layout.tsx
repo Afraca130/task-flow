@@ -5,21 +5,27 @@ import './globals.css';
 const inter = Inter({ subsets: ['latin'] });
 
 export const metadata: Metadata = {
-  title: 'TaskFlow - 업무 진행 관리',
-  description: '효율적인 업무 진행 관리를 위한 TaskFlow 애플리케이션',
+  title: 'TaskFlow - 업무 관리 시스템',
+  description: '효율적인 업무 진행 관리를 위한 현대적인 솔루션',
+  keywords: '업무관리, 프로젝트관리, 팀협업, 태스크, 일정관리',
+  authors: [{ name: 'TaskFlow Team' }],
+  viewport: 'width=device-width, initial-scale=1',
+  themeColor: '#0052CC',
 };
 
-interface RootLayoutProps {
+export default function RootLayout({
+  children,
+}: {
   children: React.ReactNode;
-}
-
-export default function RootLayout({ children }: RootLayoutProps) {
+}) {
   return (
     <html lang="ko">
-      <body className={inter.className}>
-        <div className="min-h-screen bg-background font-sans antialiased">
-          {children}
-        </div>
+      <head>
+        <link rel="icon" href="/favicon.ico" />
+        <meta name="viewport" content="width=device-width, initial-scale=1" />
+      </head>
+      <body className={inter.className} suppressHydrationWarning={true}>
+        {children}
       </body>
     </html>
   );
