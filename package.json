@@ -21,6 +21,9 @@
     "lint": "npm run lint:backend && npm run lint:frontend",
     "lint:backend": "cd apps/backend && npm run lint",
     "lint:frontend": "cd apps/frontend && npm run lint",
+    "format": "npm run format:backend && npm run format:frontend",
+    "format:backend": "cd apps/backend && npm run format",
+    "format:frontend": "cd apps/frontend && npm run format",
     "docker:up": "docker-compose up -d",
     "docker:down": "docker-compose down",
     "docker:logs": "docker-compose logs -f",
@@ -31,10 +34,11 @@
     "start:windows": "start-docker.bat"
   },
   "devDependencies": {
-    "concurrently": "^8.2.2"
+    "concurrently": "^8.2.2",
+    "prettier": "^3.5.3"
   },
   "engines": {
     "node": ">=18.0.0",
     "npm": ">=8.0.0"
   }
-} 
+}

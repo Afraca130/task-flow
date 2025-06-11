@@ -7,7 +7,6 @@ import { useAuthStore } from '@/store/auth';
 import { Task, Project } from '@/lib/api';
 import { 
   Search, 
-  Bell, 
   Settings, 
   HelpCircle, 
   Plus, 
@@ -28,6 +27,7 @@ import {
   BarChart3,
   FileText
 } from 'lucide-react';
+import { NotificationBell } from '../../components/notifications/notification-bell';
 
 // Mock user data
 const mockUser = {
@@ -142,7 +142,7 @@ const priorityLabels = {
 
 export default function DashboardPage() {
   const router = useRouter();
-  const { user, login } = useAuthStore();
+  const { user, setUserAndToken } = useAuthStore();
   const [tasks, setTasks] = useState(mockTasks);
   const [selectedTask, setSelectedTask] = useState<any>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -152,9 +152,9 @@ export default function DashboardPage() {
   // Initialize mock user if not logged in
   useEffect(() => {
     if (!user) {
-      login(mockUser, 'mock-token');
+      setUserAndToken(mockUser, 'mock-token');
     }
-  }, [user, login]);
+  }, [user, setUserAndToken]);
 
   const filteredTasks = tasks.filter(task => 
     task.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -227,10 +227,7 @@ export default function DashboardPage() {
           </div>
           
           <div className="flex items-center gap-3">
-            <button className="p-2 hover:bg-gray-100 rounded-md relative">
-              <Bell className="w-5 h-5 text-gray-600" />
-              <span className="absolute -top-1 -right-1 w-3 h-3 bg-red-500 rounded-full"></span>
-            </button>
+            <NotificationBell />
             <button 
               onClick={() => handleNavigation('/settings')}
               className="p-2 hover:bg-gray-100 rounded-md"

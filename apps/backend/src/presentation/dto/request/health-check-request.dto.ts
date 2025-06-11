@@ -16,10 +16,10 @@ export class HealthCheckRequestDto {
   @ApiProperty({
     description: '체크할 서비스 타입',
     example: 'all',
-    enum: ['all', 'database', 'redis', 'api'],
+    enum: ['all', 'database', 'mongodb', 'api'],
     required: false,
   })
   @IsOptional()
-  @IsEnum(['all', 'database', 'redis', 'api'])
+  @IsEnum(['all', 'database', 'mongodb', 'api'])
   type?: string;
 } 

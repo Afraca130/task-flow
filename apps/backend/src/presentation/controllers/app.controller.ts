@@ -54,7 +54,7 @@ export class AppController {
   @ApiQuery({ 
     name: 'type', 
     required: false, 
-    enum: ['all', 'database', 'redis', 'api'],
+          enum: ['all', 'database', 'mongodb', 'api'],
     description: '체크할 서비스 타입' 
   })
   @ApiResponse({ 

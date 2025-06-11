@@ -18,17 +18,23 @@ services:
       timeout: 5s
       retries: 5
 
-  redis:
-    image: redis:7-alpine
-    container_name: taskflow-redis
+  mongodb:
+    image: mongo:7.0-jammy
+    container_name: taskflow-mongodb
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: admin
+      MONGO_INITDB_ROOT_PASSWORD: admin123
+      MONGO_INITDB_DATABASE: taskflow
     ports:
-      - "6379:6379"
+      - "27017:27017"
     volumes:
-      - redis_data:/data
+      - mongodb_data:/data/db
+      - mongodb_config:/data/configdb
+      - ./init-mongo.js:/docker-entrypoint-initdb.d/init-mongo.js:ro
     networks:
       - taskflow-network
     healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
+      test: ["CMD", "mongosh", "--eval", "db.adminCommand('ping')"]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -47,8 +53,7 @@ services:
       - DB_USERNAME=taskflow
       - DB_PASSWORD=taskflow
       - DB_DATABASE=taskflow
-      - REDIS_HOST=redis
-      - REDIS_PORT=6379
+      - MONGODB_URI=mongodb://taskflow:taskflow123@mongodb:27017/taskflow?authSource=taskflow
       - JWT_SECRET=development-jwt-secret-key
       - JWT_EXPIRES_IN=24h
     volumes:
@@ -57,7 +62,7 @@ services:
     depends_on:
       postgres:
         condition: service_healthy
-      redis:
+      mongodb:
         condition: service_healthy
     networks:
       - taskflow-network
@@ -84,10 +89,11 @@ services:
 
 volumes:
   postgres_data:
-  redis_data:
+  mongodb_data:
+  mongodb_config:
   backend_node_modules:
   frontend_node_modules:
 
 networks:
   taskflow-network:
-    driver: bridge 
+    driver: bridge

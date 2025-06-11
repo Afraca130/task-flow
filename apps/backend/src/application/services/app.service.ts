@@ -1,10 +1,9 @@
 import { Injectable } from '@nestjs/common';
-import { 
-  HealthCheckUseCase, 
-  HealthCheckCommand, 
-  HealthCheckResult 
+import {
+  HealthCheckCommand,
+  HealthCheckResult,
+  HealthCheckUseCase
 } from '../ports/input/health-check.use-case';
-import { HealthCheckPort } from '../ports/output/health-check.port';
 
 /**
  * 애플리케이션 서비스
@@ -30,7 +29,7 @@ export class AppService implements HealthCheckUseCase {
    */
   async execute(command: HealthCheckCommand): Promise<HealthCheckResult> {
     const healthData = await this.getHealthData(command);
-    
+
     return {
       success: true,
       message: '서비스가 정상적으로 실행 중입니다.',
@@ -66,4 +65,4 @@ export class AppService implements HealthCheckUseCase {
       service: 'TaskFlow Backend API',
     };
   }
-} 
+}
