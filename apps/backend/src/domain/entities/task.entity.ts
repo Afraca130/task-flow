@@ -1,9 +1,9 @@
-import { Entity, PrimaryGeneratedColumn, Column, ManyToOne, OneToMany, JoinColumn, CreateDateColumn, UpdateDateColumn } from 'typeorm';
-import { User } from './user.entity';
-import { Project } from './project.entity';
-import { Comment } from './comment.entity';
-import { Notification } from './notification.entity'; 
+import { Column, CreateDateColumn, Entity, JoinColumn, ManyToOne, OneToMany, PrimaryGeneratedColumn, UpdateDateColumn } from 'typeorm';
 import { TimeUtil } from '../../shared/utils/time.util';
+import { Comment } from './comment.entity';
+import { Notification } from './notification.entity';
+import { Project } from './project.entity';
+import { User } from './user.entity';
 
 export enum TaskStatus {
   TODO = 'TODO',
@@ -69,6 +69,9 @@ export class Task {
 
   @Column({ type: 'json', nullable: true })
   tags?: string[];
+
+  @Column({ name: 'lexo_rank', type: 'varchar', length: 50, default: 'U' })
+  lexoRank: string;
 
   @CreateDateColumn({ name: 'created_at' })
   createdAt: Date;
@@ -174,7 +177,7 @@ export class Task {
 
   public isDueSoon(hours: number = 24): boolean {
     if (!this.dueDate || this.isCompleted()) return false;
-    
+
     const soonThreshold = TimeUtil.add(TimeUtil.now(), hours, 'hour');
     return TimeUtil.isBefore(this.dueDate, soonThreshold);
   }
@@ -212,7 +215,8 @@ export class Task {
     assignerId: string,
     title: string,
     description?: string,
-    assigneeId?: string
+    assigneeId?: string,
+    lexoRank?: string
   ): Task {
     if (!title || title.trim().length === 0) {
       throw new Error('Task title is required');
@@ -226,7 +230,8 @@ export class Task {
     task.description = description?.trim();
     task.status = TaskStatus.TODO;
     task.priority = TaskPriority.MEDIUM;
-    
+    task.lexoRank = lexoRank || 'U';
+
     return task;
   }
-} 
+}
