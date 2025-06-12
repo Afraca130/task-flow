@@ -1,11 +1,11 @@
-import { Injectable, UnauthorizedException, ConflictException, Inject } from '@nestjs/common';
+import { ConflictException, Inject, Injectable, UnauthorizedException } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import * as bcrypt from 'bcryptjs';
 import { User } from '../../domain/entities/user.entity';
-import { UserRepositoryPort } from '../ports/output/user-repository.port';
-import { RegisterRequestDto, LoginRequestDto, ChangePasswordRequestDto } from '../../presentation/dto/request/auth-request.dto';
+import { ChangePasswordRequestDto, LoginRequestDto, RegisterRequestDto, UpdateProfileRequestDto } from '../../presentation/dto/request/auth-request.dto';
 import { LoginResponseDto, RegisterResponseDto, UserDto } from '../../presentation/dto/response/auth-response.dto';
 import { TimeUtil } from '../../shared/utils/time.util';
+import { UserRepositoryPort } from '../ports/output/user-repository.port';
 
 /**
  * 인증 서비스
@@ -17,7 +17,7 @@ export class AuthService {
     @Inject('UserRepositoryPort')
     private readonly userRepository: UserRepositoryPort,
     private readonly jwtService: JwtService,
-  ) {}
+  ) { }
 
   /**
    * 회원가입
@@ -119,6 +119,27 @@ export class AuthService {
   }
 
   /**
+   * 프로필 업데이트
+   */
+  async updateProfile(userId: string, updateProfileDto: UpdateProfileRequestDto): Promise<UserDto> {
+    const { name, profileImage, profileColor } = updateProfileDto;
+
+    const user = await this.userRepository.findById(userId);
+    if (!user) {
+      throw new UnauthorizedException('사용자를 찾을 수 없습니다.');
+    }
+
+    // 프로필 업데이트
+    const updatedUser = await this.userRepository.update(userId, {
+      name,
+      profileImage,
+      profileColor,
+    });
+
+    return this.toUserDto(updatedUser);
+  }
+
+  /**
    * JWT 토큰 검증
    */
   async validateUser(payload: any): Promise<User | null> {
@@ -166,9 +187,10 @@ export class AuthService {
       email: user.email,
       name: user.name,
       profileImage: user.profileImage,
+      profileColor: user.profileColor,
       isActive: user.isActive,
       lastLoginAt: user.lastLoginAt ? TimeUtil.formatISO(user.lastLoginAt) : undefined,
       createdAt: TimeUtil.formatISO(user.createdAt),
     };
   }
-} 
+}

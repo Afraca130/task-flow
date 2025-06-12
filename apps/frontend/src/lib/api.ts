@@ -9,6 +9,91 @@ const api = axios.create({
   },
 });
 
+// 통합 에러 처리 클래스
+class ApiErrorHandler {
+  private static instance: ApiErrorHandler;
+
+  static getInstance(): ApiErrorHandler {
+    if (!ApiErrorHandler.instance) {
+      ApiErrorHandler.instance = new ApiErrorHandler();
+    }
+    return ApiErrorHandler.instance;
+  }
+
+  handleError(error: any): Promise<never> {
+    console.error('API Error:', error);
+
+    // 네트워크 에러
+    if (!error.response) {
+      this.showError('네트워크 연결을 확인해주세요.');
+      return Promise.reject(new Error('네트워크 오류'));
+    }
+
+    const { status, data } = error.response;
+
+    switch (status) {
+      case 400:
+        this.showError(data?.message || '잘못된 요청입니다.');
+        break;
+      case 401:
+        this.handleUnauthorized();
+        break;
+      case 403:
+        this.showError('접근 권한이 없습니다.');
+        break;
+      case 404:
+        this.showError('요청한 리소스를 찾을 수 없습니다.');
+        break;
+      case 409:
+        this.showError(data?.message || '데이터 충돌이 발생했습니다.');
+        break;
+      case 422:
+        this.showValidationError(data?.details || [data?.message]);
+        break;
+      case 500:
+        this.showError('서버 오류가 발생했습니다. 잠시 후 다시 시도해주세요.');
+        break;
+      default:
+        this.showError(data?.message || '알 수 없는 오류가 발생했습니다.');
+    }
+
+    return Promise.reject(error);
+  }
+
+  private handleUnauthorized(): void {
+    // 토큰 관련 데이터 정리
+    localStorage.removeItem('auth-token');
+    localStorage.removeItem('auth-user');
+
+    // 로그인 페이지로 리다이렉트 (현재 페이지가 이미 로그인 페이지가 아닌 경우에만)
+    if (typeof window !== 'undefined' && !window.location.pathname.includes('/login')) {
+      console.warn('Authentication failed, redirecting to login...');
+      this.showError('로그인이 만료되었습니다. 다시 로그인해주세요.');
+      setTimeout(() => {
+        window.location.href = '/login?message=session-expired';
+      }, 1500);
+    }
+  }
+
+  private showError(message: string): void {
+    // 토스트 알림이나 모달로 에러 표시
+    if (typeof window !== 'undefined') {
+      // 간단한 alert 대신 더 나은 UI 컴포넌트 사용 가능
+      console.error('Error:', message);
+      // TODO: 토스트 알림 시스템 구현
+    }
+  }
+
+  private showValidationError(details: string[]): void {
+    const message = details.length > 0
+      ? `입력 데이터 검증 실패:\n${details.join('\n')}`
+      : '입력 데이터를 확인해주세요.';
+    this.showError(message);
+  }
+}
+
+const errorHandler = ApiErrorHandler.getInstance();
+
 // 토큰 인터셉터
 api.interceptors.request.use(
   (config) => {
@@ -19,31 +104,15 @@ api.interceptors.request.use(
     return config;
   },
   (error) => {
-    return Promise.reject(error);
+    return errorHandler.handleError(error);
   }
 );
 
-// 응답 인터셉터 - 401 오류 처리 개선
+// 통합 응답 인터셉터
 api.interceptors.response.use(
   (response) => response,
-  async (error) => {
-    const originalRequest = error.config;
-
-    if (error.response?.status === 401 && !originalRequest._retry) {
-      originalRequest._retry = true;
-
-      // 토큰 관련 데이터 정리
-      localStorage.removeItem('auth-token');
-      localStorage.removeItem('auth-user');
-
-      // 로그인 페이지로 리다이렉트 (현재 페이지가 이미 로그인 페이지가 아닌 경우에만)
-      if (typeof window !== 'undefined' && !window.location.pathname.includes('/login')) {
-        console.warn('Authentication failed, redirecting to login...');
-        window.location.href = '/login?message=session-expired';
-      }
-    }
-
-    return Promise.reject(error);
+  (error) => {
+    return errorHandler.handleError(error);
   }
 );
 
@@ -53,6 +122,7 @@ export interface User {
   email: string;
   name: string;
   profileImage?: string;
+  profileColor?: string;
   isActive: boolean;
   createdAt: string;
   updatedAt: string;
@@ -238,8 +308,8 @@ export const authApi = {
     return extractData(response);
   },
 
-  updateProfile: async (name: string, profileImage?: string): Promise<User> => {
-    const response = await axios.patch<StandardApiResponse<User>>((process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001') + '/api/auth/profile', { name, profileImage }, {
+  updateProfile: async (name: string, profileImage?: string, profileColor?: string): Promise<User> => {
+    const response = await axios.patch<StandardApiResponse<User>>((process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001') + '/api/auth/profile', { name, profileImage, profileColor }, {
       headers: {
         Authorization: `Bearer ${localStorage.getItem('auth-token')}`
       }

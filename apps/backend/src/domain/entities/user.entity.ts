@@ -1,11 +1,11 @@
-import { Entity, PrimaryGeneratedColumn, Column, OneToMany, CreateDateColumn, UpdateDateColumn } from 'typeorm';
-import { ProjectMember } from './project-member.entity';
-import { Task } from './task.entity';
-import { Comment } from './comment.entity';
+import { Column, CreateDateColumn, Entity, OneToMany, PrimaryGeneratedColumn, UpdateDateColumn } from 'typeorm';
+import { TimeUtil } from '../../shared/utils/time.util';
 import { ActivityLog } from './activity-log.entity';
+import { Comment } from './comment.entity';
 import { Notification } from './notification.entity';
 import { ProjectInvitation } from './project-invitation.entity';
-import { TimeUtil } from '../../shared/utils/time.util';
+import { ProjectMember } from './project-member.entity';
+import { Task } from './task.entity';
 
 /**
  * 사용자 도메인 엔터티
@@ -26,6 +26,9 @@ export class User {
 
   @Column({ name: 'profile_image', type: 'varchar', length: 500, nullable: true })
   profileImage?: string;
+
+  @Column({ name: 'profile_color', type: 'varchar', length: 7, default: '#3B82F6' })
+  profileColor: string;
 
   @Column({ name: 'is_active', type: 'boolean', default: true })
   isActive: boolean;
@@ -65,14 +68,17 @@ export class User {
   receivedInvitations?: ProjectInvitation[];
 
   // Domain methods
-  public updateProfile(name: string, profileImage?: string): void {
+  public updateProfile(name: string, profileImage?: string, profileColor?: string): void {
     if (!name || name.trim().length === 0) {
       throw new Error('Name cannot be empty');
     }
-    
+
     this.name = name.trim();
     if (profileImage !== undefined) {
       this.profileImage = profileImage;
+    }
+    if (profileColor !== undefined) {
+      this.profileColor = profileColor;
     }
   }
 
@@ -109,12 +115,12 @@ export class User {
 
   public getInitials(): string {
     if (!this.name) return this.email.charAt(0).toUpperCase();
-    
+
     const nameParts = this.name.trim().split(' ');
     if (nameParts.length === 1) {
       return nameParts[0].charAt(0).toUpperCase();
     }
-    
+
     return (nameParts[0].charAt(0) + nameParts[nameParts.length - 1].charAt(0)).toUpperCase();
   }
 
@@ -122,11 +128,11 @@ export class User {
     if (!email || !email.includes('@')) {
       throw new Error('Valid email is required');
     }
-    
+
     if (!password || password.length < 6) {
       throw new Error('Password must be at least 6 characters long');
     }
-    
+
     if (!name || name.trim().length === 0) {
       throw new Error('Name is required');
     }
@@ -136,7 +142,7 @@ export class User {
     user.password = password;
     user.name = name.trim();
     user.isActive = true;
-    
+
     return user;
   }
-} 
+}

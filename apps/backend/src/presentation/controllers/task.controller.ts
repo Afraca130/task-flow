@@ -12,7 +12,9 @@ import {
     Put,
     Query,
     UnauthorizedException,
+    UseGuards,
 } from '@nestjs/common';
+import { ApiTags } from '@nestjs/swagger';
 import { TaskRepositoryPort } from '../../application/ports/output/task-repository.port';
 import { CreateTaskPort } from '../../application/use-cases/task/create-task.use-case';
 import { ReorderTaskPort } from '../../application/use-cases/task/reorder-task.use-case';
@@ -24,6 +26,7 @@ import { CreateTaskDto } from '../dto/request/create-task.dto';
 import { ReorderTaskDto } from '../dto/request/reorder-task.dto';
 import { UpdateTaskDto } from '../dto/request/update-task.dto';
 import { TaskResponseDto } from '../dto/response/task-response.dto';
+import { JwtAuthGuard } from '../guards/jwt-auth.guard';
 import {
     ApiCreateTask,
     ApiDeleteTask,
@@ -36,6 +39,9 @@ import {
     ApiUpdateTaskStatus,
 } from '../swagger/task.swagger';
 
+
+@ApiTags('tasks')
+@UseGuards(JwtAuthGuard)
 @Controller('tasks')
 export class TaskController {
     constructor(
@@ -109,8 +115,6 @@ export class TaskController {
         @Body() dto: ReorderTaskDto,
         @User() user: AuthenticatedUser,
     ): Promise<{ task: TaskResponseDto; affectedTasks: TaskResponseDto[] }> {
-        console.log('Reorder DTO received:', dto);
-
         if (!user?.id) {
             throw new UnauthorizedException('사용자 인증이 필요합니다.');
         }

@@ -39,27 +39,50 @@ import { useEffect, useMemo, useState } from 'react';
 import { NotificationBell } from '../../components/notifications/notification-bell';
 
 const statusColumns = {
-  TODO: { title: '할 일', color: 'bg-purple-100 text-purple-700', bgColor: 'bg-purple-50' },
-  IN_PROGRESS: {
-    title: '진행 중',
-    color: 'bg-yellow-100 text-yellow-700',
-    bgColor: 'bg-yellow-50',
-  },
-  COMPLETED: { title: '완료', color: 'bg-green-100 text-green-700', bgColor: 'bg-green-50' },
+  TODO: { title: '할 일', color: 'text-blue-600 bg-blue-50', bgColor: 'bg-blue-50' },
+  IN_PROGRESS: { title: '진행 중', color: 'text-yellow-600 bg-yellow-50', bgColor: 'bg-yellow-50' },
+  COMPLETED: { title: '완료', color: 'text-green-600 bg-green-50', bgColor: 'bg-green-50' },
 };
 
 const priorityColors = {
-  HIGH: 'bg-red-100 text-red-700',
-  MEDIUM: 'bg-orange-100 text-orange-700',
-  LOW: 'bg-green-100 text-green-700',
-  URGENT: 'bg-red-200 text-red-800',
+  LOW: 'text-gray-600 bg-gray-100',
+  MEDIUM: 'text-blue-600 bg-blue-100',
+  HIGH: 'text-orange-600 bg-orange-100',
+  URGENT: 'text-red-600 bg-red-100',
 };
 
 const priorityLabels = {
-  HIGH: '높음',
-  MEDIUM: '보통',
   LOW: '낮음',
+  MEDIUM: '보통',
+  HIGH: '높음',
   URGENT: '긴급',
+};
+
+// 사용자 색상 관련 유틸리티 함수들
+const getUserColor = (userId: string) => {
+  // 사용자별 고유 색상 생성 (사용자가 색상을 선택하지 않은 경우)
+  const colors = [
+    'bg-blue-500',
+    'bg-green-500',
+    'bg-purple-500',
+    'bg-red-500',
+    'bg-yellow-500',
+    'bg-indigo-500',
+    'bg-pink-500',
+    'bg-gray-500',
+  ];
+
+  // 사용자 ID를 기반으로 색상 선택
+  const colorIndex =
+    userId.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0) % colors.length;
+  return colors[colorIndex];
+};
+
+const getUserColorStyle = (user: any) => {
+  if (user?.profileColor) {
+    return { backgroundColor: user.profileColor };
+  }
+  return {};
 };
 
 interface DraggableTaskCardProps {
@@ -68,29 +91,12 @@ interface DraggableTaskCardProps {
 }
 
 function DraggableTaskCard({ task, onClick }: DraggableTaskCardProps) {
-  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
+  const { attributes, listeners, setNodeRef, transform, isDragging } = useSortable({
     id: task.id,
   });
 
   const style = {
     transform: CSS.Transform.toString(transform),
-    transition,
-    opacity: isDragging ? 0.5 : 1,
-  };
-
-  const getUserColor = (userId: string) => {
-    const colors = [
-      'bg-blue-500',
-      'bg-green-500',
-      'bg-purple-500',
-      'bg-red-500',
-      'bg-indigo-500',
-      'bg-yellow-500',
-      'bg-pink-500',
-      'bg-cyan-500',
-    ];
-    const index = userId.charCodeAt(0) % colors.length;
-    return colors[index];
   };
 
   return (
@@ -100,10 +106,15 @@ function DraggableTaskCard({ task, onClick }: DraggableTaskCardProps) {
       {...attributes}
       {...listeners}
       onClick={onClick}
-      className='bg-white border border-gray-200 rounded-lg p-4 cursor-pointer hover:shadow-md transition-shadow'
+      className={`bg-white border border-gray-200 rounded-lg p-3 cursor-pointer hover:shadow-md transition-shadow ${
+        isDragging ? 'opacity-50' : ''
+      }`}
     >
-      <div className='font-medium text-sm text-gray-900 mb-2'>{task.title}</div>
-      <div className='text-xs text-gray-600 mb-3 line-clamp-2'>{task.description}</div>
+      <h3 className='font-medium text-gray-900 mb-2 line-clamp-2'>{task.title}</h3>
+      {task.description && (
+        <div className='text-xs text-gray-600 mb-3 line-clamp-2'>{task.description}</div>
+      )}
+
       <div className='flex items-center justify-between'>
         <span className={`px-2 py-1 rounded text-xs font-medium ${priorityColors[task.priority]}`}>
           {priorityLabels[task.priority]}
@@ -111,7 +122,8 @@ function DraggableTaskCard({ task, onClick }: DraggableTaskCardProps) {
         {task.assignee && (
           <div className='flex items-center gap-2'>
             <div
-              className={`w-6 h-6 rounded-full flex items-center justify-center text-white text-xs font-medium ${getUserColor(task.assignee.id)}`}
+              className={`w-6 h-6 rounded-full flex items-center justify-center text-white text-xs font-medium ${!task.assignee.profileColor ? getUserColor(task.assignee.id) : ''}`}
+              style={getUserColorStyle(task.assignee)}
               title={task.assignee.name}
             >
               {task.assignee.name.charAt(0)}
@@ -120,14 +132,9 @@ function DraggableTaskCard({ task, onClick }: DraggableTaskCardProps) {
           </div>
         )}
       </div>
-      {task.dueDate && (
-        <div className='mt-2 text-xs text-gray-500 flex items-center gap-1'>
-          <Calendar className='w-3 h-3' />
-          {new Date(task.dueDate).toLocaleDateString('ko-KR')}
-        </div>
-      )}
+
       {task.tags && task.tags.length > 0 && (
-        <div className='mt-2 flex flex-wrap gap-1'>
+        <div className='flex flex-wrap gap-1 mt-2'>
           {task.tags.slice(0, 3).map((tag, index) => (
             <span key={index} className='px-1 py-0.5 bg-gray-100 text-gray-600 text-xs rounded'>
               {tag}
@@ -593,7 +600,10 @@ export default function DashboardPage() {
               </button>
 
               <div className='flex items-center gap-3'>
-                <div className='w-8 h-8 bg-blue-500 rounded-full flex items-center justify-center text-white text-sm font-medium'>
+                <div
+                  className={`w-8 h-8 rounded-full flex items-center justify-center text-white text-sm font-medium ${!user?.profileColor ? 'bg-blue-500' : ''}`}
+                  style={getUserColorStyle(user)}
+                >
                   {user?.name?.charAt(0) || 'U'}
                 </div>
                 <div className='hidden sm:block'>

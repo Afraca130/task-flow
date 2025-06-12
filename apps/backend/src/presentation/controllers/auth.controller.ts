@@ -4,7 +4,7 @@ import { Request } from 'express';
 import { AuthService } from '../../application/services/auth.service';
 import { User } from '../../domain/entities/user.entity';
 import { Public } from '../decorators/public.decorator';
-import { ChangePasswordRequestDto, LoginRequestDto, RegisterRequestDto } from '../dto/request/auth-request.dto';
+import { ChangePasswordRequestDto, LoginRequestDto, RegisterRequestDto, UpdateProfileRequestDto } from '../dto/request/auth-request.dto';
 import { LoginResponseDto, RegisterResponseDto, UserDto } from '../dto/response/auth-response.dto';
 import { JwtAuthGuard } from '../guards/jwt-auth.guard';
 
@@ -74,6 +74,26 @@ export class AuthController {
     @Req() req: AuthenticatedRequest,
   ): Promise<UserDto> {
     return await this.authService.getProfile(req.user.id);
+  }
+
+  /**
+   * 프로필 업데이트
+   */
+  @UseGuards(JwtAuthGuard)
+  @Patch('profile')
+  @ApiBearerAuth('JWT-auth')
+  @ApiOperation({ summary: '프로필 업데이트', description: '현재 로그인한 사용자의 프로필 정보를 업데이트합니다.' })
+  @ApiResponse({
+    status: 200,
+    description: '프로필 업데이트 성공',
+    type: UserDto,
+  })
+  @ApiResponse({ status: 401, description: '인증 필요' })
+  async updateProfile(
+    @Req() req: AuthenticatedRequest,
+    @Body() updateProfileDto: UpdateProfileRequestDto,
+  ): Promise<UserDto> {
+    return await this.authService.updateProfile(req.user.id, updateProfileDto);
   }
 
   /**

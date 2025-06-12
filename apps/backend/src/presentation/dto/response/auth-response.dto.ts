@@ -1,4 +1,4 @@
-import { ApiProperty } from '@nestjs/swagger';
+import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 
 /**
  * 사용자 정보 DTO
@@ -22,12 +22,17 @@ export class UserDto {
   })
   name: string;
 
-  @ApiProperty({
+  @ApiPropertyOptional({
     description: '프로필 이미지 URL',
     example: 'https://example.com/profile.jpg',
-    required: false,
   })
   profileImage?: string;
+
+  @ApiPropertyOptional({
+    description: '프로필 색상 (HEX 코드)',
+    example: '#3B82F6',
+  })
+  profileColor?: string;
 
   @ApiProperty({
     description: '계정 활성화 상태',
@@ -35,10 +40,9 @@ export class UserDto {
   })
   isActive: boolean;
 
-  @ApiProperty({
+  @ApiPropertyOptional({
     description: '마지막 로그인 시간',
     example: '2023-12-01T12:00:00.000Z',
-    required: false,
   })
   lastLoginAt?: string;
 
@@ -93,4 +97,4 @@ export class RegisterResponseDto {
     example: '회원가입이 성공적으로 완료되었습니다.',
   })
   message: string;
-} 
+}

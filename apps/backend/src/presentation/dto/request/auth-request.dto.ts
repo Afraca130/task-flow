@@ -1,5 +1,5 @@
-import { ApiProperty } from '@nestjs/swagger';
-import { IsEmail, IsString, MinLength, MaxLength, Matches } from 'class-validator';
+import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
+import { IsEmail, IsHexColor, IsOptional, IsString, Matches, MaxLength, MinLength } from 'class-validator';
 
 /**
  * 회원가입 요청 DTO
@@ -61,6 +61,39 @@ export class LoginRequestDto {
 }
 
 /**
+ * 프로필 업데이트 요청 DTO
+ */
+export class UpdateProfileRequestDto {
+  @ApiProperty({
+    description: '사용자 이름',
+    example: '홍길동',
+    minLength: 2,
+    maxLength: 50,
+  })
+  @IsString()
+  @MinLength(2, { message: '이름은 최소 2자 이상이어야 합니다.' })
+  @MaxLength(50, { message: '이름은 최대 50자까지 가능합니다.' })
+  name: string;
+
+  @ApiPropertyOptional({
+    description: '프로필 이미지 URL',
+    example: 'https://example.com/profile.jpg',
+  })
+  @IsOptional()
+  @IsString()
+  profileImage?: string;
+
+  @ApiPropertyOptional({
+    description: '프로필 색상 (HEX 코드)',
+    example: '#3B82F6',
+    pattern: '^#[0-9A-Fa-f]{6}$',
+  })
+  @IsOptional()
+  @IsHexColor({ message: '올바른 HEX 색상 코드를 입력해주세요. (예: #3B82F6)' })
+  profileColor?: string;
+}
+
+/**
  * 비밀번호 변경 요청 DTO
  */
 export class ChangePasswordRequestDto {
@@ -85,4 +118,4 @@ export class ChangePasswordRequestDto {
     message: '비밀번호는 영문, 숫자, 특수문자를 포함해야 합니다.',
   })
   newPassword: string;
-} 
+}

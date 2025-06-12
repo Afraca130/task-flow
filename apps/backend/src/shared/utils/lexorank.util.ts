@@ -69,29 +69,27 @@ export class LexoRank {
         }
 
         const chars = value.split('');
-        let result = '';
 
-        for (let i = 0; i < chars.length; i++) {
+        // 마지막 문자부터 역순으로 처리
+        for (let i = chars.length - 1; i >= 0; i--) {
             const char = chars[i];
 
             if (char > MIN_CHAR) {
                 // 현재 문자보다 작은 문자로 교체
                 const prevChar = String.fromCharCode(char.charCodeAt(0) - 1);
-                result += prevChar;
+                chars[i] = prevChar;
 
-                // 나머지는 MAX_CHAR로 채움
+                // 뒤의 모든 문자를 MAX_CHAR로 설정
                 for (let j = i + 1; j < chars.length; j++) {
-                    result += MAX_CHAR;
+                    chars[j] = MAX_CHAR;
                 }
 
-                return result;
-            } else {
-                result += char;
+                return chars.join('');
             }
         }
 
-        // 모든 문자가 MIN_CHAR인 경우
-        return result + MIN_CHAR + MAX_CHAR;
+        // 모든 문자가 MIN_CHAR인 경우 - 앞에 MIN_CHAR 추가
+        return MIN_CHAR + value;
     }
 
     /**
@@ -99,21 +97,27 @@ export class LexoRank {
      */
     private static getAfter(value: string): string {
         const chars = value.split('');
-        let result = '';
 
+        // 마지막 문자부터 역순으로 처리
         for (let i = chars.length - 1; i >= 0; i--) {
             const char = chars[i];
 
             if (char < MAX_CHAR) {
                 // 현재 문자보다 큰 문자로 교체
                 const nextChar = String.fromCharCode(char.charCodeAt(0) + 1);
-                result = value.substring(0, i) + nextChar + value.substring(i + 1);
-                return result;
+                chars[i] = nextChar;
+
+                // 뒤의 모든 문자를 MIN_CHAR로 설정
+                for (let j = i + 1; j < chars.length; j++) {
+                    chars[j] = MIN_CHAR;
+                }
+
+                return chars.join('');
             }
         }
 
-        // 모든 문자가 MAX_CHAR인 경우
-        return value + MID_CHAR;
+        // 모든 문자가 MAX_CHAR인 경우 - 뒤에 MIN_CHAR 추가
+        return value + MIN_CHAR;
     }
 
     /**
@@ -129,7 +133,6 @@ export class LexoRank {
         const bChars = b.padEnd(maxLength, MIN_CHAR).split('');
 
         let result = '';
-        let carry = false;
 
         for (let i = 0; i < maxLength; i++) {
             const aCode = aChars[i].charCodeAt(0);
@@ -140,24 +143,31 @@ export class LexoRank {
                 continue;
             }
 
-            // 중간값 계산
-            const midCode = Math.floor((aCode + bCode) / 2);
-            const midChar = String.fromCharCode(midCode);
+            // 두 문자 사이에 중간값이 있는지 확인
+            const diff = bCode - aCode;
 
-            if (midCode > aCode) {
-                result += midChar;
+            if (diff > 1) {
+                // 중간값 계산
+                const midCode = aCode + Math.floor(diff / 2);
+                result += String.fromCharCode(midCode);
                 return result;
             } else {
-                // 중간값이 없는 경우 한 자리 더 추가
+                // 차이가 1인 경우 - 더 긴 문자열 생성
                 result += aChars[i];
 
-                // 다음 위치에 중간값 삽입
+                // 다음 자리에서 중간값 생성
                 const nextACode = (i + 1 < aChars.length) ? aChars[i + 1].charCodeAt(0) : MIN_CHAR.charCodeAt(0);
                 const nextBCode = MAX_CHAR.charCodeAt(0);
-                const nextMidCode = Math.floor((nextACode + nextBCode) / 2);
-                result += String.fromCharCode(nextMidCode);
 
-                return result;
+                if (nextACode < nextBCode) {
+                    const nextMidCode = nextACode + Math.floor((nextBCode - nextACode) / 2);
+                    result += String.fromCharCode(nextMidCode);
+                    return result;
+                } else {
+                    // 재귀적으로 더 긴 문자열 생성
+                    result += String.fromCharCode(nextACode + 1);
+                    return result;
+                }
             }
         }
 
@@ -217,16 +227,16 @@ export class LexoRank {
 
         if (count === 1) {
             ranks.push(LexoRank.min());
-        } else {
-            // 첫 번째 요소
-            let current = LexoRank.min();
-            ranks.push(current);
+            return ranks;
+        }
 
-            // 나머지 요소들을 위한 순서 생성
-            for (let i = 1; i < count; i++) {
-                current = new LexoRank(this.getAfter(current.value));
-                ranks.push(current);
-            }
+        // 균등하게 분배된 초기 순서 생성
+        const step = Math.floor((MAX_CHAR.charCodeAt(0) - MIN_CHAR.charCodeAt(0)) / (count + 1));
+
+        for (let i = 1; i <= count; i++) {
+            const charCode = MIN_CHAR.charCodeAt(0) + (step * i);
+            const char = String.fromCharCode(Math.min(charCode, MAX_CHAR.charCodeAt(0) - 1));
+            ranks.push(new LexoRank(char));
         }
 
         return ranks;
@@ -245,29 +255,46 @@ export class LexoRankUtil {
         draggedId: string,
         newIndex: number
     ): string {
-        // 드래그된 아이템을 제외한 배열 생성
-        const filteredItems = items.filter(item => item.id !== draggedId);
+        console.log('calculateNewRank called:', { items: items.length, draggedId, newIndex });
+
+        // 드래그된 아이템을 제외한 배열 생성하고 정렬
+        const filteredItems = items
+            .filter(item => item.id !== draggedId)
+            .sort((a, b) => a.lexoRank.localeCompare(b.lexoRank));
+
+        console.log('Filtered and sorted items:', filteredItems.map(item => ({ id: item.id, rank: item.lexoRank })));
 
         if (filteredItems.length === 0) {
+            console.log('No items, returning min rank');
             return LexoRank.min().getValue();
         }
 
-        if (newIndex === 0) {
+        // 인덱스 범위 검증
+        const safeIndex = Math.max(0, Math.min(newIndex, filteredItems.length));
+        console.log('Safe index:', safeIndex);
+
+        if (safeIndex === 0) {
             // 맨 앞으로 이동
             const firstRank = LexoRank.parse(filteredItems[0].lexoRank);
-            return LexoRank.between(null, firstRank).getValue();
+            const newRank = LexoRank.between(null, firstRank).getValue();
+            console.log('Moving to front, new rank:', newRank);
+            return newRank;
         }
 
-        if (newIndex >= filteredItems.length) {
+        if (safeIndex >= filteredItems.length) {
             // 맨 뒤로 이동
             const lastRank = LexoRank.parse(filteredItems[filteredItems.length - 1].lexoRank);
-            return LexoRank.between(lastRank, null).getValue();
+            const newRank = LexoRank.between(lastRank, null).getValue();
+            console.log('Moving to end, new rank:', newRank);
+            return newRank;
         }
 
         // 중간에 삽입
-        const beforeRank = LexoRank.parse(filteredItems[newIndex - 1].lexoRank);
-        const afterRank = LexoRank.parse(filteredItems[newIndex].lexoRank);
-        return LexoRank.between(beforeRank, afterRank).getValue();
+        const beforeRank = LexoRank.parse(filteredItems[safeIndex - 1].lexoRank);
+        const afterRank = LexoRank.parse(filteredItems[safeIndex].lexoRank);
+        const newRank = LexoRank.between(beforeRank, afterRank).getValue();
+        console.log('Moving to middle, new rank:', newRank, 'between', beforeRank.getValue(), 'and', afterRank.getValue());
+        return newRank;
     }
 
     /**
