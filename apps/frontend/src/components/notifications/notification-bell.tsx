@@ -1,7 +1,8 @@
 'use client';
 
-import React, { useState, useEffect, useRef } from 'react';
-import { Bell, X, Check, CheckCheck, Trash2, Settings } from 'lucide-react';
+import { notificationsApi } from '@/lib/api';
+import { Bell } from 'lucide-react';
+import { useEffect, useRef, useState } from 'react';
 import { NotificationDropdown } from './notification-dropdown';
 
 interface NotificationBellProps {
@@ -39,16 +40,8 @@ export function NotificationBell({ className = '' }: NotificationBellProps) {
 
   const fetchUnreadCount = async () => {
     try {
-      const response = await fetch('/api/v1/notifications/unread-count', {
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`,
-        },
-      });
-      
-      if (response.ok) {
-        const data = await response.json();
-        setUnreadCount(data.unreadCount);
-      }
+      const data = await notificationsApi.getUnreadCount();
+      setUnreadCount(data.unreadCount);
     } catch (error) {
       console.error('Failed to fetch unread count:', error);
     }
@@ -56,19 +49,11 @@ export function NotificationBell({ className = '' }: NotificationBellProps) {
 
   const fetchNotifications = async () => {
     if (loading) return;
-    
+
     setLoading(true);
     try {
-      const response = await fetch('/api/v1/notifications?page=1&limit=10&isRead=false', {
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`,
-        },
-      });
-      
-      if (response.ok) {
-        const data = await response.json();
-        setNotifications(data.data);
-      }
+      const data = await notificationsApi.getNotifications();
+      setNotifications(data);
     } catch (error) {
       console.error('Failed to fetch notifications:', error);
     } finally {
@@ -87,16 +72,11 @@ export function NotificationBell({ className = '' }: NotificationBellProps) {
     // 읽지 않은 알림인 경우 읽음 처리
     if (!notification.isRead) {
       try {
-        await fetch(`/api/v1/notifications/${notification.id}/read`, {
-          method: 'PATCH',
-          headers: {
-            'Authorization': `Bearer ${localStorage.getItem('token')}`,
-          },
-        });
-        
+        await notificationsApi.markAsRead(notification.id);
+
         // 로컬 상태 업데이트
-        setNotifications(prev => 
-          prev.map(n => n.id === notification.id ? { ...n, isRead: true } : n)
+        setNotifications(prev =>
+          prev.map(n => (n.id === notification.id ? { ...n, isRead: true } : n))
         );
         setUnreadCount(prev => Math.max(0, prev - 1));
       } catch (error) {
@@ -107,50 +87,41 @@ export function NotificationBell({ className = '' }: NotificationBellProps) {
     // 알림에 따른 페이지 이동
     if (notification.action?.type === 'navigate' && notification.action.url) {
       let url = notification.action.url;
-      
+
       // URL 파라미터 치환
       if (notification.action.params) {
         Object.entries(notification.action.params).forEach(([key, value]) => {
           url = url.replace(`:${key}`, String(value));
         });
       }
-      
+
       // 페이지 이동
       window.location.href = url;
     }
-    
+
     setIsOpen(false);
   };
 
   const handleMarkAllAsRead = async () => {
     try {
-      const response = await fetch('/api/v1/notifications/mark-all-read', {
-        method: 'PATCH',
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`,
-          'Content-Type': 'application/json',
-        },
-      });
-      
-      if (response.ok) {
-        setNotifications(prev => prev.map(n => ({ ...n, isRead: true })));
-        setUnreadCount(0);
-      }
+      await notificationsApi.markAllAsRead();
+      setNotifications(prev => prev.map(n => ({ ...n, isRead: true })));
+      setUnreadCount(0);
     } catch (error) {
       console.error('Failed to mark all notifications as read:', error);
     }
   };
 
   return (
-    <div className="relative" ref={dropdownRef}>
+    <div className='relative' ref={dropdownRef}>
       <button
         onClick={handleBellClick}
         className={`p-2 hover:bg-gray-100 rounded-md relative transition-colors ${className}`}
-        aria-label="알림"
+        aria-label='알림'
       >
-        <Bell className="w-5 h-5 text-gray-600" />
+        <Bell className='w-5 h-5 text-gray-600' />
         {unreadCount > 0 && (
-          <span className="absolute -top-1 -right-1 min-w-[18px] h-[18px] bg-red-500 text-white text-xs rounded-full flex items-center justify-center font-medium">
+          <span className='absolute -top-1 -right-1 min-w-[18px] h-[18px] bg-red-500 text-white text-xs rounded-full flex items-center justify-center font-medium'>
             {unreadCount > 99 ? '99+' : unreadCount}
           </span>
         )}
@@ -168,4 +139,4 @@ export function NotificationBell({ className = '' }: NotificationBellProps) {
       )}
     </div>
   );
-} 
+}
