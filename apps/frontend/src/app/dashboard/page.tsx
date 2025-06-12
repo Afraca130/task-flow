@@ -600,17 +600,24 @@ export default function DashboardPage() {
               </button>
 
               <div className='flex items-center gap-3'>
-                <div
-                  className={`w-8 h-8 rounded-full flex items-center justify-center text-white text-sm font-medium ${!user?.profileColor ? 'bg-blue-500' : ''}`}
-                  style={getUserColorStyle(user)}
+                <button
+                  onClick={() => router.push('/profile')}
+                  className='flex items-center gap-3 hover:bg-gray-100 rounded-lg p-2 transition-colors'
                 >
-                  {user?.name?.charAt(0) || 'U'}
-                </div>
-                <div className='hidden sm:block'>
-                  <div className='text-sm font-medium text-gray-900'>{user?.name || '사용자'}</div>
-                  <div className='text-xs text-gray-500'>{user?.email || 'user@example.com'}</div>
-                </div>
-                <ChevronDown className='w-4 h-4 text-gray-400' />
+                  <div
+                    className={`w-8 h-8 rounded-full flex items-center justify-center text-white text-sm font-medium ${!user?.profileColor ? 'bg-blue-500' : ''}`}
+                    style={getUserColorStyle(user)}
+                  >
+                    {user?.name?.charAt(0) || 'U'}
+                  </div>
+                  <div className='hidden sm:block text-left'>
+                    <div className='text-sm font-medium text-gray-900'>
+                      {user?.name || '사용자'}
+                    </div>
+                    <div className='text-xs text-gray-500'>{user?.email || 'user@example.com'}</div>
+                  </div>
+                  <ChevronDown className='w-4 h-4 text-gray-400' />
+                </button>
               </div>
             </div>
           </header>
