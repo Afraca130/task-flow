@@ -18,7 +18,7 @@ import { ApiOkResponse, ApiOperation, ApiParam, ApiQuery, ApiTags } from '@nestj
 import { TaskRepositoryPort } from '../../application/ports/output/task-repository.port';
 import { GetTaskCommentsUseCase } from '../../application/use-cases/comment/get-task-comments.use-case';
 import { CreateTaskPort } from '../../application/use-cases/task/create-task.use-case';
-import { ReorderTaskPort } from '../../application/use-cases/task/reorder-task.use-case';
+import { ReorderTaskCommand, ReorderTaskPort } from '../../application/use-cases/task/reorder-task.use-case';
 import { UpdateTaskPort } from '../../application/use-cases/task/update-task.use-case';
 import { TaskStatus } from '../../domain/entities/task.entity';
 import { PaginatedResponse } from '../../shared/utils/paginated-response.util';
@@ -119,11 +119,13 @@ export class TaskController {
         @Body() dto: ReorderTaskDto,
         @User() user: AuthenticatedUser,
     ): Promise<{ task: TaskResponseDto; affectedTasks: TaskResponseDto[] }> {
+        console.log('Reorder task request:', JSON.stringify(dto, null, 2));
+
         if (!user?.id) {
             throw new UnauthorizedException('사용자 인증이 필요합니다.');
         }
 
-        const command = {
+        const command: ReorderTaskCommand = {
             taskId: dto.taskId,
             projectId: dto.projectId,
             newStatus: dto.newStatus,
