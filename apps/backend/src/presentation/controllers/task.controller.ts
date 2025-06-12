@@ -11,15 +11,15 @@ import {
     Post,
     Put,
     Query,
-    Request,
-    UnauthorizedException
+    UnauthorizedException,
 } from '@nestjs/common';
-import { ApiTags } from '@nestjs/swagger';
 import { TaskRepositoryPort } from '../../application/ports/output/task-repository.port';
 import { CreateTaskPort } from '../../application/use-cases/task/create-task.use-case';
 import { ReorderTaskPort } from '../../application/use-cases/task/reorder-task.use-case';
 import { UpdateTaskPort } from '../../application/use-cases/task/update-task.use-case';
 import { TaskStatus } from '../../domain/entities/task.entity';
+import { PaginatedResponse } from '../../shared/utils/paginated-response.util';
+import { AuthenticatedUser, User } from '../decorators/authenticated-user.decorator';
 import { CreateTaskDto } from '../dto/request/create-task.dto';
 import { ReorderTaskDto } from '../dto/request/reorder-task.dto';
 import { UpdateTaskDto } from '../dto/request/update-task.dto';
@@ -33,18 +33,9 @@ import {
     ApiGetTasksByProjectOrdered,
     ApiReorderTask,
     ApiUpdateTask,
-    ApiUpdateTaskStatus
+    ApiUpdateTaskStatus,
 } from '../swagger/task.swagger';
 
-interface AuthenticatedRequest extends Request {
-    user: {
-        id: string;
-        email: string;
-        name: string;
-    };
-}
-
-@ApiTags('tasks')
 @Controller('tasks')
 export class TaskController {
     constructor(
@@ -60,19 +51,20 @@ export class TaskController {
 
     @Post()
     @ApiCreateTask()
-    async createTask(@Body() dto: CreateTaskDto, @Request() req: AuthenticatedRequest): Promise<TaskResponseDto> {
-        if (!req.user?.id) {
+    async createTask(
+        @Body() dto: CreateTaskDto,
+        @User() user: AuthenticatedUser
+    ): Promise<TaskResponseDto> {
+        if (!user?.id) {
             throw new UnauthorizedException('사용자 인증이 필요합니다.');
         }
-
-        const userId = req.user.id;
 
         const command = {
             title: dto.title,
             description: dto.description,
             projectId: dto.projectId,
             assigneeId: dto.assigneeId,
-            assignerId: userId,
+            assignerId: user.id,
             priority: dto.priority,
             dueDate: dto.dueDate ? new Date(dto.dueDate) : undefined,
             estimatedHours: dto.estimatedHours,
@@ -81,55 +73,6 @@ export class TaskController {
 
         const task = await this.createTaskUseCase.execute(command);
         return TaskResponseDto.fromEntity(task);
-    }
-
-    @Get(':id')
-    @ApiGetTaskById()
-    async getTaskById(@Param('id', ParseUUIDPipe) id: string): Promise<TaskResponseDto> {
-        const task = await this.taskRepository.findById(id);
-        if (!task) {
-            throw new Error(`Task with id ${id} not found`);
-        }
-        return TaskResponseDto.fromEntity(task);
-    }
-
-    @Put(':id')
-    @ApiUpdateTask()
-    async updateTask(
-        @Param('id', ParseUUIDPipe) id: string,
-        @Body() dto: UpdateTaskDto,
-        @Request() req: AuthenticatedRequest,
-    ): Promise<TaskResponseDto> {
-        if (!req.user?.id) {
-            throw new UnauthorizedException('사용자 인증이 필요합니다.');
-        }
-
-        const userId = req.user.id;
-
-        const command = {
-            taskId: id,
-            userId,
-            title: dto.title,
-            description: dto.description,
-            status: dto.status,
-            priority: dto.priority,
-            assigneeId: dto.assigneeId,
-            dueDate: dto.dueDate ? new Date(dto.dueDate) : undefined,
-            estimatedHours: dto.estimatedHours,
-            actualHours: dto.actualHours,
-            tags: dto.tags,
-            projectId: dto.projectId,
-        };
-
-        const task = await this.updateTaskUseCase.execute(command);
-        return TaskResponseDto.fromEntity(task);
-    }
-
-    @Delete(':id')
-    @ApiDeleteTask()
-    async deleteTask(@Param('id', ParseUUIDPipe) id: string): Promise<{ message: string }> {
-        await this.taskRepository.delete(id);
-        return { message: 'Task deleted successfully' };
     }
 
     @Get()
@@ -141,7 +84,7 @@ export class TaskController {
         @Query('search') search?: string,
         @Query('page', new DefaultValuePipe(1), ParseIntPipe) page?: number,
         @Query('limit', new DefaultValuePipe(10), ParseIntPipe) limit?: number,
-    ): Promise<{ data: TaskResponseDto[]; meta: any }> {
+    ): Promise<PaginatedResponse<TaskResponseDto>> {
         const result = await this.taskRepository.findWithFilters({
             projectId,
             assigneeId,
@@ -151,26 +94,41 @@ export class TaskController {
             limit,
         });
 
-        const totalPages = Math.ceil(result.total / limit);
+        const taskDtos = result.tasks.map(task => TaskResponseDto.fromEntity(task));
 
-        return {
-            data: result.tasks.map(task => TaskResponseDto.fromEntity(task)),
-            meta: {
-                page,
-                limit,
-                total: result.total,
-                totalPages,
-            },
-        };
+        return PaginatedResponse.create(taskDtos, {
+            page: page || 1,
+            limit: limit || 10,
+            total: result.total,
+        });
     }
 
-    @Get('project/:projectId')
-    @ApiGetTasksByProject()
-    async getTasksByProject(
-        @Param('projectId', ParseUUIDPipe) projectId: string,
-    ): Promise<TaskResponseDto[]> {
-        const tasks = await this.taskRepository.findByProjectId(projectId);
-        return tasks.map(task => TaskResponseDto.fromEntity(task));
+    @Put('reorder')
+    @ApiReorderTask()
+    async reorderTask(
+        @Body() dto: ReorderTaskDto,
+        @User() user: AuthenticatedUser,
+    ): Promise<{ task: TaskResponseDto; affectedTasks: TaskResponseDto[] }> {
+        console.log('Reorder DTO received:', dto);
+
+        if (!user?.id) {
+            throw new UnauthorizedException('사용자 인증이 필요합니다.');
+        }
+
+        const command = {
+            taskId: dto.taskId,
+            projectId: dto.projectId,
+            newStatus: dto.newStatus,
+            newPosition: dto.newPosition,
+            userId: user.id,
+        };
+
+        const result = await this.reorderTaskUseCase.execute(command);
+
+        return {
+            task: TaskResponseDto.fromEntity(result.task),
+            affectedTasks: result.affectedTasks.map(task => TaskResponseDto.fromEntity(task)),
+        };
     }
 
     @Get('project/:projectId/ordered')
@@ -195,32 +153,23 @@ export class TaskController {
         };
     }
 
-    @Put('reorder')
-    @ApiReorderTask()
-    async reorderTask(
-        @Body() dto: ReorderTaskDto,
-        @Request() req: AuthenticatedRequest,
-    ): Promise<{ task: TaskResponseDto; affectedTasks: TaskResponseDto[] }> {
-        if (!req.user?.id) {
-            throw new UnauthorizedException('사용자 인증이 필요합니다.');
+    @Get('project/:projectId')
+    @ApiGetTasksByProject()
+    async getTasksByProject(
+        @Param('projectId', ParseUUIDPipe) projectId: string,
+    ): Promise<TaskResponseDto[]> {
+        const tasks = await this.taskRepository.findByProjectId(projectId);
+        return tasks.map(task => TaskResponseDto.fromEntity(task));
+    }
+
+    @Get(':id')
+    @ApiGetTaskById()
+    async getTaskById(@Param('id', ParseUUIDPipe) id: string): Promise<TaskResponseDto> {
+        const task = await this.taskRepository.findById(id);
+        if (!task) {
+            throw new Error(`Task with id ${id} not found`);
         }
-
-        const userId = req.user.id;
-
-        const command = {
-            taskId: dto.taskId,
-            projectId: dto.projectId,
-            newStatus: dto.newStatus,
-            newPosition: dto.newPosition,
-            userId,
-        };
-
-        const result = await this.reorderTaskUseCase.execute(command);
-
-        return {
-            task: TaskResponseDto.fromEntity(result.task),
-            affectedTasks: result.affectedTasks.map(task => TaskResponseDto.fromEntity(task)),
-        };
+        return TaskResponseDto.fromEntity(task);
     }
 
     @Put(':id/status')
@@ -228,21 +177,56 @@ export class TaskController {
     async updateTaskStatus(
         @Param('id') id: string,
         @Body('status') status: TaskStatus,
-        @Request() req: AuthenticatedRequest,
+        @User() user: AuthenticatedUser,
     ): Promise<TaskResponseDto> {
-        if (!req.user?.id) {
+        if (!user?.id) {
             throw new UnauthorizedException('사용자 인증이 필요합니다.');
         }
 
-        const userId = req.user.id;
-
         const command = {
             taskId: id,
-            userId,
+            userId: user.id,
             status,
         };
 
         const task = await this.updateTaskUseCase.execute(command);
         return TaskResponseDto.fromEntity(task);
+    }
+
+    @Put(':id')
+    @ApiUpdateTask()
+    async updateTask(
+        @Param('id', ParseUUIDPipe) id: string,
+        @Body() dto: UpdateTaskDto,
+        @User() user: AuthenticatedUser,
+    ): Promise<TaskResponseDto> {
+        if (!user?.id) {
+            throw new UnauthorizedException('사용자 인증이 필요합니다.');
+        }
+
+        const command = {
+            taskId: id,
+            userId: user.id,
+            title: dto.title,
+            description: dto.description,
+            status: dto.status,
+            priority: dto.priority,
+            assigneeId: dto.assigneeId,
+            dueDate: dto.dueDate ? new Date(dto.dueDate) : undefined,
+            estimatedHours: dto.estimatedHours,
+            actualHours: dto.actualHours,
+            tags: dto.tags,
+            projectId: dto.projectId,
+        };
+
+        const task = await this.updateTaskUseCase.execute(command);
+        return TaskResponseDto.fromEntity(task);
+    }
+
+    @Delete(':id')
+    @ApiDeleteTask()
+    async deleteTask(@Param('id', ParseUUIDPipe) id: string): Promise<{ message: string }> {
+        await this.taskRepository.delete(id);
+        return { message: 'Task deleted successfully' };
     }
 }
