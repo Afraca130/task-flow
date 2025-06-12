@@ -105,16 +105,18 @@ function DraggableTaskCard({ task, onClick }: DraggableTaskCardProps) {
       <div className='font-medium text-sm text-gray-900 mb-2'>{task.title}</div>
       <div className='text-xs text-gray-600 mb-3 line-clamp-2'>{task.description}</div>
       <div className='flex items-center justify-between'>
-        <span className='text-xs text-gray-500 font-medium'>{task.id}</span>
         <span className={`px-2 py-1 rounded text-xs font-medium ${priorityColors[task.priority]}`}>
           {priorityLabels[task.priority]}
         </span>
         {task.assignee && (
-          <div
-            className={`w-6 h-6 rounded-full flex items-center justify-center text-white text-xs font-medium ${getUserColor(task.assignee.id)}`}
-            title={task.assignee.name}
-          >
-            {task.assignee.name.charAt(0)}
+          <div className='flex items-center gap-2'>
+            <div
+              className={`w-6 h-6 rounded-full flex items-center justify-center text-white text-xs font-medium ${getUserColor(task.assignee.id)}`}
+              title={task.assignee.name}
+            >
+              {task.assignee.name.charAt(0)}
+            </div>
+            <span className='text-xs text-gray-600 font-medium'>{task.assignee.name}</span>
           </div>
         )}
       </div>
@@ -164,7 +166,10 @@ function DroppableColumn({
   });
 
   return (
-    <div className='min-w-80 bg-white rounded-lg shadow-sm border border-gray-200'>
+    <div
+      ref={setNodeRef}
+      className={`min-w-80 bg-white rounded-lg shadow-sm border border-gray-200 ${isOver ? 'ring-2 ring-blue-400 ring-opacity-50' : ''}`}
+    >
       <div className='p-4 border-b border-gray-200'>
         <div className='flex items-center justify-between'>
           <div className='flex items-center gap-2'>
@@ -184,9 +189,9 @@ function DroppableColumn({
         id={id}
       >
         <div
-          ref={setNodeRef}
-          className={`p-4 space-y-3 min-h-48 ${config.bgColor} ${isOver ? 'bg-opacity-80 ring-2 ring-blue-400' : ''}`}
+          className={`p-4 space-y-3 min-h-48 flex-1 ${config.bgColor} ${isOver ? 'bg-opacity-80' : ''}`}
           data-status={id}
+          style={{ minHeight: '300px' }}
         >
           {tasks.map(task => (
             <DraggableTaskCard key={task.id} task={task} onClick={() => onTaskClick(task)} />
@@ -264,10 +269,29 @@ export default function DashboardPage() {
         console.log('All tasks loaded:', result);
         setTasks(result.data || []);
       } else {
-        // Load tasks for specific project
-        const projectTasks = await tasksApi.getTasksByProject(selectedProjectId);
-        console.log('Project tasks loaded:', projectTasks);
-        setTasks(projectTasks || []);
+        // Load tasks for specific project with proper ordering
+        try {
+          const orderedTasks = await tasksApi.getTasksByProjectOrdered(selectedProjectId);
+          console.log('Ordered project tasks loaded:', orderedTasks);
+
+          // Flatten the grouped tasks to a single array
+          const allTasks = [
+            ...(orderedTasks.TODO || []),
+            ...(orderedTasks.IN_PROGRESS || []),
+            ...(orderedTasks.COMPLETED || []),
+          ];
+
+          setTasks(allTasks);
+        } catch (orderedError) {
+          console.warn(
+            'Failed to load ordered tasks, falling back to regular tasks:',
+            orderedError
+          );
+          // Fallback to regular task loading
+          const projectTasks = await tasksApi.getTasksByProject(selectedProjectId);
+          console.log('Project tasks loaded (fallback):', projectTasks);
+          setTasks(projectTasks || []);
+        }
       }
     } catch (error) {
       console.error('Failed to load tasks:', error);
@@ -444,9 +468,12 @@ export default function DashboardPage() {
   };
 
   const handleCreateTask = (status?: keyof typeof statusColumns) => {
+    // 현재 선택된 프로젝트 ID를 고정
+    const fixedProjectId = selectedProjectId !== 'all' ? selectedProjectId : projects[0]?.id || '';
+
     const newTask = {
       status: status || ('TODO' as const),
-      projectId: selectedProjectId !== 'all' ? selectedProjectId : projects[0]?.id || '',
+      projectId: fixedProjectId,
     };
     setSelectedTask(newTask as Task);
     setIsModalOpen(true);
@@ -915,7 +942,7 @@ function TaskModal({
 
           <div>
             <label className='block text-sm font-medium text-gray-700 mb-2'>담당자 *</label>
-            {canSelectAssignee && !isEditMode ? (
+            {canSelectAssignee ? (
               <select
                 required
                 value={formData.assigneeId}
@@ -940,24 +967,14 @@ function TaskModal({
               <div className='relative'>
                 <input
                   type='text'
-                  value={
-                    isEditMode
-                      ? projectMembers.find(m => m.userId === formData.assigneeId)?.user?.name ||
-                        (formData.assigneeId === user?.id ? user?.name : '알 수 없음')
-                      : user?.name || '나'
-                  }
+                  value={user?.name || '나'}
                   disabled
                   className='w-full px-3 py-2 border border-gray-300 rounded-lg bg-gray-100 text-gray-600 cursor-not-allowed'
                 />
                 <div className='absolute inset-y-0 right-0 flex items-center pr-3'>
-                  <span className='text-xs text-gray-400'>
-                    {isEditMode ? '수정 시 담당자 변경 불가' : '멤버는 본인만 할당 가능'}
-                  </span>
+                  <span className='text-xs text-gray-400'>멤버는 본인만 할당 가능</span>
                 </div>
               </div>
-            )}
-            {isEditMode && canSelectAssignee && (
-              <p className='text-xs text-gray-500 mt-1'>수정 시에는 담당자를 변경할 수 없습니다.</p>
             )}
           </div>
 
