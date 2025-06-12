@@ -130,6 +130,15 @@ class AuthStore {
     }
   };
 
+  setUser = (user: User) => {
+    this.setState({ user });
+
+    // Update localStorage
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('auth-user', JSON.stringify(user));
+    }
+  };
+
   logout = () => {
     this.setState({
       user: null,
@@ -229,6 +238,7 @@ export const useAuthStore = () => {
     register: authStore.register,
     logout: authStore.logout,
     setUserAndToken: authStore.setUserAndToken,
+    setUser: authStore.setUser,
   };
 };
 

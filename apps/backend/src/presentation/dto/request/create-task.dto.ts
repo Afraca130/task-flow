@@ -1,7 +1,7 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { Transform } from 'class-transformer';
 import { IsArray, IsDateString, IsEnum, IsNotEmpty, IsNumber, IsOptional, IsString, IsUUID, Min } from 'class-validator';
-import { TaskPriority } from '../../../domain/entities/task.entity';
+import { TaskPriority, TaskStatus } from '../../../domain/entities/task.entity';
 
 export class CreateTaskDto {
     @ApiProperty({
@@ -41,6 +41,16 @@ export class CreateTaskDto {
     @IsOptional()
     @IsUUID(4, { message: 'Assignee ID must be valid UUID' })
     readonly assigneeId?: string;
+
+    @ApiPropertyOptional({
+        description: 'Task status',
+        enum: TaskStatus,
+        example: TaskStatus.TODO,
+        default: TaskStatus.TODO,
+    })
+    @IsOptional()
+    @IsEnum(TaskStatus, { message: 'Status must be a valid status' })
+    readonly status?: TaskStatus = TaskStatus.TODO;
 
     @ApiPropertyOptional({
         description: 'Task priority level',

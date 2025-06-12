@@ -1,5 +1,6 @@
 'use client';
 
+import { TaskModal } from '@/components/task-modal';
 import { Button } from '@/components/ui/button';
 import { projectsApi, Task, tasksApi } from '@/lib/api';
 import { useAuthStore } from '@/store/auth';
@@ -14,7 +15,7 @@ import {
   useSensor,
   useSensors,
 } from '@dnd-kit/core';
-import { SortableContext, useSortable, verticalListSortingStrategy } from '@dnd-kit/sortable';
+import { useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 import {
   BarChart3,
@@ -32,7 +33,6 @@ import {
   Settings,
   UserCheck,
   Users,
-  X,
 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { useEffect, useMemo, useState } from 'react';
@@ -99,36 +99,66 @@ function DraggableTaskCard({ task, onClick }: DraggableTaskCardProps) {
     transform: CSS.Transform.toString(transform),
   };
 
+  const getAssigneeAvatarStyle = (assignee: any) => {
+    if (assignee?.profileColor) {
+      return {
+        backgroundColor: assignee.profileColor,
+        color: '#ffffff',
+      };
+    }
+    // Fallback to default color if no profileColor
+    return {
+      backgroundColor: '#3B82F6',
+      color: '#ffffff',
+    };
+  };
+
   return (
     <div
       ref={setNodeRef}
       style={style}
       {...attributes}
       {...listeners}
-      onClick={onClick}
-      className={`bg-white border border-gray-200 rounded-lg p-3 cursor-pointer hover:shadow-md transition-shadow ${
+      className={`bg-white p-4 rounded-lg border border-gray-200 shadow-sm hover:shadow-md transition-shadow cursor-pointer ${
         isDragging ? 'opacity-50' : ''
       }`}
+      onClick={onClick}
     >
-      <h3 className='font-medium text-gray-900 mb-2 line-clamp-2'>{task.title}</h3>
+      <div className='flex items-start justify-between mb-2'>
+        <h3 className='font-medium text-gray-900 text-sm line-clamp-2'>{task.title}</h3>
+        <span
+          className={`px-2 py-1 text-xs font-medium rounded-full ${priorityColors[task.priority]}`}
+        >
+          {priorityLabels[task.priority]}
+        </span>
+      </div>
+
       {task.description && (
-        <div className='text-xs text-gray-600 mb-3 line-clamp-2'>{task.description}</div>
+        <p className='text-gray-600 text-sm mb-3 line-clamp-2'>{task.description}</p>
       )}
 
       <div className='flex items-center justify-between'>
-        <span className={`px-2 py-1 rounded text-xs font-medium ${priorityColors[task.priority]}`}>
-          {priorityLabels[task.priority]}
-        </span>
-        {task.assignee && (
-          <div className='flex items-center gap-2'>
-            <div
-              className={`w-6 h-6 rounded-full flex items-center justify-center text-white text-xs font-medium ${!task.assignee.profileColor ? getUserColor(task.assignee.id) : ''}`}
-              style={getUserColorStyle(task.assignee)}
-              title={task.assignee.name}
-            >
-              {task.assignee.name.charAt(0)}
+        <div className='flex items-center gap-2'>
+          {task.assignee && (
+            <div className='flex items-center gap-2'>
+              <div
+                className='w-6 h-6 rounded-full flex items-center justify-center text-xs font-medium'
+                style={getAssigneeAvatarStyle(task.assignee)}
+              >
+                {task.assignee.name?.charAt(0)?.toUpperCase() || 'U'}
+              </div>
+              <span className='text-sm text-gray-600'>{task.assignee.name}</span>
             </div>
-            <span className='text-xs text-gray-600 font-medium'>{task.assignee.name}</span>
+          )}
+        </div>
+
+        {task.dueDate && (
+          <div className='flex items-center gap-1 text-xs text-gray-500'>
+            <Calendar className='w-3 h-3' />
+            {new Date(task.dueDate).toLocaleDateString('ko-KR', {
+              month: 'short',
+              day: 'numeric',
+            })}
           </div>
         )}
       </div>
@@ -136,12 +166,12 @@ function DraggableTaskCard({ task, onClick }: DraggableTaskCardProps) {
       {task.tags && task.tags.length > 0 && (
         <div className='flex flex-wrap gap-1 mt-2'>
           {task.tags.slice(0, 3).map((tag, index) => (
-            <span key={index} className='px-1 py-0.5 bg-gray-100 text-gray-600 text-xs rounded'>
+            <span key={index} className='px-2 py-1 text-xs bg-gray-100 text-gray-600 rounded-full'>
               {tag}
             </span>
           ))}
           {task.tags.length > 3 && (
-            <span className='px-1 py-0.5 bg-gray-100 text-gray-600 text-xs rounded'>
+            <span className='px-2 py-1 text-xs bg-gray-100 text-gray-600 rounded-full'>
               +{task.tags.length - 3}
             </span>
           )}
@@ -157,7 +187,8 @@ interface DroppableColumnProps {
   config: { title: string; color: string; bgColor: string };
   tasks: Task[];
   onTaskClick: (task: Task) => void;
-  onCreateTask: (status: keyof typeof statusColumns) => void;
+  onViewMore: (status: keyof typeof statusColumns) => void;
+  selectedProjectId: string;
 }
 
 function DroppableColumn({
@@ -166,53 +197,78 @@ function DroppableColumn({
   config,
   tasks,
   onTaskClick,
-  onCreateTask,
+  onViewMore,
+  selectedProjectId,
 }: DroppableColumnProps) {
   const { setNodeRef, isOver } = useDroppable({
-    id: id,
+    id,
   });
 
   return (
-    <div
-      ref={setNodeRef}
-      className={`min-w-80 bg-white rounded-lg shadow-sm border border-gray-200 ${isOver ? 'ring-2 ring-blue-400 ring-opacity-50' : ''}`}
-    >
-      <div className='p-4 border-b border-gray-200'>
+    <div className='min-w-80 bg-white rounded-lg border border-gray-200 shadow-sm flex flex-col h-full'>
+      <div className={`p-4 border-b border-gray-200 ${config.bgColor}`}>
         <div className='flex items-center justify-between'>
-          <div className='flex items-center gap-2'>
-            <span className={`px-2 py-1 rounded text-xs font-medium ${config.color}`}>
-              {config.title}
-            </span>
-          </div>
-          <span className='bg-gray-100 text-gray-600 px-2 py-1 rounded-full text-xs'>
+          <h3 className={`font-medium ${config.color}`}>{config.title}</h3>
+          <span
+            className={`px-2 py-1 text-xs font-medium rounded-full ${config.bgColor} ${config.color}`}
+          >
             {tasks.length}
           </span>
         </div>
       </div>
 
-      <SortableContext
-        items={tasks.map(task => task.id)}
-        strategy={verticalListSortingStrategy}
-        id={id}
+      <div
+        ref={setNodeRef}
+        className={`flex-1 p-4 space-y-3 min-h-[500px] transition-colors ${
+          isOver ? 'bg-blue-50 border-blue-200' : ''
+        }`}
       >
-        <div
-          className={`p-4 space-y-3 min-h-48 flex-1 ${config.bgColor} ${isOver ? 'bg-opacity-80' : ''}`}
-          data-status={id}
-          style={{ minHeight: '300px' }}
-        >
-          {tasks.map(task => (
-            <DraggableTaskCard key={task.id} task={task} onClick={() => onTaskClick(task)} />
-          ))}
+        {tasks.map(task => (
+          <DraggableTaskCard key={task.id} task={task} onClick={() => onTaskClick(task)} />
+        ))}
 
-          {/* Add Task Button for each column */}
-          <button
-            onClick={() => onCreateTask(id as keyof typeof statusColumns)}
-            className='w-full p-3 border-2 border-dashed border-gray-300 rounded-lg text-gray-500 hover:border-gray-400 hover:text-gray-600 transition-colors text-sm'
+        {/* 빈 공간을 채우는 드롭 영역 */}
+        {tasks.length === 0 && (
+          <div
+            className={`flex-1 min-h-[200px] border-2 border-dashed border-gray-200 rounded-lg flex items-center justify-center transition-colors ${
+              isOver ? 'border-blue-400 bg-blue-50' : 'hover:border-gray-300'
+            }`}
           >
-            + 새 작업 추가
+            <p className='text-gray-400 text-sm'>여기에 작업을 드래그하세요</p>
+          </div>
+        )}
+
+        {/* 추가 드롭 영역 - 작업이 있을 때도 하단에 여유 공간 제공 */}
+        {tasks.length > 0 && (
+          <div
+            className={`min-h-[100px] border-2 border-dashed border-transparent rounded-lg transition-colors ${
+              isOver ? 'border-blue-400 bg-blue-50' : ''
+            }`}
+          >
+            {/* 빈 공간 */}
+          </div>
+        )}
+
+        {/* 더보기 버튼 */}
+        {tasks.length === 10 && (
+          <button
+            onClick={() => onViewMore(id as keyof typeof statusColumns)}
+            className='w-full py-3 text-sm text-blue-600 hover:text-blue-700 hover:bg-blue-50 rounded-lg border border-blue-200 hover:border-blue-300 transition-colors'
+          >
+            더보기 ({tasks.length}개 중 10개 표시)
           </button>
-        </div>
-      </SortableContext>
+        )}
+
+        {/* 새 작업 추가 버튼 */}
+        {selectedProjectId !== 'all' && (
+          <button
+            onClick={() => onTaskClick({ status: id } as Task)}
+            className='w-full py-3 text-sm text-gray-600 hover:text-gray-700 hover:bg-gray-50 rounded-lg border border-gray-200 hover:border-gray-300 transition-colors flex items-center justify-center gap-2'
+          >
+            <Plus className='w-4 h-4' />새 태스크
+          </button>
+        )}
+      </div>
     </div>
   );
 }
@@ -270,15 +326,45 @@ export default function DashboardPage() {
     try {
       setLoading(true);
       console.log('Loading tasks...', { selectedProjectId, searchTerm });
+
       if (selectedProjectId === 'all') {
-        // Load all tasks
-        const result = await tasksApi.getTasks({ search: searchTerm });
-        console.log('All tasks loaded:', result);
-        setTasks(result.data || []);
-      } else {
-        // Load tasks for specific project with proper ordering
+        // Load all tasks by status separately with limit of 10 each
         try {
-          const orderedTasks = await tasksApi.getTasksByProjectOrdered(selectedProjectId);
+          const [todoResult, inProgressResult, completedResult] = await Promise.all([
+            tasksApi.getTasks({ status: 'TODO', search: searchTerm, limit: 10 }),
+            tasksApi.getTasks({ status: 'IN_PROGRESS', search: searchTerm, limit: 10 }),
+            tasksApi.getTasks({ status: 'COMPLETED', search: searchTerm, limit: 10 }),
+          ]);
+
+          const allTasks = [
+            ...(todoResult.data || []),
+            ...(inProgressResult.data || []),
+            ...(completedResult.data || []),
+          ];
+
+          console.log('All tasks loaded by status:', {
+            todo: todoResult.data?.length || 0,
+            inProgress: inProgressResult.data?.length || 0,
+            completed: completedResult.data?.length || 0,
+            total: allTasks.length,
+          });
+
+          setTasks(allTasks);
+        } catch (error) {
+          console.warn('Failed to load tasks by status, falling back to regular load:', error);
+          // Fallback to regular task loading
+          const result = await tasksApi.getTasks({ search: searchTerm, limit: 30 });
+          console.log('All tasks loaded (fallback):', result);
+          setTasks(result.data || []);
+        }
+      } else {
+        // Load tasks for specific project with proper ordering and limit of 10 per status
+        try {
+          const orderedTasks = await tasksApi.getTasksByProjectOrdered(
+            selectedProjectId,
+            undefined,
+            10
+          );
           console.log('Ordered project tasks loaded:', orderedTasks);
 
           // Flatten the grouped tasks to a single array
@@ -348,14 +434,16 @@ export default function DashboardPage() {
 
   // Organize tasks by status
   const tasksByStatus = useMemo(() => {
-    const organized: Record<string, Task[]> = {
+    const organized: Record<'TODO' | 'IN_PROGRESS' | 'COMPLETED', Task[]> = {
       TODO: [],
       IN_PROGRESS: [],
       COMPLETED: [],
     };
 
     filteredTasks.forEach(task => {
-      organized[task.status].push(task);
+      if (task.status in organized) {
+        organized[task.status as keyof typeof organized].push(task);
+      }
     });
 
     return organized;
@@ -375,93 +463,88 @@ export default function DashboardPage() {
     const { active, over } = event;
     setActiveTaskId(null);
 
-    if (!over) return;
+    if (!over || !active.id) return;
 
     const activeId = active.id as string;
     const overId = over.id as string;
-    const taskToUpdate = tasks.find(task => task.id === activeId);
 
-    if (!taskToUpdate) return;
+    const activeTask = tasks.find(task => task.id === activeId);
+    if (!activeTask) return;
 
-    const currentProjectId =
-      selectedProjectId !== 'all' ? selectedProjectId : taskToUpdate.projectId;
-
-    // Check if dropped on a column (status change)
-    if (Object.keys(statusColumns).includes(overId)) {
-      const newStatus = overId as keyof typeof statusColumns;
-      const targetTasks = getTasksByStatus(newStatus);
-      const newPosition = targetTasks.length; // Add to end of list
-
-      if (
-        taskToUpdate.status !== newStatus ||
-        newPosition !== getTasksByStatus(taskToUpdate.status).findIndex(t => t.id === activeId)
-      ) {
-        try {
-          // Optimistic update
-          const optimisticUpdate = (prevTasks: Task[]) =>
-            prevTasks.map(task => (task.id === activeId ? { ...task, status: newStatus } : task));
-
-          setTasks(optimisticUpdate);
-
-          // Update on backend with new reorderTask API
-          await tasksApi.reorderTask({
-            taskId: activeId,
-            projectId: currentProjectId,
-            newPosition,
-            newStatus: newStatus !== taskToUpdate.status ? newStatus : undefined,
-          });
-
-          // Reload tasks to get updated lexoRanks
-          await loadTasks();
-        } catch (error) {
-          console.error('Failed to reorder task:', error);
-          // Revert local changes on error
-          setTasks(prevTasks =>
-            prevTasks.map(task => (task.id === activeId ? taskToUpdate : task))
-          );
-          alert('태스크 이동에 실패했습니다. 다시 시도해주세요.');
-        }
-      }
+    // 같은 위치로 드롭한 경우 무시
+    if (activeTask.status === overId && over.data?.current?.sortable?.index === undefined) {
+      return;
     }
-    // Handle reordering within the same status column
-    else if (overId !== activeId) {
-      const overTask = tasks.find(task => task.id === overId);
-      if (overTask && overTask.status === taskToUpdate.status) {
-        const statusTasks = getTasksByStatus(taskToUpdate.status);
-        const draggedIndex = statusTasks.findIndex(t => t.id === activeId);
-        const targetIndex = statusTasks.findIndex(t => t.id === overId);
 
-        if (draggedIndex !== targetIndex && draggedIndex !== -1 && targetIndex !== -1) {
-          try {
-            // Optimistic reorder
-            const reorderedTasks = [...statusTasks];
-            const [draggedTask] = reorderedTasks.splice(draggedIndex, 1);
-            reorderedTasks.splice(targetIndex, 0, draggedTask);
+    try {
+      // 새로운 상태 결정
+      const newStatus = overId as 'TODO' | 'IN_PROGRESS' | 'COMPLETED';
+      const statusChanged = activeTask.status !== newStatus;
 
-            setTasks(prevTasks =>
-              prevTasks.map(task => {
-                const reorderedTask = reorderedTasks.find(rt => rt.id === task.id);
-                return reorderedTask || task;
-              })
-            );
+      // 대상 상태의 태스크들 가져오기
+      const targetTasks = getTasksByStatus(newStatus);
 
-            // Update on backend
-            await tasksApi.reorderTask({
-              taskId: activeId,
-              projectId: currentProjectId,
-              newPosition: targetIndex,
-            });
-
-            // Reload tasks to get updated lexoRanks
-            await loadTasks();
-          } catch (error) {
-            console.error('Failed to reorder task:', error);
-            // Revert on error
-            await loadTasks();
-            alert('태스크 순서 변경에 실패했습니다. 다시 시도해주세요.');
-          }
-        }
+      // 새로운 위치 계산
+      let newPosition = targetTasks.length;
+      if (over.data?.current?.sortable?.index !== undefined) {
+        newPosition = over.data.current.sortable.index;
       }
+
+      console.log('Reordering task:', {
+        taskId: activeId,
+        projectId: activeTask.projectId,
+        newStatus,
+        newPosition,
+        statusChanged,
+      });
+
+      // 낙관적 업데이트
+      if (statusChanged) {
+        const optimisticUpdate = (prevTasks: Task[]) =>
+          prevTasks.map(task => (task.id === activeId ? { ...task, status: newStatus } : task));
+        setTasks(optimisticUpdate);
+      }
+
+      // 서버에 순서 변경 요청
+      const result = await tasksApi.reorderTask({
+        taskId: activeId,
+        projectId: activeTask.projectId,
+        newPosition,
+        newStatus: statusChanged ? newStatus : undefined,
+      });
+
+      console.log('Reorder result:', result);
+
+      // 성공 시 실제 데이터로 업데이트
+      if (result.task) {
+        setTasks(prevTasks =>
+          prevTasks.map(task => (task.id === result.task.id ? result.task : task))
+        );
+      }
+
+      // 영향받은 다른 태스크들도 업데이트
+      if (result.affectedTasks && result.affectedTasks.length > 0) {
+        setTasks(prevTasks => {
+          const updatedTasks = [...prevTasks];
+          result.affectedTasks.forEach(affectedTask => {
+            const index = updatedTasks.findIndex(task => task.id === affectedTask.id);
+            if (index !== -1) {
+              updatedTasks[index] = affectedTask;
+            }
+          });
+          return updatedTasks;
+        });
+      }
+
+      // 데이터 일관성을 위해 다시 로드
+      setTimeout(() => {
+        loadTasks();
+      }, 500);
+    } catch (error) {
+      console.error('Failed to reorder task:', error);
+
+      // 에러 시 원래 상태로 되돌리기
+      setTasks(prevTasks => prevTasks.map(task => (task.id === activeId ? activeTask : task)));
     }
   };
 
@@ -484,6 +567,12 @@ export default function DashboardPage() {
     };
     setSelectedTask(newTask as Task);
     setIsModalOpen(true);
+  };
+
+  const handleViewMore = (status: keyof typeof statusColumns) => {
+    if (selectedProjectId && selectedProjectId !== 'all') {
+      router.push(`/projects/${selectedProjectId}/tasks?status=${status}`);
+    }
   };
 
   const openModal = (task?: Task) => {
@@ -511,35 +600,32 @@ export default function DashboardPage() {
 
   const handleTaskSave = async (taskData: Partial<Task>) => {
     try {
-      console.log('Saving task:', taskData);
+      setLoading(true);
+      let savedTask: Task;
 
       if (selectedTask?.id) {
         // Update existing task
-        const updatedTask = await tasksApi.updateTask(selectedTask.id, taskData);
-        console.log('Task updated:', updatedTask);
-        setTasks(prevTasks =>
-          prevTasks.map(task => (task.id === selectedTask.id ? updatedTask : task))
-        );
+        savedTask = await tasksApi.updateTask(selectedTask.id, taskData);
+        setTasks(prevTasks => prevTasks.map(task => (task.id === savedTask.id ? savedTask : task)));
       } else {
         // Create new task
-        const newTask = await tasksApi.createTask({
-          title: taskData.title!,
-          description: taskData.description,
-          projectId: taskData.projectId!,
-          priority: taskData.priority,
-          assigneeId: taskData.assigneeId,
-          dueDate: taskData.dueDate,
-          estimatedHours: taskData.estimatedHours,
-          tags: taskData.tags,
-        });
-        console.log('New task created:', newTask);
-        setTasks(prevTasks => [newTask, ...prevTasks]);
+        savedTask = await tasksApi.createTask(taskData as any);
+        setTasks(prevTasks => [...prevTasks, savedTask]);
       }
+
       closeModal();
     } catch (error) {
       console.error('Failed to save task:', error);
-      // 사용자에게 에러 표시
-      alert('태스크 저장에 실패했습니다. 다시 시도해주세요.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleTaskDelete = (taskId: string) => {
+    try {
+      setTasks(prevTasks => prevTasks.filter(task => task.id !== taskId));
+    } catch (error) {
+      console.error('Failed to delete task:', error);
     }
   };
 
@@ -726,21 +812,42 @@ export default function DashboardPage() {
 
           {/* Main Content */}
           <main className='p-6 overflow-auto'>
-            <div className='flex items-center justify-between mb-6'>
-              <h1 className='text-xl font-semibold text-gray-900'>활성 스프린트</h1>
-              <div className='flex items-center space-x-4'>
-                <NotificationBell />
-                <Button onClick={() => handleCreateTask()}>
-                  <Plus className='mr-2 h-4 w-4' />새 태스크
-                </Button>
+            <div className='mb-6'>
+              <div className='flex items-center justify-between mb-4'>
+                <h1 className='text-2xl font-bold text-gray-900'>이슈</h1>
+                <div className='flex items-center space-x-4'>
+                  <NotificationBell />
+                  <Button onClick={() => handleCreateTask()}>
+                    <Plus className='mr-2 h-4 w-4' />새 태스크
+                  </Button>
 
-                <Button
-                  variant={showActiveOnly ? 'default' : 'outline'}
-                  onClick={() => setShowActiveOnly(!showActiveOnly)}
-                  size='sm'
-                >
-                  {showActiveOnly ? '모든 태스크' : '활성 태스크만'}
-                </Button>
+                  <Button
+                    variant={showActiveOnly ? 'default' : 'outline'}
+                    onClick={() => setShowActiveOnly(!showActiveOnly)}
+                    size='sm'
+                  >
+                    {showActiveOnly ? '모든 태스크' : '활성 태스크만'}
+                  </Button>
+                </div>
+              </div>
+
+              {/* Project Search */}
+              <div className='flex items-center gap-4'>
+                <div className='flex items-center gap-2'>
+                  <label className='text-sm font-medium text-gray-700'>프로젝트:</label>
+                  <select
+                    value={selectedProjectId}
+                    onChange={e => setSelectedProjectId(e.target.value)}
+                    className='px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white'
+                  >
+                    <option value='all'>모든 프로젝트</option>
+                    {projects.map(project => (
+                      <option key={project.id} value={project.id}>
+                        {project.name}
+                      </option>
+                    ))}
+                  </select>
+                </div>
               </div>
             </div>
 
@@ -762,7 +869,8 @@ export default function DashboardPage() {
                     config={config}
                     tasks={getTasksByStatus(status as keyof typeof statusColumns)}
                     onTaskClick={handleTaskClick}
-                    onCreateTask={handleCreateTask}
+                    onViewMore={handleViewMore}
+                    selectedProjectId={selectedProjectId}
                   />
                 ))}
               </div>
@@ -811,295 +919,10 @@ export default function DashboardPage() {
             projects={projects}
             onClose={closeModal}
             onSave={handleTaskSave}
+            onDelete={handleTaskDelete}
           />
         )}
       </DndContext>
-    </div>
-  );
-}
-
-function TaskModal({
-  task,
-  projects,
-  onClose,
-  onSave,
-}: {
-  task: Task | null;
-  projects: any[];
-  onClose: () => void;
-  onSave: (task: Partial<Task>) => void;
-}) {
-  const { user } = useAuthStore();
-  const [formData, setFormData] = useState({
-    title: task?.title || '',
-    description: task?.description || '',
-    status: (task?.status || 'TODO') as 'TODO' | 'IN_PROGRESS' | 'COMPLETED',
-    priority: (task?.priority || 'MEDIUM') as 'LOW' | 'MEDIUM' | 'HIGH' | 'URGENT',
-    projectId: task?.projectId || projects[0]?.id || '',
-    assigneeId: task?.assigneeId || user?.id || '',
-    dueDate: task?.dueDate ? task.dueDate.split('T')[0] : '',
-    estimatedHours: task?.estimatedHours?.toString() || '',
-    tags: task?.tags?.join(', ') || '',
-  });
-
-  const [projectMembers, setProjectMembers] = useState<any[]>([]);
-  const [currentUserRole, setCurrentUserRole] = useState<'OWNER' | 'MANAGER' | 'MEMBER'>('MEMBER');
-  const [loading, setLoading] = useState(false);
-
-  // Handle ESC key to close modal
-  useEffect(() => {
-    const handleKeyDown = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') {
-        onClose();
-      }
-    };
-
-    document.addEventListener('keydown', handleKeyDown);
-    return () => {
-      document.removeEventListener('keydown', handleKeyDown);
-    };
-  }, [onClose]);
-
-  // Load project members when project changes
-  useEffect(() => {
-    const loadProjectMembers = async () => {
-      if (!formData.projectId) return;
-
-      try {
-        setLoading(true);
-        const members = await projectsApi.getProjectMembers(formData.projectId);
-        setProjectMembers(members);
-
-        // Find current user's role in the project
-        const currentMember = members.find(member => member.userId === user?.id);
-        setCurrentUserRole(currentMember?.role || 'MEMBER');
-
-        // If user is a member (not owner/manager), set assignee to themselves
-        if (currentMember?.role === 'MEMBER' && !task?.id) {
-          setFormData(prev => ({ ...prev, assigneeId: user?.id || '' }));
-        }
-      } catch (error) {
-        console.error('Failed to load project members:', error);
-        setProjectMembers([]);
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    loadProjectMembers();
-  }, [formData.projectId, user?.id, task?.id]);
-
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    const taskData = {
-      ...formData,
-      assigneeId: formData.assigneeId || undefined,
-      estimatedHours: formData.estimatedHours ? parseFloat(formData.estimatedHours) : undefined,
-      tags: formData.tags
-        ? formData.tags
-            .split(',')
-            .map(tag => tag.trim())
-            .filter(Boolean)
-        : undefined,
-      dueDate: formData.dueDate || undefined,
-    };
-    onSave(taskData);
-  };
-
-  const canSelectAssignee = currentUserRole === 'OWNER' || currentUserRole === 'MANAGER';
-  const isEditMode = !!task?.id; // 수정 모드인지 확인
-
-  return (
-    <div className='fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4'>
-      <div className='bg-white rounded-lg shadow-xl w-full max-w-2xl max-h-[90vh] overflow-y-auto'>
-        <div className='flex items-center justify-between p-6 border-b border-gray-200'>
-          <h2 className='text-lg font-semibold'>{task?.id ? '이슈 수정' : '새 이슈 생성'}</h2>
-          <button onClick={onClose} className='p-2 hover:bg-gray-100 rounded-lg'>
-            <X className='w-5 h-5' />
-          </button>
-        </div>
-
-        <form onSubmit={handleSubmit} className='p-6 space-y-4'>
-          <div>
-            <label className='block text-sm font-medium text-gray-700 mb-2'>제목 *</label>
-            <input
-              type='text'
-              required
-              value={formData.title}
-              onChange={e => setFormData({ ...formData, title: e.target.value })}
-              className='w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500'
-              placeholder='이슈 제목을 입력하세요'
-            />
-          </div>
-
-          <div>
-            <label className='block text-sm font-medium text-gray-700 mb-2'>프로젝트 *</label>
-            <select
-              required
-              value={formData.projectId}
-              onChange={e => setFormData({ ...formData, projectId: e.target.value })}
-              disabled={isEditMode}
-              className={`w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 ${
-                isEditMode ? 'bg-gray-100 text-gray-600 cursor-not-allowed' : ''
-              }`}
-            >
-              <option value=''>프로젝트를 선택하세요</option>
-              {projects.map(project => (
-                <option key={project.id} value={project.id}>
-                  {project.name}
-                </option>
-              ))}
-            </select>
-            {isEditMode && (
-              <p className='text-xs text-gray-500 mt-1'>
-                수정 시에는 프로젝트를 변경할 수 없습니다.
-              </p>
-            )}
-          </div>
-
-          <div>
-            <label className='block text-sm font-medium text-gray-700 mb-2'>담당자 *</label>
-            {canSelectAssignee ? (
-              <select
-                required
-                value={formData.assigneeId}
-                onChange={e => setFormData({ ...formData, assigneeId: e.target.value })}
-                className='w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white'
-                disabled={loading}
-              >
-                <option value=''>담당자를 선택하세요</option>
-                {projectMembers.map(member => (
-                  <option key={member.id} value={member.userId}>
-                    {member.user?.name || member.userId} (
-                    {member.role === 'OWNER'
-                      ? '소유자'
-                      : member.role === 'MANAGER'
-                        ? '관리자'
-                        : '멤버'}
-                    )
-                  </option>
-                ))}
-              </select>
-            ) : (
-              <div className='relative'>
-                <input
-                  type='text'
-                  value={user?.name || '나'}
-                  disabled
-                  className='w-full px-3 py-2 border border-gray-300 rounded-lg bg-gray-100 text-gray-600 cursor-not-allowed'
-                />
-                <div className='absolute inset-y-0 right-0 flex items-center pr-3'>
-                  <span className='text-xs text-gray-400'>멤버는 본인만 할당 가능</span>
-                </div>
-              </div>
-            )}
-          </div>
-
-          <div>
-            <label className='block text-sm font-medium text-gray-700 mb-2'>설명</label>
-            <textarea
-              rows={4}
-              value={formData.description}
-              onChange={e => setFormData({ ...formData, description: e.target.value })}
-              className='w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500'
-              placeholder='이슈에 대한 상세 설명을 입력하세요...'
-            />
-          </div>
-
-          <div className='grid grid-cols-2 gap-4'>
-            <div>
-              <label className='block text-sm font-medium text-gray-700 mb-2'>상태</label>
-              <select
-                value={formData.status}
-                onChange={e =>
-                  setFormData({
-                    ...formData,
-                    status: e.target.value as 'TODO' | 'IN_PROGRESS' | 'COMPLETED',
-                  })
-                }
-                className='w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500'
-              >
-                <option value='TODO'>할 일</option>
-                <option value='IN_PROGRESS'>진행 중</option>
-                <option value='COMPLETED'>완료</option>
-              </select>
-            </div>
-
-            <div>
-              <label className='block text-sm font-medium text-gray-700 mb-2'>우선순위</label>
-              <select
-                value={formData.priority}
-                onChange={e =>
-                  setFormData({
-                    ...formData,
-                    priority: e.target.value as 'LOW' | 'MEDIUM' | 'HIGH' | 'URGENT',
-                  })
-                }
-                className='w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500'
-              >
-                <option value='LOW'>낮음</option>
-                <option value='MEDIUM'>보통</option>
-                <option value='HIGH'>높음</option>
-                <option value='URGENT'>긴급</option>
-              </select>
-            </div>
-          </div>
-
-          <div className='grid grid-cols-2 gap-4'>
-            <div>
-              <label className='block text-sm font-medium text-gray-700 mb-2'>마감일</label>
-              <input
-                type='date'
-                value={formData.dueDate}
-                onChange={e => setFormData({ ...formData, dueDate: e.target.value })}
-                className='w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500'
-              />
-            </div>
-
-            <div>
-              <label className='block text-sm font-medium text-gray-700 mb-2'>
-                예상 시간 (시간)
-              </label>
-              <input
-                type='number'
-                step='0.5'
-                value={formData.estimatedHours}
-                onChange={e => setFormData({ ...formData, estimatedHours: e.target.value })}
-                placeholder='8'
-                className='w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500'
-              />
-            </div>
-          </div>
-
-          <div>
-            <label className='block text-sm font-medium text-gray-700 mb-2'>태그</label>
-            <input
-              type='text'
-              value={formData.tags}
-              onChange={e => setFormData({ ...formData, tags: e.target.value })}
-              placeholder='태그를 쉼표로 구분하여 입력하세요 (예: 백엔드, 인증, 보안)'
-              className='w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500'
-            />
-          </div>
-
-          <div className='flex justify-end gap-3 pt-4 border-t border-gray-200'>
-            <button
-              type='button'
-              onClick={onClose}
-              className='px-4 py-2 text-gray-700 border border-gray-300 rounded-lg hover:bg-gray-50'
-            >
-              취소
-            </button>
-            <button
-              type='submit'
-              className='px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700'
-              disabled={loading}
-            >
-              {loading ? '처리 중...' : task?.id ? '수정' : '생성'}
-            </button>
-          </div>
-        </form>
-      </div>
     </div>
   );
 }

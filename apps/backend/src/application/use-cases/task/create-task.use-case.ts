@@ -1,6 +1,7 @@
 import { BadRequestException, Inject, Injectable, Logger } from '@nestjs/common';
-import { Task } from '../../../domain/entities/task.entity';
+import { Task, TaskStatus } from '../../../domain/entities/task.entity';
 import { UserActionType } from '../../../domain/entities/user-log.entity';
+import { LexoRankUtil } from '../../../shared/utils/lexorank.util';
 import { TaskRepositoryPort } from '../../ports/output/task-repository.port';
 import { UserLogService } from '../../services/user-log.service';
 
@@ -10,6 +11,7 @@ export interface CreateTaskCommand {
     projectId: string;
     assigneeId?: string;
     assignerId: string;
+    status?: TaskStatus;
     priority?: string;
     dueDate?: Date;
     estimatedHours?: number;
@@ -47,14 +49,42 @@ export class CreateTaskUseCase implements CreateTaskPort {
                 throw new BadRequestException('Assigner ID is required');
             }
 
+            // Determine the status for the new task
+            const taskStatus = command.status || TaskStatus.TODO;
+
+            // Get existing tasks in the same project and status to determine LexoRank
+            const existingTasks = await this.taskRepository.findByProjectIdAndStatusOrderedByRank(
+                command.projectId,
+                taskStatus
+            );
+
+            // Generate appropriate LexoRank for the new task (add at the end)
+            let lexoRank: string;
+            if (existingTasks.length === 0) {
+                // First task in this status
+                lexoRank = LexoRankUtil.generateInitialRank();
+            } else {
+                // Add after the last task
+                const lastTask = existingTasks[existingTasks.length - 1];
+                lexoRank = LexoRankUtil.generateAfter(lastTask.lexoRank);
+            }
+
+            this.logger.log(`Generated LexoRank for new task: ${lexoRank}`);
+
             // Create task using domain factory method
             const task = Task.create(
                 command.projectId,
                 command.assignerId,
                 command.title,
                 command.description,
-                command.assigneeId
+                command.assigneeId,
+                lexoRank
             );
+
+            // Set status if provided
+            if (command.status) {
+                task.updateStatus(command.status);
+            }
 
             // Set additional properties
             if (command.priority) {

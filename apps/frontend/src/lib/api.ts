@@ -438,6 +438,7 @@ export const tasksApi = {
     title: string;
     description?: string;
     priority?: 'LOW' | 'MEDIUM' | 'HIGH' | 'URGENT';
+    status?: 'TODO' | 'IN_PROGRESS' | 'COMPLETED';
     assigneeId?: string;
     projectId: string;
     dueDate?: string;
@@ -475,8 +476,10 @@ export const tasksApi = {
     return extractData(response);
   },
 
-  getTasksByProjectOrdered: async (projectId: string, status?: 'TODO' | 'IN_PROGRESS' | 'COMPLETED'): Promise<{ [key: string]: Task[] }> => {
-    const params = status ? { status } : {};
+  getTasksByProjectOrdered: async (projectId: string, status?: 'TODO' | 'IN_PROGRESS' | 'COMPLETED', limit?: number): Promise<{ [key: string]: Task[] }> => {
+    const params: any = {};
+    if (status) params.status = status;
+    if (limit) params.limit = limit;
     const response = await api.get<StandardApiResponse<{ [key: string]: Task[] }>>(`/tasks/project/${projectId}/ordered`, { params });
     return extractData(response);
   },
@@ -488,6 +491,18 @@ export const tasksApi = {
     newStatus?: 'TODO' | 'IN_PROGRESS' | 'COMPLETED';
   }): Promise<{ task: Task; affectedTasks: Task[] }> => {
     const response = await api.put<StandardApiResponse<{ task: Task; affectedTasks: Task[] }>>('/tasks/reorder', data);
+    return extractData(response);
+  },
+
+  getAllTasksByProjectAndStatus: async (
+    projectId: string,
+    status: 'TODO' | 'IN_PROGRESS' | 'COMPLETED',
+    page: number = 1,
+    limit: number = 20
+  ): Promise<{ data: Task[]; meta: any }> => {
+    const response = await api.get<StandardApiResponse<{ data: Task[]; meta: any }>>(`/tasks/project/${projectId}/status/${status}/all`, {
+      params: { page, limit }
+    });
     return extractData(response);
   },
 };

@@ -1,5 +1,5 @@
-import { Project, ProjectMember, Task, User } from '@/lib/api';
-import { useState, useEffect } from 'react';
+import { Project, ProjectMember, Task } from '@/lib/api';
+import { useEffect, useState } from 'react';
 
 interface ProjectsState {
   projects: Project[];
@@ -157,7 +157,7 @@ class ProjectsStore {
     const userProjectIds = this.state.members
       .filter(m => m.userId === userId)
       .map(m => m.projectId);
-    
+
     return this.state.projects.filter(p => userProjectIds.includes(p.id));
   };
 
@@ -215,4 +215,4 @@ export const useProjectsStore = () => {
   };
 };
 
-export default projectsStore; 
+export default projectsStore;

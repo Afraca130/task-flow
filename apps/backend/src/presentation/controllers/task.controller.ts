@@ -14,7 +14,7 @@ import {
     UnauthorizedException,
     UseGuards,
 } from '@nestjs/common';
-import { ApiTags } from '@nestjs/swagger';
+import { ApiOkResponse, ApiOperation, ApiParam, ApiQuery, ApiTags } from '@nestjs/swagger';
 import { TaskRepositoryPort } from '../../application/ports/output/task-repository.port';
 import { CreateTaskPort } from '../../application/use-cases/task/create-task.use-case';
 import { ReorderTaskPort } from '../../application/use-cases/task/reorder-task.use-case';
@@ -71,6 +71,7 @@ export class TaskController {
             projectId: dto.projectId,
             assigneeId: dto.assigneeId,
             assignerId: user.id,
+            status: dto.status,
             priority: dto.priority,
             dueDate: dto.dueDate ? new Date(dto.dueDate) : undefined,
             estimatedHours: dto.estimatedHours,
@@ -140,21 +141,82 @@ export class TaskController {
     async getTasksByProjectOrdered(
         @Param('projectId', ParseUUIDPipe) projectId: string,
         @Query('status') status?: TaskStatus,
+        @Query('limit', new DefaultValuePipe(10), ParseIntPipe) limit?: number,
     ): Promise<{ [key: string]: TaskResponseDto[] }> {
         if (status) {
             const tasks = await this.taskRepository.findByProjectIdAndStatusOrderedByRank(projectId, status);
-            return { [status]: tasks.map(task => TaskResponseDto.fromEntity(task)) };
+            const limitedTasks = tasks.slice(0, limit);
+            return { [status]: limitedTasks.map(task => TaskResponseDto.fromEntity(task)) };
         }
 
-        const todoTasks = await this.taskRepository.findByProjectIdAndStatusOrderedByRank(projectId, TaskStatus.TODO);
-        const inProgressTasks = await this.taskRepository.findByProjectIdAndStatusOrderedByRank(projectId, TaskStatus.IN_PROGRESS);
-        const completedTasks = await this.taskRepository.findByProjectIdAndStatusOrderedByRank(projectId, TaskStatus.COMPLETED);
+        // 각 status별로 limit 적용하여 조회
+        const [todoTasks, inProgressTasks, completedTasks] = await Promise.all([
+            this.taskRepository.findByProjectIdAndStatusOrderedByRank(projectId, TaskStatus.TODO),
+            this.taskRepository.findByProjectIdAndStatusOrderedByRank(projectId, TaskStatus.IN_PROGRESS),
+            this.taskRepository.findByProjectIdAndStatusOrderedByRank(projectId, TaskStatus.COMPLETED),
+        ]);
 
         return {
-            TODO: todoTasks.map(task => TaskResponseDto.fromEntity(task)),
-            IN_PROGRESS: inProgressTasks.map(task => TaskResponseDto.fromEntity(task)),
-            COMPLETED: completedTasks.map(task => TaskResponseDto.fromEntity(task)),
+            TODO: todoTasks.slice(0, limit).map(task => TaskResponseDto.fromEntity(task)),
+            IN_PROGRESS: inProgressTasks.slice(0, limit).map(task => TaskResponseDto.fromEntity(task)),
+            COMPLETED: completedTasks.slice(0, limit).map(task => TaskResponseDto.fromEntity(task)),
         };
+    }
+
+    @Get('project/:projectId/status/:status/all')
+    @ApiOperation({
+        summary: 'Get all tasks by project and status',
+        description: 'Retrieves all tasks for a specific project and status with pagination',
+    })
+    @ApiParam({
+        name: 'projectId',
+        description: 'Project unique identifier',
+        type: 'string',
+        format: 'uuid',
+    })
+    @ApiParam({
+        name: 'status',
+        description: 'Task status',
+        enum: TaskStatus,
+    })
+    @ApiQuery({
+        name: 'page',
+        description: 'Page number (1-based)',
+        type: 'integer',
+        example: 1,
+        required: false,
+    })
+    @ApiQuery({
+        name: 'limit',
+        description: 'Number of items per page',
+        type: 'integer',
+        example: 20,
+        required: false,
+    })
+    @ApiOkResponse({
+        description: 'Tasks retrieved successfully',
+        type: [TaskResponseDto],
+    })
+    async getAllTasksByProjectAndStatus(
+        @Param('projectId', ParseUUIDPipe) projectId: string,
+        @Param('status') status: TaskStatus,
+        @Query('page', new DefaultValuePipe(1), ParseIntPipe) page?: number,
+        @Query('limit', new DefaultValuePipe(20), ParseIntPipe) limit?: number,
+    ): Promise<PaginatedResponse<TaskResponseDto>> {
+        const result = await this.taskRepository.findWithFilters({
+            projectId,
+            status,
+            page,
+            limit,
+        });
+
+        const taskDtos = result.tasks.map(task => TaskResponseDto.fromEntity(task));
+
+        return PaginatedResponse.create(taskDtos, {
+            page: page || 1,
+            limit: limit || 20,
+            total: result.total,
+        });
     }
 
     @Get('project/:projectId')

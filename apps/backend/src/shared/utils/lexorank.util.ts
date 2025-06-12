@@ -247,6 +247,43 @@ export class LexoRank {
  * LexoRank 유틸리티 함수들
  */
 export class LexoRankUtil {
+    private static readonly logger = console;
+
+    /**
+     * 첫 번째 작업을 위한 초기 LexoRank 생성
+     */
+    public static generateInitialRank(): string {
+        return LexoRank.min().getValue();
+    }
+
+    /**
+     * 주어진 LexoRank 이후의 새로운 LexoRank 생성
+     */
+    public static generateAfter(rank: string): string {
+        const lexoRank = LexoRank.parse(rank);
+        const afterRank = LexoRank.between(lexoRank, null);
+        return afterRank.getValue();
+    }
+
+    /**
+     * 주어진 LexoRank 이전의 새로운 LexoRank 생성
+     */
+    public static generateBefore(rank: string): string {
+        const lexoRank = LexoRank.parse(rank);
+        const beforeRank = LexoRank.between(null, lexoRank);
+        return beforeRank.getValue();
+    }
+
+    /**
+     * 두 LexoRank 사이의 새로운 LexoRank 생성
+     */
+    public static generateBetween(rankA: string, rankB: string): string {
+        const lexoRankA = LexoRank.parse(rankA);
+        const lexoRankB = LexoRank.parse(rankB);
+        const betweenRank = LexoRank.between(lexoRankA, lexoRankB);
+        return betweenRank.getValue();
+    }
+
     /**
      * 드래그 앤 드롭으로 아이템을 이동할 때 새로운 순서 계산
      */
@@ -255,7 +292,12 @@ export class LexoRankUtil {
         draggedId: string,
         newIndex: number
     ): string {
-        console.log('calculateNewRank called:', { items: items.length, draggedId, newIndex });
+        console.log('calculateNewRank called:', {
+            itemsCount: items.length,
+            draggedId,
+            newIndex,
+            items: items.map(item => ({ id: item.id, rank: item.lexoRank }))
+        });
 
         // 드래그된 아이템을 제외한 배열 생성하고 정렬
         const filteredItems = items
@@ -264,37 +306,84 @@ export class LexoRankUtil {
 
         console.log('Filtered and sorted items:', filteredItems.map(item => ({ id: item.id, rank: item.lexoRank })));
 
-        if (filteredItems.length === 0) {
-            console.log('No items, returning min rank');
-            return LexoRank.min().getValue();
-        }
+        // 첫 번째 아이템인 경우
+        if (filteredItems.length === 0 || newIndex === 0) {
+            if (filteredItems.length === 0) {
+                console.log('No items, returning initial rank');
+                return LexoRank.min().getValue();
+            }
 
-        // 인덱스 범위 검증
-        const safeIndex = Math.max(0, Math.min(newIndex, filteredItems.length));
-        console.log('Safe index:', safeIndex);
-
-        if (safeIndex === 0) {
-            // 맨 앞으로 이동
             const firstRank = LexoRank.parse(filteredItems[0].lexoRank);
             const newRank = LexoRank.between(null, firstRank).getValue();
             console.log('Moving to front, new rank:', newRank);
             return newRank;
         }
 
+        // 인덱스 범위 검증 및 조정
+        const safeIndex = Math.min(newIndex, filteredItems.length);
+        console.log('Safe index:', safeIndex, 'of', filteredItems.length);
+
+        // 마지막 위치인 경우
         if (safeIndex >= filteredItems.length) {
-            // 맨 뒤로 이동
             const lastRank = LexoRank.parse(filteredItems[filteredItems.length - 1].lexoRank);
             const newRank = LexoRank.between(lastRank, null).getValue();
             console.log('Moving to end, new rank:', newRank);
             return newRank;
         }
 
-        // 중간에 삽입
-        const beforeRank = LexoRank.parse(filteredItems[safeIndex - 1].lexoRank);
-        const afterRank = LexoRank.parse(filteredItems[safeIndex].lexoRank);
-        const newRank = LexoRank.between(beforeRank, afterRank).getValue();
-        console.log('Moving to middle, new rank:', newRank, 'between', beforeRank.getValue(), 'and', afterRank.getValue());
-        return newRank;
+        // 중간에 삽입하는 경우
+        const prevRank = LexoRank.parse(filteredItems[safeIndex - 1].lexoRank);
+        const nextRank = LexoRank.parse(filteredItems[safeIndex].lexoRank);
+
+        console.log('Between ranks:', {
+            prev: prevRank.getValue(),
+            next: nextRank.getValue(),
+            prevIndex: safeIndex - 1,
+            nextIndex: safeIndex
+        });
+
+        // 순서 검증
+        if (prevRank.getValue() >= nextRank.getValue()) {
+            console.warn('Invalid order detected, regenerating all ranks');
+            // 전체 순서 재생성
+            const newRanks = LexoRank.generateRanks(filteredItems.length + 1);
+            const newRank = newRanks[safeIndex].getValue();
+            console.log('Generated new rank from regeneration:', newRank);
+            return newRank;
+        }
+
+        // 같은 rank 검증
+        if (prevRank.getValue() === nextRank.getValue()) {
+            console.warn('Same ranks detected, regenerating all ranks');
+            const newRanks = LexoRank.generateRanks(filteredItems.length + 1);
+            const newRank = newRanks[safeIndex].getValue();
+            console.log('Generated new rank from same rank fix:', newRank);
+            return newRank;
+        }
+
+        // 정상적인 between 계산
+        try {
+            const newRank = LexoRank.between(prevRank, nextRank).getValue();
+            console.log('Generated between rank:', newRank);
+
+            // 생성된 rank가 유효한지 검증
+            if (newRank <= prevRank.getValue() || newRank >= nextRank.getValue()) {
+                console.warn('Generated rank is out of bounds, regenerating');
+                const newRanks = LexoRank.generateRanks(filteredItems.length + 1);
+                const fallbackRank = newRanks[safeIndex].getValue();
+                console.log('Using fallback rank:', fallbackRank);
+                return fallbackRank;
+            }
+
+            return newRank;
+        } catch (error) {
+            console.error('Error generating between rank:', error);
+            // 에러 발생 시 전체 재생성
+            const newRanks = LexoRank.generateRanks(filteredItems.length + 1);
+            const fallbackRank = newRanks[safeIndex].getValue();
+            console.log('Using error fallback rank:', fallbackRank);
+            return fallbackRank;
+        }
     }
 
     /**
