@@ -10,13 +10,17 @@ import {
   BarChart3,
   Calendar,
   ChevronDown,
+  FileText,
   FolderOpen,
   HelpCircle,
   List,
+  Mail,
   Menu,
+  Play,
   Search,
   Settings,
   TrendingUp,
+  UserCheck,
   Users,
 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
@@ -87,7 +91,7 @@ interface ActivityLogItem {
   project?: any;
 }
 
-export default function InsightsPage() {
+export default function AnalyticsPage() {
   const router = useRouter();
   const { user, isAuthenticated } = useAuthStore();
   const { projects, setProjects } = useProjectsStore();
@@ -168,7 +172,6 @@ export default function InsightsPage() {
   // 멤버별 성과 데이터 계산
   const memberPerformanceData = useMemo(() => {
     const memberMap = new Map<string, MemberPerformance>();
-    const dateMap = new Map<string, number>();
 
     // 날짜 범위 생성
     const dates: string[] = [];
@@ -288,9 +291,9 @@ export default function InsightsPage() {
               <Menu className='w-5 h-5' />
             </button>
 
-            {/* TaskFlow 제목 - 클릭 시 인사이트로 이동 */}
+            {/* TaskFlow 제목 - 클릭 시 대시보드로 이동 */}
             <button
-              onClick={() => router.push('/insights')}
+              onClick={() => router.push('/dashboard')}
               className='text-xl font-bold text-gray-900 hover:text-blue-600 transition-colors'
             >
               TaskFlow
@@ -382,7 +385,35 @@ export default function InsightsPage() {
                   <NavItem
                     icon={<List className='w-4 h-4 text-green-500' />}
                     label='이슈'
-                    onClick={() => handleNavigation('/insights')}
+                    onClick={() => handleNavigation('/dashboard')}
+                  />
+                  <NavItem
+                    icon={<Play className='w-4 h-4 text-purple-500' />}
+                    label='백로그'
+                    onClick={() => handleNavigation('backlog')}
+                  />
+                </div>
+              </div>
+
+              <div>
+                <div className='text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2'>
+                  팀
+                </div>
+                <div className='space-y-1'>
+                  <NavItem
+                    icon={<Users className='w-4 h-4 text-indigo-500' />}
+                    label='사람'
+                    onClick={() => handleNavigation('people')}
+                  />
+                  <NavItem
+                    icon={<UserCheck className='w-4 h-4 text-green-500' />}
+                    label='프로젝트 설정'
+                    onClick={() => handleNavigation('/projects')}
+                  />
+                  <NavItem
+                    icon={<Mail className='w-4 h-4 text-blue-500' />}
+                    label='초대'
+                    onClick={() => handleNavigation('invite')}
                   />
                 </div>
               </div>
@@ -394,8 +425,13 @@ export default function InsightsPage() {
                 <div className='space-y-1'>
                   <NavItem
                     icon={<BarChart3 className='w-4 h-4 text-indigo-500' />}
-                    label='인사이트'
-                    onClick={() => handleNavigation('/insights')}
+                    label='분석'
+                    onClick={() => handleNavigation('/analytics')}
+                  />
+                  <NavItem
+                    icon={<FileText className='w-4 h-4 text-violet-500' />}
+                    label='리포트'
+                    onClick={() => handleNavigation('reports')}
                   />
                 </div>
               </div>
@@ -409,7 +445,7 @@ export default function InsightsPage() {
             {/* Header */}
             <div className='flex items-center justify-between'>
               <div>
-                <h1 className='text-2xl font-bold text-gray-900'>인사이트</h1>
+                <h1 className='text-2xl font-bold text-gray-900'>분석</h1>
                 <p className='text-gray-600'>
                   {selectedProject ? selectedProject.name : '전체 프로젝트'} 성과 분석
                 </p>
