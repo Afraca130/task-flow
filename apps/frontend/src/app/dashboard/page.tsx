@@ -10,6 +10,7 @@ import {
   DragOverlay,
   DragStartEvent,
   PointerSensor,
+  useDroppable,
   useSensor,
   useSensors,
 } from '@dnd-kit/core';
@@ -137,6 +138,69 @@ function DraggableTaskCard({ task, onClick }: DraggableTaskCardProps) {
           )}
         </div>
       )}
+    </div>
+  );
+}
+
+interface DroppableColumnProps {
+  id: string;
+  title: string;
+  config: { title: string; color: string; bgColor: string };
+  tasks: Task[];
+  onTaskClick: (task: Task) => void;
+  onCreateTask: (status: keyof typeof statusColumns) => void;
+}
+
+function DroppableColumn({
+  id,
+  title,
+  config,
+  tasks,
+  onTaskClick,
+  onCreateTask,
+}: DroppableColumnProps) {
+  const { setNodeRef, isOver } = useDroppable({
+    id: id,
+  });
+
+  return (
+    <div className='min-w-80 bg-white rounded-lg shadow-sm border border-gray-200'>
+      <div className='p-4 border-b border-gray-200'>
+        <div className='flex items-center justify-between'>
+          <div className='flex items-center gap-2'>
+            <span className={`px-2 py-1 rounded text-xs font-medium ${config.color}`}>
+              {config.title}
+            </span>
+          </div>
+          <span className='bg-gray-100 text-gray-600 px-2 py-1 rounded-full text-xs'>
+            {tasks.length}
+          </span>
+        </div>
+      </div>
+
+      <SortableContext
+        items={tasks.map(task => task.id)}
+        strategy={verticalListSortingStrategy}
+        id={id}
+      >
+        <div
+          ref={setNodeRef}
+          className={`p-4 space-y-3 min-h-48 ${config.bgColor} ${isOver ? 'bg-opacity-80 ring-2 ring-blue-400' : ''}`}
+          data-status={id}
+        >
+          {tasks.map(task => (
+            <DraggableTaskCard key={task.id} task={task} onClick={() => onTaskClick(task)} />
+          ))}
+
+          {/* Add Task Button for each column */}
+          <button
+            onClick={() => onCreateTask(id as keyof typeof statusColumns)}
+            className='w-full p-3 border-2 border-dashed border-gray-300 rounded-lg text-gray-500 hover:border-gray-400 hover:text-gray-600 transition-colors text-sm'
+          >
+            + 새 작업 추가
+          </button>
+        </div>
+      </SortableContext>
     </div>
   );
 }
@@ -647,52 +711,15 @@ export default function DashboardPage() {
             ) : (
               <div className='flex gap-6 overflow-x-auto pb-6'>
                 {Object.entries(statusColumns).map(([status, config]) => (
-                  <div
+                  <DroppableColumn
                     key={status}
-                    className='min-w-80 bg-white rounded-lg shadow-sm border border-gray-200'
-                  >
-                    <div className='p-4 border-b border-gray-200'>
-                      <div className='flex items-center justify-between'>
-                        <div className='flex items-center gap-2'>
-                          <span className={`px-2 py-1 rounded text-xs font-medium ${config.color}`}>
-                            {config.title}
-                          </span>
-                        </div>
-                        <span className='bg-gray-100 text-gray-600 px-2 py-1 rounded-full text-xs'>
-                          {getTasksByStatus(status as keyof typeof statusColumns).length}
-                        </span>
-                      </div>
-                    </div>
-
-                    <SortableContext
-                      items={getTasksByStatus(status as keyof typeof statusColumns).map(
-                        task => task.id
-                      )}
-                      strategy={verticalListSortingStrategy}
-                      id={status}
-                    >
-                      <div
-                        className={`p-4 space-y-3 min-h-48 ${config.bgColor}`}
-                        data-status={status}
-                      >
-                        {getTasksByStatus(status as keyof typeof statusColumns).map(task => (
-                          <DraggableTaskCard
-                            key={task.id}
-                            task={task}
-                            onClick={() => handleTaskClick(task)}
-                          />
-                        ))}
-
-                        {/* Add Task Button for each column */}
-                        <button
-                          onClick={() => handleCreateTask(status as keyof typeof statusColumns)}
-                          className='w-full p-3 border-2 border-dashed border-gray-300 rounded-lg text-gray-500 hover:border-gray-400 hover:text-gray-600 transition-colors text-sm'
-                        >
-                          + 새 작업 추가
-                        </button>
-                      </div>
-                    </SortableContext>
-                  </div>
+                    id={status}
+                    title={config.title}
+                    config={config}
+                    tasks={getTasksByStatus(status as keyof typeof statusColumns)}
+                    onTaskClick={handleTaskClick}
+                    onCreateTask={handleCreateTask}
+                  />
                 ))}
               </div>
             )}

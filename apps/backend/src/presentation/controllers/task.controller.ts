@@ -195,29 +195,6 @@ export class TaskController {
         };
     }
 
-    @Put(':id/status')
-    @ApiUpdateTaskStatus()
-    async updateTaskStatus(
-        @Param('id') id: string,
-        @Body('status') status: TaskStatus,
-        @Request() req: AuthenticatedRequest,
-    ): Promise<TaskResponseDto> {
-        if (!req.user?.id) {
-            throw new UnauthorizedException('사용자 인증이 필요합니다.');
-        }
-
-        const userId = req.user.id;
-
-        const command = {
-            taskId: id,
-            userId,
-            status,
-        };
-
-        const task = await this.updateTaskUseCase.execute(command);
-        return TaskResponseDto.fromEntity(task);
-    }
-
     @Put('reorder')
     @ApiReorderTask()
     async reorderTask(
@@ -244,5 +221,28 @@ export class TaskController {
             task: TaskResponseDto.fromEntity(result.task),
             affectedTasks: result.affectedTasks.map(task => TaskResponseDto.fromEntity(task)),
         };
+    }
+
+    @Put(':id/status')
+    @ApiUpdateTaskStatus()
+    async updateTaskStatus(
+        @Param('id') id: string,
+        @Body('status') status: TaskStatus,
+        @Request() req: AuthenticatedRequest,
+    ): Promise<TaskResponseDto> {
+        if (!req.user?.id) {
+            throw new UnauthorizedException('사용자 인증이 필요합니다.');
+        }
+
+        const userId = req.user.id;
+
+        const command = {
+            taskId: id,
+            userId,
+            status,
+        };
+
+        const task = await this.updateTaskUseCase.execute(command);
+        return TaskResponseDto.fromEntity(task);
     }
 }
