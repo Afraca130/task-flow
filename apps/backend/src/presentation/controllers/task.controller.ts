@@ -16,6 +16,7 @@ import {
 } from '@nestjs/common';
 import { ApiOkResponse, ApiOperation, ApiParam, ApiQuery, ApiTags } from '@nestjs/swagger';
 import { TaskRepositoryPort } from '../../application/ports/output/task-repository.port';
+import { GetTaskCommentsUseCase } from '../../application/use-cases/comment/get-task-comments.use-case';
 import { CreateTaskPort } from '../../application/use-cases/task/create-task.use-case';
 import { ReorderTaskPort } from '../../application/use-cases/task/reorder-task.use-case';
 import { UpdateTaskPort } from '../../application/use-cases/task/update-task.use-case';
@@ -25,6 +26,7 @@ import { AuthenticatedUser, User } from '../decorators/authenticated-user.decora
 import { CreateTaskDto } from '../dto/request/create-task.dto';
 import { ReorderTaskDto } from '../dto/request/reorder-task.dto';
 import { UpdateTaskDto } from '../dto/request/update-task.dto';
+import { CommentResponseDto } from '../dto/response/comment-response.dto';
 import { TaskResponseDto } from '../dto/response/task-response.dto';
 import { JwtAuthGuard } from '../guards/jwt-auth.guard';
 import {
@@ -53,6 +55,7 @@ export class TaskController {
         private readonly reorderTaskUseCase: ReorderTaskPort,
         @Inject('TaskRepositoryPort')
         private readonly taskRepository: TaskRepositoryPort,
+        private readonly getTaskCommentsUseCase: GetTaskCommentsUseCase,
     ) { }
 
     @Post()
@@ -233,9 +236,37 @@ export class TaskController {
     async getTaskById(@Param('id', ParseUUIDPipe) id: string): Promise<TaskResponseDto> {
         const task = await this.taskRepository.findById(id);
         if (!task) {
-            throw new Error(`Task with id ${id} not found`);
+            throw new UnauthorizedException('Task not found');
         }
         return TaskResponseDto.fromEntity(task);
+    }
+
+    @Get(':id/comments')
+    @ApiOperation({
+        summary: 'Get comments for a task',
+        description: 'Retrieves all comments for a specific task',
+    })
+    @ApiParam({
+        name: 'id',
+        description: 'Task ID',
+        type: 'string',
+        format: 'uuid',
+    })
+    @ApiOkResponse({
+        description: 'Comments retrieved successfully',
+        type: [CommentResponseDto],
+    })
+    async getTaskComments(
+        @Param('id', ParseUUIDPipe) taskId: string,
+    ): Promise<CommentResponseDto[]> {
+        try {
+            const comments = await this.getTaskCommentsUseCase.execute({ taskId });
+            return comments.map(comment => CommentResponseDto.fromDomain(comment));
+        } catch (error) {
+            // 댓글이 없거나 에러가 있어도 빈 배열 반환
+            console.warn(`Failed to load comments for task ${taskId}:`, error.message);
+            return [];
+        }
     }
 
     @Put(':id/status')

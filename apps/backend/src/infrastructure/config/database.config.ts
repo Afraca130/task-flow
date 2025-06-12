@@ -25,9 +25,9 @@ export class DatabaseConfig implements TypeOrmOptionsFactory {
       type: 'postgres',
       host: this.configService.get('DB_HOST', 'localhost'),
       port: this.configService.get('DB_PORT', 5432),
-      username: this.configService.get('DB_USERNAME', 'postgres'),
-      password: this.configService.get('DB_PASSWORD', 'password'),
-      database: this.configService.get('DB_NAME', 'taskflow'),
+      username: this.configService.get('DB_USERNAME', 'taskflow_user'),
+      password: this.configService.get('DB_PASSWORD', 'taskflow_password'),
+      database: this.configService.get('DB_DATABASE', 'taskflow_db'),
       entities: [
         User,
         Project,
@@ -40,7 +40,7 @@ export class DatabaseConfig implements TypeOrmOptionsFactory {
         UserLog,
       ],
       synchronize: !isProduction,
-      logging: !isProduction,
+      logging: false,
       ssl: isProduction ? { rejectUnauthorized: false } : false,
     };
   }

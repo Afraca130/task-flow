@@ -7,6 +7,7 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 import { AppService } from './application/services/app.service';
 import { AuthService } from './application/services/auth.service';
 import { UserLogService } from './application/services/user-log.service';
+import { GetTaskCommentsUseCase } from './application/use-cases/comment/get-task-comments.use-case';
 import { AcceptInvitationUseCase } from './application/use-cases/invitation/accept-invitation.use-case';
 import { CreateInvitationUseCase } from './application/use-cases/invitation/create-invitation.use-case';
 import { DeclineInvitationUseCase } from './application/use-cases/invitation/decline-invitation.use-case';
@@ -126,6 +127,7 @@ import { JwtConfigService } from './shared/config/jwt.config';
     CreateProjectUseCase,
     GetProjectUseCase,
     GetProjectsUseCase,
+    GetTaskCommentsUseCase,
 
     // JWT
     JwtConfigService,
