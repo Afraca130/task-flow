@@ -53,7 +53,7 @@ services:
       - DB_USERNAME=taskflow
       - DB_PASSWORD=taskflow
       - DB_DATABASE=taskflow
-      - MONGODB_URI=mongodb://taskflow:taskflow123@mongodb:27017/taskflow?authSource=taskflow
+      - MONGODB_URI=mongodb://admin:admin123@mongodb:27017/taskflow?authSource=admin
       - JWT_SECRET=development-jwt-secret-key
       - JWT_EXPIRES_IN=24h
     volumes:
