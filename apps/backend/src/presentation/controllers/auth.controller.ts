@@ -1,13 +1,12 @@
-import { Controller, Post, Body, Get, Patch, UseGuards, Req } from '@nestjs/common';
-import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth } from '@nestjs/swagger';
+import { Body, Controller, Get, Patch, Post, Req, UseGuards } from '@nestjs/common';
+import { ApiBearerAuth, ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagger';
 import { Request } from 'express';
 import { AuthService } from '../../application/services/auth.service';
-import { RegisterRequestDto, LoginRequestDto, ChangePasswordRequestDto } from '../dto/request/auth-request.dto';
-import { LoginResponseDto, RegisterResponseDto, UserDto } from '../dto/response/auth-response.dto';
-import { ApiResponseDto } from '../dto/response/api-response.dto';
-import { Public } from '../decorators/public.decorator';
-import { JwtAuthGuard } from '../guards/jwt-auth.guard';
 import { User } from '../../domain/entities/user.entity';
+import { Public } from '../decorators/public.decorator';
+import { ChangePasswordRequestDto, LoginRequestDto, RegisterRequestDto } from '../dto/request/auth-request.dto';
+import { LoginResponseDto, RegisterResponseDto, UserDto } from '../dto/response/auth-response.dto';
+import { JwtAuthGuard } from '../guards/jwt-auth.guard';
 
 interface AuthenticatedRequest extends Request {
   user: User;
@@ -19,7 +18,7 @@ interface AuthenticatedRequest extends Request {
 @ApiTags('Authentication')
 @Controller('auth')
 export class AuthController {
-  constructor(private readonly authService: AuthService) {}
+  constructor(private readonly authService: AuthService) { }
 
   /**
    * 회원가입
@@ -30,20 +29,14 @@ export class AuthController {
   @ApiResponse({
     status: 201,
     description: '회원가입 성공',
-    type: ApiResponseDto<RegisterResponseDto>,
+    type: RegisterResponseDto,
   })
   @ApiResponse({ status: 400, description: '잘못된 요청 데이터' })
   @ApiResponse({ status: 409, description: '이미 존재하는 이메일' })
   async register(
     @Body() registerDto: RegisterRequestDto,
-  ): Promise<ApiResponseDto<RegisterResponseDto>> {
-    const result = await this.authService.register(registerDto);
-    return {
-      success: true,
-      message: '회원가입이 성공적으로 완료되었습니다.',
-      data: result,
-      timestamp: new Date().toISOString(),
-    };
+  ): Promise<RegisterResponseDto> {
+    return await this.authService.register(registerDto);
   }
 
   /**
@@ -55,19 +48,13 @@ export class AuthController {
   @ApiResponse({
     status: 200,
     description: '로그인 성공',
-    type: ApiResponseDto<LoginResponseDto>,
+    type: LoginResponseDto,
   })
   @ApiResponse({ status: 401, description: '인증 실패' })
   async login(
     @Body() loginDto: LoginRequestDto,
-  ): Promise<ApiResponseDto<LoginResponseDto>> {
-    const result = await this.authService.login(loginDto);
-    return {
-      success: true,
-      message: '로그인이 성공적으로 완료되었습니다.',
-      data: result,
-      timestamp: new Date().toISOString(),
-    };
+  ): Promise<LoginResponseDto> {
+    return await this.authService.login(loginDto);
   }
 
   /**
@@ -80,19 +67,13 @@ export class AuthController {
   @ApiResponse({
     status: 200,
     description: '프로필 조회 성공',
-    type: ApiResponseDto<UserDto>,
+    type: UserDto,
   })
   @ApiResponse({ status: 401, description: '인증 필요' })
   async getProfile(
     @Req() req: AuthenticatedRequest,
-  ): Promise<ApiResponseDto<UserDto>> {
-    const result = await this.authService.getProfile(req.user.id);
-    return {
-      success: true,
-      message: '프로필 정보를 성공적으로 조회했습니다.',
-      data: result,
-      timestamp: new Date().toISOString(),
-    };
+  ): Promise<UserDto> {
+    return await this.authService.getProfile(req.user.id);
   }
 
   /**
@@ -105,19 +86,13 @@ export class AuthController {
   @ApiResponse({
     status: 200,
     description: '비밀번호 변경 성공',
-    type: ApiResponseDto<null>,
   })
   @ApiResponse({ status: 401, description: '인증 실패' })
   async changePassword(
     @Req() req: AuthenticatedRequest,
     @Body() changePasswordDto: ChangePasswordRequestDto,
-  ): Promise<ApiResponseDto<null>> {
+  ): Promise<{ message: string }> {
     await this.authService.changePassword(req.user.id, changePasswordDto);
-    return {
-      success: true,
-      message: '비밀번호가 성공적으로 변경되었습니다.',
-      data: null,
-      timestamp: new Date().toISOString(),
-    };
+    return { message: '비밀번호가 성공적으로 변경되었습니다.' };
   }
-} 
+}

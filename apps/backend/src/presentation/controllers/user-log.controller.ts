@@ -29,7 +29,7 @@ import { LogLevel, UserActionType } from '../../domain/entities/user-log.entity'
 import { JwtAuthGuard } from '../guards/jwt-auth.guard';
 
 @ApiTags('user-logs')
-@Controller({ path: 'user-logs', version: '1' })
+@Controller('user-logs')
 @UseGuards(JwtAuthGuard)
 @ApiBearerAuth('JWT-auth')
 export class UserLogController {

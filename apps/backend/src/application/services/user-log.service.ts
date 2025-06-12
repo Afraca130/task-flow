@@ -1,6 +1,8 @@
 import { Inject, Injectable, Logger } from '@nestjs/common';
+import { InjectRepository } from '@nestjs/typeorm';
 import { Request } from 'express';
-import { LogLevel, UserActionType } from '../../domain/entities/user-log.entity';
+import { Repository } from 'typeorm';
+import { LogLevel, UserActionType, UserLog } from '../../domain/entities/user-log.entity';
 import { LoggingConfigService } from '../../infrastructure/config/logging.config';
 import {
     CreateUserLogRequest,
@@ -23,6 +25,15 @@ export interface LogUserActivityRequest {
     errorStack?: string;
 }
 
+export interface LogUserActivityDto {
+    userId: string;
+    actionType: UserActionType;
+    description: string;
+    resourceId?: string;
+    resourceType?: string;
+    details?: Record<string, any>;
+}
+
 /**
  * 사용자 로깅 서비스
  */
@@ -34,12 +45,18 @@ export class UserLogService {
         @Inject('UserLogRepositoryPort')
         private readonly userLogRepository: UserLogRepositoryPort,
         private readonly loggingConfig: LoggingConfigService,
+        @InjectRepository(UserLog)
+        private readonly userLogTypeormRepository: Repository<UserLog>,
     ) { }
 
     /**
      * 사용자 활동 로그 기록
      */
     async logUserActivity(request: LogUserActivityRequest): Promise<void> {
+        // UserLog 기능을 완전히 비활성화하여 메타데이터 오류 방지
+        return;
+
+        /*
         try {
             // 로깅이 비활성화된 경우 건너뛰기
             if (!this.loggingConfig.isUserActivityLoggingEnabled()) {
@@ -73,6 +90,7 @@ export class UserLogService {
             this.logger.error('Failed to log user activity', error);
             // 로깅 실패가 주요 기능을 방해하지 않도록 에러를 다시 던지지 않음
         }
+        */
     }
 
     /**
@@ -123,34 +141,44 @@ export class UserLogService {
         error: Error,
         context: string,
         userId?: string,
-        request?: Request,
-        additionalDetails?: Record<string, any>,
+        resourceId?: string,
+        details?: Record<string, any>
     ): Promise<void> {
-        try {
-            if (!this.loggingConfig.isErrorLoggingEnabled()) {
-                return;
-            }
+        // UserLog 저장을 완전히 비활성화하여 메타데이터 오류 방지
+        this.logger.error(`[${context}] ${error.message}`, error.stack);
+        return;
 
-            await this.logUserActivity({
-                userId,
-                actionType: UserActionType.ERROR_OCCURRED,
-                level: LogLevel.ERROR,
-                description: `오류 발생: ${error.message}`,
-                details: {
-                    context,
-                    errorName: error.name,
-                    errorMessage: error.message,
-                    stack: error.stack,
-                    ...additionalDetails,
-                },
-                request,
-                errorMessage: error.message,
-                errorStack: error.stack,
-            });
-        } catch (logError) {
-            this.logger.error('Failed to log error', logError);
-        }
+
+        /* 원래 코드는 주석 처리
+         try {
+             if (userId) {
+                 const userLog = new UserLog();
+             if (!this.loggingConfig.isErrorLoggingEnabled()) {
+                 return;
+             }
+
+             await this.logUserActivity({
+                 userId,
+                 actionType: UserActionType.ERROR_OCCURRED,
+                 level: LogLevel.ERROR,
+                 description: `오류 발생: ${error.message}`,
+                 details: {
+                     context,
+                     errorName: error.name,
+                     errorMessage: error.message,
+                     stack: error.stack,
+                     ...additionalDetails,
+                 },
+                 request,
+                 errorMessage: error.message,
+                 errorStack: error.stack,
+             });
+         } catch (logError) {
+             this.logger.error('Failed to log error', logError);
+         }
+        */
     }
+
 
     /**
      * 보안 이벤트 로그 기록

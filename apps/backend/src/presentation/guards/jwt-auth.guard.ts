@@ -1,10 +1,12 @@
-import { Injectable, ExecutionContext, UnauthorizedException } from '@nestjs/common';
-import { AuthGuard } from '@nestjs/passport';
+import { ExecutionContext, Injectable, UnauthorizedException } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
+import { AuthGuard } from '@nestjs/passport';
 import { IS_PUBLIC_KEY } from '../decorators/public.decorator';
 
 /**
  * JWT 인증 가드
+ * 인증이 필요한 엔드포인트에서 JWT 토큰을 검증합니다.
+ * @Public 데코레이터가 적용된 엔드포인트는 인증을 스킵합니다.
  */
 @Injectable()
 export class JwtAuthGuard extends AuthGuard('jwt') {
@@ -31,4 +33,4 @@ export class JwtAuthGuard extends AuthGuard('jwt') {
     }
     return user;
   }
-} 
+}

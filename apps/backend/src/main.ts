@@ -1,15 +1,15 @@
+import { Logger, ValidationPipe } from '@nestjs/common';
 import { NestFactory } from '@nestjs/core';
-import { ValidationPipe, Logger } from '@nestjs/common';
 import { AppModule } from './app.module';
+import { AllExceptionsFilter, HttpExceptionFilter } from './presentation/filters/http-exception.filter';
 import { SwaggerConfig } from './shared/config/swagger.config';
-import { HttpExceptionFilter, AllExceptionsFilter } from './presentation/filters/http-exception.filter';
 
 /**
  * 애플리케이션 부트스트랩 함수
  */
 async function bootstrap(): Promise<void> {
   const logger = new Logger('Bootstrap');
-  
+
   try {
     const app = await NestFactory.create(AppModule, {
       logger: ['log', 'error', 'warn', 'debug', 'verbose'],
@@ -61,20 +61,21 @@ async function bootstrap(): Promise<void> {
       exclude: ['/health', '/'],
     });
 
+
     const port = process.env.PORT || 3001;
     await app.listen(port);
-    
+
     logger.log(`🚀 TaskFlow Backend API is running on: http://localhost:${port}`);
     logger.log(`🌍 Environment: ${process.env.NODE_ENV || 'development'}`);
-    
+
     if (process.env.NODE_ENV !== 'production') {
       logger.log(`📚 Swagger docs available at: http://localhost:${port}/api/docs`);
     }
-    
+
   } catch (error) {
     logger.error('❌ Failed to start application', error);
     process.exit(1);
   }
 }
 
-bootstrap(); 
+bootstrap();

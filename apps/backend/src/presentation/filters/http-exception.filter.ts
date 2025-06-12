@@ -1,7 +1,7 @@
 import {
-  ExceptionFilter,
-  Catch,
   ArgumentsHost,
+  Catch,
+  ExceptionFilter,
   HttpException,
   HttpStatus,
   Logger,
@@ -37,10 +37,13 @@ export class HttpExceptionFilter implements ExceptionFilter {
       }
     }
 
-    this.logger.error(
-      `HTTP Exception: ${message}`,
-      exception.stack,
-    );
+    // 간단한 에러 로그 출력
+    this.logger.error(`HTTP Exception [${status}] ${request.method} ${request.url}: ${message}`);
+
+    // 상세 정보가 있는 경우 별도로 로그 출력
+    if (details && details.length > 0) {
+      this.logger.error(`Validation Details: ${JSON.stringify(details, null, 2)}`);
+    }
 
     const errorResponse = ApiResponseDto.error(
       message,
@@ -74,14 +77,12 @@ export class AllExceptionsFilter implements ExceptionFilter {
       ? exception.getStatus()
       : HttpStatus.INTERNAL_SERVER_ERROR;
 
-    const message = exception instanceof Error 
-      ? exception.message 
+    const message = exception instanceof Error
+      ? exception.message
       : '알 수 없는 오류가 발생했습니다.';
 
-    this.logger.error(
-      `Unhandled Exception: ${message}`,
-      exception instanceof Error ? exception.stack : exception,
-    );
+    // 간단한 에러 로그 출력
+    this.logger.error(`Unhandled Exception [${status}] ${request.method} ${request.url}: ${message}`);
 
     const errorResponse = ApiResponseDto.error(
       message,
@@ -95,4 +96,4 @@ export class AllExceptionsFilter implements ExceptionFilter {
 
     response.status(status).json(errorResponse);
   }
-} 
+}

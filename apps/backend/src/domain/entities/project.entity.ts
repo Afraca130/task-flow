@@ -1,9 +1,9 @@
-import { Entity, PrimaryGeneratedColumn, Column, ManyToOne, OneToMany, JoinColumn, CreateDateColumn, UpdateDateColumn } from 'typeorm';
-import { User } from './user.entity';
-import { ProjectMember } from './project-member.entity';
-import { Task } from './task.entity';
+import { Column, CreateDateColumn, Entity, JoinColumn, ManyToOne, OneToMany, PrimaryGeneratedColumn, UpdateDateColumn } from 'typeorm';
 import { ActivityLog } from './activity-log.entity';
 import { ProjectInvitation } from './project-invitation.entity';
+import { ProjectMember } from './project-member.entity';
+import { Task } from './task.entity';
+import { User } from './user.entity';
 
 export enum ProjectStatus {
   ACTIVE = 'ACTIVE',
@@ -14,6 +14,13 @@ export enum ProjectStatus {
 export enum ApprovalType {
   AUTO = 'AUTO',
   MANUAL = 'MANUAL',
+}
+
+export enum ProjectPriority {
+  LOW = 'LOW',
+  MEDIUM = 'MEDIUM',
+  HIGH = 'HIGH',
+  URGENT = 'URGENT',
 }
 
 @Entity('projects')
@@ -60,6 +67,19 @@ export class Project {
   })
   approvalType: ApprovalType;
 
+  @Column({ type: 'varchar', length: 7, default: '#3B82F6' })
+  color: string;
+
+  @Column({ name: 'icon_url', type: 'varchar', length: 500, nullable: true })
+  iconUrl?: string;
+
+  @Column({
+    type: 'enum',
+    enum: ProjectPriority,
+    default: ProjectPriority.MEDIUM,
+  })
+  priority: ProjectPriority;
+
   @CreateDateColumn({ name: 'created_at' })
   createdAt: Date;
 
@@ -105,6 +125,18 @@ export class Project {
     this.status = newStatus;
   }
 
+  public updateColor(newColor: string): void {
+    // Validate HEX color format
+    if (!/^#[0-9A-F]{6}$/i.test(newColor)) {
+      throw new Error('Invalid color format. Use HEX format (#RRGGBB)');
+    }
+    this.color = newColor;
+  }
+
+  public updatePriority(newPriority: ProjectPriority): void {
+    this.priority = newPriority;
+  }
+
   public isActive(): boolean {
     return this.status === ProjectStatus.ACTIVE;
   }
@@ -125,4 +157,4 @@ export class Project {
     }
     return result;
   }
-} 
+}

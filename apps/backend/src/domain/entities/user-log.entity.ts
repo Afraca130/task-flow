@@ -143,7 +143,7 @@ export class UserLog {
 
     @ApiProperty({
         description: '요청 URL',
-        example: '/api/v1/tasks',
+        example: '/api/tasks',
         nullable: true,
     })
     @Column({ type: 'text', nullable: true })
