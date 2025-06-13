@@ -207,6 +207,7 @@ export class TaskController {
         @Param('status') status: TaskStatus,
         @Query('page', new DefaultValuePipe(1), ParseIntPipe) page?: number,
         @Query('limit', new DefaultValuePipe(20), ParseIntPipe) limit?: number,
+        @Query('lexoRank') lexoRank?: string,
     ): Promise<PaginatedResponse<TaskResponseDto>> {
         const result = await this.taskRepository.findWithFilters({
             projectId,

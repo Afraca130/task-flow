@@ -406,7 +406,7 @@ export default function AnalyticsPage() {
                     onClick={() => handleNavigation('people')}
                   />
                   <NavItem
-                    icon={<UserCheck className='w-4 h-4 text-green-500' />}
+                    icon={<UserCheck className='w-4 h-4 text-green-500' yhjfuyfu />}
                     label='프로젝트 설정'
                     onClick={() => handleNavigation('/projects')}
                   />

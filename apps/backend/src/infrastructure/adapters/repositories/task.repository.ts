@@ -169,6 +169,7 @@ export class TaskRepository implements TaskRepositoryPort {
         search?: string;
         page?: number;
         limit?: number;
+        lexoRank?: string;
     }): Promise<{ tasks: Task[]; total: number }> {
         try {
             const queryBuilder = this.taskRepository.createQueryBuilder('task')
@@ -206,7 +207,7 @@ export class TaskRepository implements TaskRepositoryPort {
             }
 
             // Order by creation date
-            queryBuilder.orderBy('task.createdAt', 'DESC');
+            queryBuilder.orderBy('task.lexoRank', 'DESC');
 
             const tasks = await queryBuilder.getMany();
 

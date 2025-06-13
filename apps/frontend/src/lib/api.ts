@@ -419,6 +419,7 @@ export const tasksApi = {
     search?: string;
     page?: number;
     limit?: number;
+    lexoRank?: string;
   }): Promise<{ data: Task[]; meta: any }> => {
     const response = await api.get<StandardApiResponse<{ data: Task[]; meta: any }>>('/tasks', { params });
     return extractData(response);
