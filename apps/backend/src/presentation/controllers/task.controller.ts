@@ -207,13 +207,12 @@ export class TaskController {
         @Param('status') status: TaskStatus,
         @Query('page', new DefaultValuePipe(1), ParseIntPipe) page?: number,
         @Query('limit', new DefaultValuePipe(20), ParseIntPipe) limit?: number,
-        @Query('lexoRank') lexoRank?: string,
     ): Promise<PaginatedResponse<TaskResponseDto>> {
         const result = await this.taskRepository.findWithFilters({
             projectId,
             status,
             page,
-            limit,
+            limit
         });
 
         const taskDtos = result.tasks.map(task => TaskResponseDto.fromEntity(task));
@@ -231,6 +230,7 @@ export class TaskController {
         @Param('projectId', ParseUUIDPipe) projectId: string,
     ): Promise<TaskResponseDto[]> {
         const tasks = await this.taskRepository.findByProjectId(projectId);
+        console.log('tasks', tasks.filter(task => task.status === TaskStatus.COMPLETED).map(task => ({ title: task.title, task: task.lexoRank })))
         return tasks.map(task => TaskResponseDto.fromEntity(task));
     }
 

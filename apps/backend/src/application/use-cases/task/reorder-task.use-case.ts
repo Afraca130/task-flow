@@ -65,7 +65,6 @@ export class ReorderTaskUseCase implements ReorderTaskPort {
                 command.taskId,
                 command.newPosition
             );
-
             // 7. 태스크 업데이트
             if (statusChanged) {
                 taskToMove.updateStatus(targetStatus);

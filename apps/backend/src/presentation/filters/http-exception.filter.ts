@@ -37,8 +37,11 @@ export class HttpExceptionFilter implements ExceptionFilter {
       }
     }
 
-    // 간단한 에러 로그 출력
-    this.logger.error(`HTTP Exception [${status}] ${request.method} ${request.url}: ${message}`);
+    // 스택 트레이스에서 파일명과 라인 정보 추출
+    const stackInfo = this.extractStackInfo(exception.stack);
+
+    // 간단한 에러 로그 출력 (파일명과 라인 정보 포함)
+    this.logger.error(`HTTP Exception [${status}] ${request.method} ${request.url}: ${message} ${stackInfo ? `at ${stackInfo}` : ''}`);
 
     // 상세 정보가 있는 경우 별도로 로그 출력
     if (details && details.length > 0) {
@@ -53,10 +56,27 @@ export class HttpExceptionFilter implements ExceptionFilter {
         path: request.url,
         method: request.method,
         details,
+        ...(stackInfo && { location: stackInfo }),
       },
     );
 
     response.status(status).json(errorResponse);
+  }
+
+  private extractStackInfo(stack?: string): string | null {
+    if (!stack) return null;
+
+    const lines = stack.split('\n');
+    for (const line of lines) {
+      // TypeScript 파일 경로를 찾음
+      const match = line.match(/at .* \((.+\.ts):(\d+):(\d+)\)/);
+      if (match) {
+        const [, filePath, lineNumber, columnNumber] = match;
+        const fileName = filePath.split('/').pop() || filePath;
+        return `${fileName}:${lineNumber}:${columnNumber}`;
+      }
+    }
+    return null;
   }
 }
 
@@ -73,16 +93,25 @@ export class AllExceptionsFilter implements ExceptionFilter {
     const response = ctx.getResponse<Response>();
     const request = ctx.getRequest<Request>();
 
-    const status = exception instanceof HttpException
-      ? exception.getStatus()
-      : HttpStatus.INTERNAL_SERVER_ERROR;
+    // 500 에러를 400대로 변경
+    let status = HttpStatus.BAD_REQUEST; // 기본값을 400으로 설정
+
+    if (exception instanceof HttpException) {
+      status = exception.getStatus();
+    } else {
+      // 500 에러 대신 422 (Unprocessable Entity) 사용
+      status = HttpStatus.UNPROCESSABLE_ENTITY;
+    }
 
     const message = exception instanceof Error
       ? exception.message
-      : '알 수 없는 오류가 발생했습니다.';
+      : '처리할 수 없는 요청입니다.';
 
-    // 간단한 에러 로그 출력
-    this.logger.error(`Unhandled Exception [${status}] ${request.method} ${request.url}: ${message}`);
+    // 스택 트레이스에서 파일명과 라인 정보 추출
+    const stackInfo = this.extractStackInfo(exception instanceof Error ? exception.stack : undefined);
+
+    // 간단한 에러 로그 출력 (파일명과 라인 정보 포함)
+    this.logger.error(`Unhandled Exception [${status}] ${request.method} ${request.url}: ${message} ${stackInfo ? `at ${stackInfo}` : ''}`);
 
     const errorResponse = ApiResponseDto.error(
       message,
@@ -91,9 +120,26 @@ export class AllExceptionsFilter implements ExceptionFilter {
         timestamp: new Date().toISOString(),
         path: request.url,
         method: request.method,
+        ...(stackInfo && { location: stackInfo }),
       },
     );
 
     response.status(status).json(errorResponse);
+  }
+
+  private extractStackInfo(stack?: string): string | null {
+    if (!stack) return null;
+
+    const lines = stack.split('\n');
+    for (const line of lines) {
+      // TypeScript 파일 경로를 찾음
+      const match = line.match(/at .* \((.+\.ts):(\d+):(\d+)\)/);
+      if (match) {
+        const [, filePath, lineNumber, columnNumber] = match;
+        const fileName = filePath.split('/').pop() || filePath;
+        return `${fileName}:${lineNumber}:${columnNumber}`;
+      }
+    }
+    return null;
   }
 }

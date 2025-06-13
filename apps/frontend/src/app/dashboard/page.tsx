@@ -18,10 +18,10 @@ import {
   useSensors,
 } from '@dnd-kit/core';
 import {
-  BarChart3,
+  Activity,
+  ArrowLeft,
   Calendar,
   ChevronDown,
-  FileText,
   FolderOpen,
   HelpCircle,
   List,
@@ -105,6 +105,13 @@ function DraggableTaskCard({ task, onClick }: DraggableTaskCardProps) {
     return { backgroundColor: assignee?.id ? getUserColor(assignee.id) : '#3B82F6' };
   };
 
+  const formatDate = (dateString: string) => {
+    return new Date(dateString).toLocaleDateString('ko-KR', {
+      month: 'short',
+      day: 'numeric',
+    });
+  };
+
   const style = transform
     ? {
         transform: `translate3d(${transform.x}px, ${transform.y}px, 0)`,
@@ -161,18 +168,17 @@ function DraggableTaskCard({ task, onClick }: DraggableTaskCardProps) {
           </div>
 
           {task.dueDate && (
-            <span className='text-xs text-gray-500'>
-              {new Date(task.dueDate).toLocaleDateString('ko-KR')}
-            </span>
+            <span className='text-xs text-gray-500'>마감: {formatDate(task.dueDate)}</span>
           )}
         </div>
 
-        {task.project && (
-          <div className='flex items-center gap-1'>
-            <div className='w-2 h-2 bg-blue-500 rounded-full'></div>
-            <span className='text-xs text-gray-500'>{task.project.name}</span>
-          </div>
-        )}
+        {/* 생성 날짜와 완료 날짜 */}
+        <div className='flex items-center justify-between text-xs text-gray-400'>
+          <span>생성: {formatDate(task.createdAt)}</span>
+          {task.status === 'COMPLETED' && task.updatedAt && (
+            <span>완료: {formatDate(task.updatedAt)}</span>
+          )}
+        </div>
       </div>
     </div>
   );
@@ -285,9 +291,10 @@ export default function DashboardPage() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+  const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
   const [loading, setLoading] = useState(true);
   const [activeTaskId, setActiveTaskId] = useState<string | null>(null);
-  const [selectedProjectId, setSelectedProjectId] = useState<string>('all');
+  const [selectedProjectId, setSelectedProjectId] = useState<string>('');
   const [showActiveOnly, setShowActiveOnly] = useState<boolean>(false);
 
   const sensors = useSensors(
@@ -301,28 +308,69 @@ export default function DashboardPage() {
   // Check authentication
   useEffect(() => {
     if (!isAuthenticated) {
-      router.push('/login');
+      // 인증되지 않은 경우 즉시 로그인 페이지로 리디렉션
+      router.replace('/login');
       return;
     }
   }, [isAuthenticated, router]);
 
-  // Load projects
+  // Load projects and set initial selection
   useEffect(() => {
     if (!isAuthenticated) return;
 
     const loadProjects = async () => {
       try {
+        setLoading(true);
         const result = await projectsApi.getProjects({ page: 1, limit: 100 });
         const projectList = Array.isArray(result) ? result : result.data || [];
         setProjects(projectList);
+
+        // URL 파라미터에서 projectId 확인
+        const urlParams = new URLSearchParams(window.location.search);
+        const projectIdFromUrl = urlParams.get('projectId');
+
+        if (projectIdFromUrl && projectList.length > 0) {
+          // URL에서 지정된 프로젝트가 있으면 선택
+          const targetProject = projectList.find(p => p.id === projectIdFromUrl);
+          if (targetProject) {
+            setSelectedProjectId(projectIdFromUrl);
+          } else {
+            // 지정된 프로젝트가 없으면 첫 번째 프로젝트 선택하고 URL 업데이트
+            const firstProjectId = projectList[0].id;
+            setSelectedProjectId(firstProjectId);
+            // URL 파라미터 업데이트
+            const newUrl = new URL(window.location.href);
+            newUrl.searchParams.set('projectId', firstProjectId);
+            window.history.replaceState({}, '', newUrl.toString());
+          }
+        } else if (projectList.length > 0) {
+          // URL 파라미터가 없으면 첫 번째 프로젝트 선택하고 URL에 추가
+          const firstProjectId = projectList[0].id;
+          setSelectedProjectId(firstProjectId);
+          // URL 파라미터 추가
+          const newUrl = new URL(window.location.href);
+          newUrl.searchParams.set('projectId', firstProjectId);
+          window.history.replaceState({}, '', newUrl.toString());
+        }
       } catch (error) {
         console.error('Failed to load projects:', error);
         setProjects([]);
+      } finally {
+        setLoading(false);
       }
     };
 
     loadProjects();
   }, [isAuthenticated, setProjects]);
+
+  // 프로젝트 변경 시 URL 파라미터 업데이트
+  useEffect(() => {
+    if (selectedProjectId && typeof window !== 'undefined') {
+      const newUrl = new URL(window.location.href);
+      newUrl.searchParams.set('projectId', selectedProjectId);
+      window.history.replaceState({}, '', newUrl.toString());
+    }
+  }, [selectedProjectId]);
 
   // Load tasks function
   const loadTasks = async () => {
@@ -330,57 +378,23 @@ export default function DashboardPage() {
       setLoading(true);
       console.log('Loading tasks...', { selectedProjectId, searchTerm });
 
-      if (selectedProjectId === 'all') {
-        // Load all tasks and get counts
-        const [todoResult, inProgressResult, completedResult] = await Promise.all([
-          tasksApi.getTasks({ status: 'TODO', search: searchTerm, limit: 10 }),
-          tasksApi.getTasks({ status: 'IN_PROGRESS', search: searchTerm, limit: 10 }),
-          tasksApi.getTasks({ status: 'COMPLETED', search: searchTerm, limit: 10 }),
-        ]);
+      if (!selectedProjectId) return;
 
-        // Get total counts for each status
-        const [todoCount, inProgressCount, completedCount] = await Promise.all([
-          tasksApi
-            .getTasks({ status: 'TODO', search: searchTerm, limit: 1000 })
-            .then(r => r.data?.length || 0),
-          tasksApi
-            .getTasks({ status: 'IN_PROGRESS', search: searchTerm, limit: 1000 })
-            .then(r => r.data?.length || 0),
-          tasksApi
-            .getTasks({ status: 'COMPLETED', search: searchTerm, limit: 1000 })
-            .then(r => r.data?.length || 0),
-        ]);
+      // Load tasks for specific project
+      const projectTasks = await tasksApi.getTasksByProject(selectedProjectId);
+      const filteredTasks = projectTasks.filter(
+        task => !searchTerm || task.title.toLowerCase().includes(searchTerm.toLowerCase())
+      );
 
-        setAllTaskCounts({
-          TODO: todoCount,
-          IN_PROGRESS: inProgressCount,
-          COMPLETED: completedCount,
-        });
+      // Count tasks by status
+      const counts = {
+        TODO: filteredTasks.filter(t => t.status === 'TODO').length,
+        IN_PROGRESS: filteredTasks.filter(t => t.status === 'IN_PROGRESS').length,
+        COMPLETED: filteredTasks.filter(t => t.status === 'COMPLETED').length,
+      };
 
-        const allTasks = [
-          ...(todoResult.data || []),
-          ...(inProgressResult.data || []),
-          ...(completedResult.data || []),
-        ];
-
-        setTasks(allTasks);
-      } else {
-        // Load tasks for specific project
-        const projectTasks = await tasksApi.getTasksByProject(selectedProjectId);
-        const filteredTasks = projectTasks.filter(
-          task => !searchTerm || task.title.toLowerCase().includes(searchTerm.toLowerCase())
-        );
-
-        // Count tasks by status
-        const counts = {
-          TODO: filteredTasks.filter(t => t.status === 'TODO').length,
-          IN_PROGRESS: filteredTasks.filter(t => t.status === 'IN_PROGRESS').length,
-          COMPLETED: filteredTasks.filter(t => t.status === 'COMPLETED').length,
-        };
-
-        setAllTaskCounts(counts);
-        setTasks(filteredTasks);
-      }
+      setAllTaskCounts(counts);
+      setTasks(filteredTasks);
     } catch (error) {
       console.error('Failed to load tasks:', error);
       setTasks([]);
@@ -399,7 +413,7 @@ export default function DashboardPage() {
   // 프로젝트 통계 데이터
   const projectStats = useMemo(() => {
     const selectedProject = projects.find(p => p.id === selectedProjectId);
-    if (!selectedProject && selectedProjectId !== 'all') return null;
+    if (!selectedProject) return null;
 
     const todoCount = allTaskCounts.TODO || 0;
     const inProgressCount = allTaskCounts.IN_PROGRESS || 0;
@@ -453,11 +467,39 @@ export default function DashboardPage() {
     const newStatus = overId as keyof typeof statusColumns;
     if (!statusColumns[newStatus]) return;
 
-    // 상태가 변경되지 않았다면 아무것도 하지 않음
-    if (task.status === newStatus) return;
-
     try {
-      // 낙관적 업데이트
+      // 같은 상태 내에서의 순서 변경
+      if (task.status === newStatus) {
+        const tasksInStatus = getTasksByStatus(newStatus);
+        const oldIndex = tasksInStatus.findIndex(t => t.id === activeId);
+        const newIndex = tasksInStatus.findIndex(t => t.id === overId);
+
+        // 낙관적 업데이트
+        const optimisticUpdate = (prevTasks: Task[]) => {
+          const tasksInStatus = prevTasks.filter(t => t.status === newStatus);
+          const [movedTask] = tasksInStatus.splice(oldIndex, 1);
+          tasksInStatus.splice(newIndex, 0, movedTask);
+          return prevTasks.map(t =>
+            t.status === newStatus ? tasksInStatus.find(ts => ts.id === t.id) || t : t
+          );
+        };
+
+        setTasks(optimisticUpdate);
+
+        // 서버 업데이트
+        await tasksApi.reorderTask({
+          taskId: activeId,
+          projectId: selectedProjectId,
+          newPosition: newIndex,
+          newStatus: newStatus,
+        });
+
+        // 성공 후 전체 데이터 다시 로드
+        await loadTasks();
+        return;
+      }
+
+      // 상태가 변경되는 경우
       const optimisticUpdate = (prevTasks: Task[]) =>
         prevTasks.map(task => (task.id === activeId ? { ...task, status: newStatus } : task));
 
@@ -469,7 +511,7 @@ export default function DashboardPage() {
       // 성공 후 전체 데이터 다시 로드
       await loadTasks();
     } catch (error) {
-      console.error('Failed to update task status:', error);
+      console.error('Failed to update task:', error);
       // 에러 발생 시 원래 상태로 되돌리기
       await loadTasks();
     }
@@ -576,6 +618,23 @@ export default function DashboardPage() {
 
   const selectedProject = projects.find(p => p.id === selectedProjectId);
 
+  // 메뉴 외부 클릭 시 닫기
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (isUserMenuOpen) {
+        const target = event.target as Element;
+        if (!target.closest('.user-menu-container')) {
+          setIsUserMenuOpen(false);
+        }
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [isUserMenuOpen]);
+
   return (
     <div className='min-h-screen bg-gray-50'>
       <DndContext sensors={sensors} onDragStart={handleDragStart} onDragEnd={handleDragEnd}>
@@ -622,9 +681,9 @@ export default function DashboardPage() {
                 <HelpCircle className='w-5 h-5' />
               </button>
 
-              <div className='flex items-center gap-3'>
+              <div className='relative user-menu-container'>
                 <button
-                  onClick={() => router.push('/profile')}
+                  onClick={() => setIsUserMenuOpen(!isUserMenuOpen)}
                   className='flex items-center gap-3 hover:bg-gray-100 rounded-lg p-2 transition-colors'
                 >
                   <div
@@ -641,6 +700,72 @@ export default function DashboardPage() {
                   </div>
                   <ChevronDown className='w-4 h-4 text-gray-400' />
                 </button>
+
+                {/* 사용자 드롭다운 메뉴 */}
+                {isUserMenuOpen && (
+                  <div className='absolute right-0 mt-2 w-64 bg-white rounded-lg shadow-lg border border-gray-200 py-2 z-50'>
+                    {/* 사용자 정보 */}
+                    <div className='px-4 py-3 border-b border-gray-100'>
+                      <div className='flex items-center gap-3'>
+                        <div
+                          className={`w-10 h-10 rounded-full flex items-center justify-center text-white text-sm font-medium ${!user?.profileColor ? 'bg-blue-500' : ''}`}
+                          style={getUserColorStyle(user)}
+                        >
+                          {user?.name?.charAt(0) || 'U'}
+                        </div>
+                        <div>
+                          <div className='text-sm font-medium text-gray-900'>
+                            {user?.name || '사용자'}
+                          </div>
+                          <div className='text-xs text-gray-500'>
+                            {user?.email || 'user@example.com'}
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* 메뉴 항목들 */}
+                    <div className='py-1'>
+                      <button
+                        onClick={() => {
+                          setIsUserMenuOpen(false);
+                          router.push('/profile');
+                        }}
+                        className='flex items-center gap-3 w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-50'
+                      >
+                        <UserCheck className='w-4 h-4' />내 정보
+                      </button>
+
+                      <button
+                        onClick={() => {
+                          setIsUserMenuOpen(false);
+                          // 프로필 색상 변경 모달 열기 (추후 구현)
+                          alert('프로필 색상 변경 기능은 곧 출시될 예정입니다!');
+                        }}
+                        className='flex items-center gap-3 w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-50'
+                      >
+                        <div className='w-4 h-4 rounded-full bg-gradient-to-r from-blue-400 to-purple-500'></div>
+                        프로필 색상 변경
+                      </button>
+
+                      <div className='border-t border-gray-100 my-1'></div>
+
+                      <button
+                        onClick={() => {
+                          setIsUserMenuOpen(false);
+                          // 로그아웃 처리
+                          localStorage.removeItem('auth-token');
+                          localStorage.removeItem('auth-user');
+                          router.push('/login');
+                        }}
+                        className='flex items-center gap-3 w-full px-4 py-2 text-sm text-red-600 hover:bg-red-50'
+                      >
+                        <ArrowLeft className='w-4 h-4' />
+                        로그아웃
+                      </button>
+                    </div>
+                  </div>
+                )}
               </div>
             </div>
           </header>
@@ -661,18 +786,6 @@ export default function DashboardPage() {
                       label='프로젝트 보기'
                       onClick={() => handleNavigation('/projects')}
                     />
-                    <select
-                      value={selectedProjectId}
-                      onChange={e => setSelectedProjectId(e.target.value)}
-                      className='w-full p-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500'
-                    >
-                      <option value='all'>모든 프로젝트</option>
-                      {projects.map(project => (
-                        <option key={project.id} value={project.id}>
-                          {project.name}
-                        </option>
-                      ))}
-                    </select>
                   </div>
                 </div>
 
@@ -728,14 +841,14 @@ export default function DashboardPage() {
                   </div>
                   <div className='space-y-1'>
                     <NavItem
-                      icon={<BarChart3 className='w-4 h-4 text-indigo-500' />}
+                      icon={<TrendingUp className='w-4 h-4 text-purple-500' />}
                       label='분석'
                       onClick={() => handleNavigation('/analytics')}
                     />
                     <NavItem
-                      icon={<FileText className='w-4 h-4 text-violet-500' />}
-                      label='리포트'
-                      onClick={() => handleNavigation('reports')}
+                      icon={<Activity className='w-4 h-4 text-indigo-500' />}
+                      label='활동 로그'
+                      onClick={() => handleNavigation('/reports')}
                     />
                   </div>
                 </div>
@@ -747,39 +860,13 @@ export default function DashboardPage() {
           <main className='p-6 overflow-auto'>
             <div className='mb-6'>
               <div className='flex items-center justify-between mb-4'>
-                <h1 className='text-2xl font-bold text-gray-900'>이슈</h1>
+                <h1 className='text-2xl font-bold text-gray-900 mb-4'>
+                  {selectedProject?.name || ''} 이슈
+                </h1>
                 <div className='flex items-center space-x-4'>
-                  <NotificationBell />
                   <Button onClick={() => handleCreateTask()}>
                     <Plus className='mr-2 h-4 w-4' />새 태스크
                   </Button>
-
-                  <Button
-                    variant={showActiveOnly ? 'default' : 'outline'}
-                    onClick={() => setShowActiveOnly(!showActiveOnly)}
-                    size='sm'
-                  >
-                    {showActiveOnly ? '모든 태스크' : '활성 태스크만'}
-                  </Button>
-                </div>
-              </div>
-
-              {/* Project Search */}
-              <div className='flex items-center gap-4'>
-                <div className='flex items-center gap-2'>
-                  <label className='text-sm font-medium text-gray-700'>프로젝트:</label>
-                  <select
-                    value={selectedProjectId}
-                    onChange={e => setSelectedProjectId(e.target.value)}
-                    className='px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white'
-                  >
-                    <option value='all'>모든 프로젝트</option>
-                    {projects.map(project => (
-                      <option key={project.id} value={project.id}>
-                        {project.name}
-                      </option>
-                    ))}
-                  </select>
                 </div>
               </div>
             </div>
@@ -990,9 +1077,13 @@ export default function DashboardPage() {
           <TaskModal
             task={selectedTask}
             projects={projects}
-            onClose={closeModal}
+            onClose={() => {
+              setIsModalOpen(false);
+              setSelectedTask(null);
+            }}
             onSave={handleTaskSave}
             onDelete={handleTaskDelete}
+            currentProjectId={selectedProjectId}
           />
         )}
       </DndContext>

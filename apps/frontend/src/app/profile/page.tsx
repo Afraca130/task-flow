@@ -1,36 +1,37 @@
 'use client';
 
-import { authApi } from '@/lib/api';
+import { Button } from '@/components/ui/button';
 import { useAuthStore } from '@/store/auth';
-import { ArrowLeft, Palette, Save, User } from 'lucide-react';
+import { ArrowLeft, Building, Mail, Save, User } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
 
-const PROFILE_COLORS = [
-  '#3B82F6', // Blue
-  '#10B981', // Green
-  '#8B5CF6', // Purple
-  '#EF4444', // Red
-  '#F59E0B', // Yellow
-  '#6366F1', // Indigo
-  '#EC4899', // Pink
-  '#6B7280', // Gray
-  '#F97316', // Orange
-  '#14B8A6', // Teal
-  '#84CC16', // Lime
-  '#A855F7', // Violet
-];
-
 export default function ProfilePage() {
   const router = useRouter();
-  const { user, isAuthenticated, setUser } = useAuthStore();
-  const [loading, setLoading] = useState(false);
+  const { user, isAuthenticated } = useAuthStore();
   const [formData, setFormData] = useState({
     name: '',
+    email: '',
+    organization: '',
     profileColor: '#3B82F6',
   });
+  const [isEditing, setIsEditing] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
 
-  // Check authentication
+  // 프로필 색상 옵션
+  const colorOptions = [
+    '#3B82F6', // 파랑
+    '#EF4444', // 빨강
+    '#10B981', // 초록
+    '#F59E0B', // 주황
+    '#8B5CF6', // 보라
+    '#EC4899', // 핑크
+    '#06B6D4', // 청록
+    '#84CC16', // 라임
+    '#F97316', // 오렌지
+    '#6366F1', // 인디고
+  ];
+
   useEffect(() => {
     if (!isAuthenticated) {
       router.push('/login');
@@ -40,56 +41,56 @@ export default function ProfilePage() {
     if (user) {
       setFormData({
         name: user.name || '',
+        email: user.email || '',
+        organization: (user as any).organization || '',
         profileColor: user.profileColor || '#3B82F6',
       });
     }
   }, [isAuthenticated, user, router]);
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleInputChange = (field: string, value: string) => {
+    setFormData(prev => ({
+      ...prev,
+      [field]: value,
+    }));
+  };
 
-    if (!formData.name.trim()) {
-      alert('이름을 입력해주세요.');
-      return;
-    }
-
+  const handleSave = async () => {
+    setIsSaving(true);
     try {
-      setLoading(true);
-      const updatedUser = await authApi.updateProfile(
-        formData.name.trim(),
-        user?.profileImage,
-        formData.profileColor
-      );
+      // TODO: API 호출로 사용자 정보 업데이트
+      console.log('Saving profile data:', formData);
 
-      setUser(updatedUser);
-      alert('프로필이 성공적으로 업데이트되었습니다.');
+      // 임시로 로컬 스토리지 업데이트
+      const updatedUser = { ...user, ...formData };
+      localStorage.setItem('auth-user', JSON.stringify(updatedUser));
+
+      setIsEditing(false);
+      alert('프로필이 성공적으로 업데이트되었습니다!');
     } catch (error) {
       console.error('Failed to update profile:', error);
-      alert('프로필 업데이트에 실패했습니다. 다시 시도해주세요.');
+      alert('프로필 업데이트에 실패했습니다.');
     } finally {
-      setLoading(false);
+      setIsSaving(false);
     }
   };
 
-  const handleColorSelect = (color: string) => {
-    setFormData(prev => ({ ...prev, profileColor: color }));
+  const handleCancel = () => {
+    if (user) {
+      setFormData({
+        name: user.name || '',
+        email: user.email || '',
+        organization: (user as any).organization || '',
+        profileColor: user.profileColor || '#3B82F6',
+      });
+    }
+    setIsEditing(false);
   };
-
-  if (!isAuthenticated || !user) {
-    return (
-      <div className='min-h-screen bg-gray-50 flex items-center justify-center'>
-        <div className='text-center'>
-          <div className='animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-4'></div>
-          <p className='text-gray-500'>로딩 중...</p>
-        </div>
-      </div>
-    );
-  }
 
   return (
     <div className='min-h-screen bg-gray-50'>
-      <div className='max-w-2xl mx-auto py-8 px-4'>
-        {/* Header */}
+      <div className='max-w-4xl mx-auto py-8 px-4'>
+        {/* 헤더 */}
         <div className='flex items-center gap-4 mb-8'>
           <button
             onClick={() => router.back()}
@@ -97,97 +98,152 @@ export default function ProfilePage() {
           >
             <ArrowLeft className='w-5 h-5' />
           </button>
-          <h1 className='text-2xl font-bold text-gray-900'>프로필 설정</h1>
+          <div>
+            <h1 className='text-2xl font-bold text-gray-900'>내 정보</h1>
+            <p className='text-gray-600'>프로필 정보를 관리하세요</p>
+          </div>
         </div>
 
-        {/* Profile Form */}
-        <div className='bg-white rounded-lg shadow-sm border border-gray-200 p-6'>
-          <form onSubmit={handleSubmit} className='space-y-6'>
-            {/* Profile Preview */}
-            <div className='flex items-center gap-4 p-4 bg-gray-50 rounded-lg'>
-              <div
-                className='w-16 h-16 rounded-full flex items-center justify-center text-white text-xl font-medium'
-                style={{ backgroundColor: formData.profileColor }}
-              >
-                {formData.name.charAt(0) || user.name?.charAt(0) || 'U'}
-              </div>
-              <div>
-                <h3 className='font-medium text-gray-900'>
-                  {formData.name || user.name || '사용자'}
-                </h3>
-                <p className='text-sm text-gray-500'>{user.email}</p>
-              </div>
-            </div>
-
-            {/* Name Field */}
-            <div>
-              <label className='block text-sm font-medium text-gray-700 mb-2'>
-                <User className='w-4 h-4 inline mr-2' />
-                이름
-              </label>
-              <input
-                type='text'
-                value={formData.name}
-                onChange={e => setFormData(prev => ({ ...prev, name: e.target.value }))}
-                className='w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent'
-                placeholder='이름을 입력하세요'
-                required
-              />
-            </div>
-
-            {/* Color Selection */}
-            <div>
-              <label className='block text-sm font-medium text-gray-700 mb-3'>
-                <Palette className='w-4 h-4 inline mr-2' />
-                프로필 색상
-              </label>
-              <div className='grid grid-cols-6 gap-3'>
-                {PROFILE_COLORS.map(color => (
-                  <button
-                    key={color}
-                    type='button'
-                    onClick={() => handleColorSelect(color)}
-                    className={`w-12 h-12 rounded-full border-2 transition-all hover:scale-110 ${
-                      formData.profileColor === color
-                        ? 'border-gray-400 ring-2 ring-blue-500 ring-offset-2'
-                        : 'border-gray-200 hover:border-gray-300'
-                    }`}
-                    style={{ backgroundColor: color }}
-                    title={`색상: ${color}`}
-                  />
-                ))}
-              </div>
-              <p className='text-xs text-gray-500 mt-2'>
-                선택한 색상은 프로필 아바타와 태스크 카드에서 사용됩니다.
-              </p>
-            </div>
-
-            {/* Submit Button */}
-            <div className='flex justify-end pt-4'>
-              <button
-                type='submit'
-                disabled={loading}
-                className='inline-flex items-center gap-2 px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors'
-              >
-                {loading ? (
-                  <div className='animate-spin rounded-full h-4 w-4 border-b-2 border-white' />
-                ) : (
-                  <Save className='w-4 h-4' />
+        <div className='grid grid-cols-1 lg:grid-cols-3 gap-8'>
+          {/* 프로필 카드 */}
+          <div className='lg:col-span-1'>
+            <div className='bg-white rounded-lg shadow-sm border border-gray-200 p-6'>
+              <div className='text-center'>
+                <div
+                  className='w-24 h-24 rounded-full mx-auto mb-4 flex items-center justify-center text-white text-2xl font-bold'
+                  style={{ backgroundColor: formData.profileColor }}
+                >
+                  {formData.name?.charAt(0) || 'U'}
+                </div>
+                <h3 className='text-lg font-semibold text-gray-900'>{formData.name || '사용자'}</h3>
+                <p className='text-gray-600'>{formData.email}</p>
+                {formData.organization && (
+                  <p className='text-sm text-gray-500 mt-1'>{formData.organization}</p>
                 )}
-                {loading ? '저장 중...' : '저장'}
-              </button>
-            </div>
-          </form>
-        </div>
+              </div>
 
-        {/* Additional Info */}
-        <div className='mt-6 p-4 bg-blue-50 rounded-lg'>
-          <h3 className='font-medium text-blue-900 mb-2'>프로필 색상 정보</h3>
-          <ul className='text-sm text-blue-700 space-y-1'>
-            <li>• 선택한 색상은 대시보드의 프로필 아바타에 적용됩니다</li>
-            <li>• 태스크 카드에서 담당자 표시에도 사용됩니다</li>
-            <li>• 팀원들이 쉽게 구분할 수 있도록 도와줍니다</li>
-          </ul>
+              {/* 프로필 색상 선택 */}
+              {isEditing && (
+                <div className='mt-6'>
+                  <label className='block text-sm font-medium text-gray-700 mb-3'>
+                    프로필 색상
+                  </label>
+                  <div className='grid grid-cols-5 gap-2'>
+                    {colorOptions.map(color => (
+                      <button
+                        key={color}
+                        onClick={() => handleInputChange('profileColor', color)}
+                        className={`w-8 h-8 rounded-full border-2 transition-all ${
+                          formData.profileColor === color
+                            ? 'border-gray-400 scale-110'
+                            : 'border-gray-200 hover:border-gray-300'
+                        }`}
+                        style={{ backgroundColor: color }}
+                      />
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* 정보 편집 폼 */}
+          <div className='lg:col-span-2'>
+            <div className='bg-white rounded-lg shadow-sm border border-gray-200 p-6'>
+              <div className='flex items-center justify-between mb-6'>
+                <h2 className='text-lg font-semibold text-gray-900'>개인 정보</h2>
+                {!isEditing ? (
+                  <Button onClick={() => setIsEditing(true)} variant='outline'>
+                    편집
+                  </Button>
+                ) : (
+                  <div className='flex gap-2'>
+                    <Button onClick={handleCancel} variant='outline'>
+                      취소
+                    </Button>
+                    <Button onClick={handleSave} disabled={isSaving}>
+                      {isSaving ? (
+                        <>
+                          <div className='animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2'></div>
+                          저장 중...
+                        </>
+                      ) : (
+                        <>
+                          <Save className='w-4 h-4 mr-2' />
+                          저장
+                        </>
+                      )}
+                    </Button>
+                  </div>
+                )}
+              </div>
+
+              <div className='space-y-6'>
+                {/* 이름 */}
+                <div>
+                  <label className='flex items-center gap-2 text-sm font-medium text-gray-700 mb-2'>
+                    <User className='w-4 h-4' />
+                    이름
+                  </label>
+                  {isEditing ? (
+                    <input
+                      type='text'
+                      value={formData.name}
+                      onChange={e => handleInputChange('name', e.target.value)}
+                      className='w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500'
+                      placeholder='이름을 입력하세요'
+                    />
+                  ) : (
+                    <div className='px-3 py-2 bg-gray-50 border border-gray-200 rounded-lg text-gray-900'>
+                      {formData.name || '이름이 설정되지 않았습니다'}
+                    </div>
+                  )}
+                </div>
+
+                {/* 이메일 */}
+                <div>
+                  <label className='flex items-center gap-2 text-sm font-medium text-gray-700 mb-2'>
+                    <Mail className='w-4 h-4' />
+                    이메일
+                  </label>
+                  {isEditing ? (
+                    <input
+                      type='email'
+                      value={formData.email}
+                      onChange={e => handleInputChange('email', e.target.value)}
+                      className='w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500'
+                      placeholder='이메일을 입력하세요'
+                    />
+                  ) : (
+                    <div className='px-3 py-2 bg-gray-50 border border-gray-200 rounded-lg text-gray-900'>
+                      {formData.email || '이메일이 설정되지 않았습니다'}
+                    </div>
+                  )}
+                </div>
+
+                {/* 소속 */}
+                <div>
+                  <label className='flex items-center gap-2 text-sm font-medium text-gray-700 mb-2'>
+                    <Building className='w-4 h-4' />
+                    소속
+                  </label>
+                  {isEditing ? (
+                    <input
+                      type='text'
+                      value={formData.organization}
+                      onChange={e => handleInputChange('organization', e.target.value)}
+                      className='w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500'
+                      placeholder='소속을 입력하세요 (선택사항)'
+                    />
+                  ) : (
+                    <div className='px-3 py-2 bg-gray-50 border border-gray-200 rounded-lg text-gray-900'>
+                      {formData.organization || '소속이 설정되지 않았습니다'}
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+          </div>
         </div>
       </div>
     </div>

@@ -89,6 +89,7 @@ export class ProjectController {
         @Param('id', ParseUUIDPipe) id: string,
         @User() user: AuthenticatedUser,
     ): Promise<ProjectResponseDto> {
+        console.log('getProjectById', id, user.id);
         const query = new GetProjectQuery(id, user.id);
         const result = await this.getProjectUseCase.execute(query);
 

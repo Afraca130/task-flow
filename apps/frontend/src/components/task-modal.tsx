@@ -11,16 +11,24 @@ interface TaskModalProps {
   onClose: () => void;
   onSave: (task: Partial<Task>) => void;
   onDelete?: (taskId: string) => void;
+  currentProjectId?: string;
 }
 
-export function TaskModal({ task, projects, onClose, onSave, onDelete }: TaskModalProps) {
+export function TaskModal({
+  task,
+  projects,
+  onClose,
+  onSave,
+  onDelete,
+  currentProjectId,
+}: TaskModalProps) {
   const { user } = useAuthStore();
   const [formData, setFormData] = useState({
     title: task?.title || '',
     description: task?.description || '',
     status: (task?.status || 'TODO') as 'TODO' | 'IN_PROGRESS' | 'COMPLETED',
     priority: (task?.priority || 'MEDIUM') as 'LOW' | 'MEDIUM' | 'HIGH' | 'URGENT',
-    projectId: task?.projectId || projects[0]?.id || '',
+    projectId: task?.projectId || currentProjectId || projects[0]?.id || '',
     assigneeId: task?.assigneeId || user?.id || '',
     dueDate: task?.dueDate ? task.dueDate.split('T')[0] : '',
     estimatedHours: task?.estimatedHours?.toString() || '',
@@ -266,26 +274,27 @@ export function TaskModal({ task, projects, onClose, onSave, onDelete }: TaskMod
 
               <div>
                 <label className='block text-sm font-medium text-gray-700 mb-2'>프로젝트 *</label>
-                <select
-                  required
-                  value={formData.projectId}
-                  onChange={e => setFormData({ ...formData, projectId: e.target.value })}
-                  disabled={isEditMode}
-                  className={`w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 ${
-                    isEditMode ? 'bg-gray-100 text-gray-600 cursor-not-allowed' : ''
-                  }`}
-                >
-                  <option value=''>프로젝트를 선택하세요</option>
-                  {projects.map(project => (
-                    <option key={project.id} value={project.id}>
-                      {project.name}
-                    </option>
-                  ))}
-                </select>
-                {isEditMode && (
-                  <p className='text-xs text-gray-500 mt-1'>
-                    수정 시에는 프로젝트를 변경할 수 없습니다.
-                  </p>
+                {currentProjectId ? (
+                  <input
+                    type='text'
+                    value={projects.find(p => p.id === formData.projectId)?.name || ''}
+                    disabled
+                    className='w-full px-3 py-2 border border-gray-300 rounded-lg bg-gray-100 text-gray-600 cursor-not-allowed'
+                  />
+                ) : (
+                  <select
+                    required
+                    value={formData.projectId}
+                    onChange={e => setFormData({ ...formData, projectId: e.target.value })}
+                    className='w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500'
+                  >
+                    <option value=''>프로젝트를 선택하세요</option>
+                    {projects.map(project => (
+                      <option key={project.id} value={project.id}>
+                        {project.name}
+                      </option>
+                    ))}
+                  </select>
                 )}
               </div>
 

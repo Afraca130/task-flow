@@ -97,8 +97,10 @@ export class ProjectRepository implements ProjectRepositoryPort {
         // Get total count
         const total = await queryBuilder.getCount();
 
-        // Apply pagination and get results
+        // Apply pagination and get results with relations
         const projects = await queryBuilder
+            .leftJoinAndSelect('project.members', 'projectMember')
+            .leftJoinAndSelect('project.tasks', 'projectTask')
             .skip(skip)
             .take(limit)
             .orderBy('project.updatedAt', 'DESC')
@@ -157,6 +159,6 @@ export class ProjectRepository implements ProjectRepositoryPort {
                 '(project.ownerId = :userId OR project.createdBy = :userId OR member.userId = :userId)',
                 { userId }
             )
-            .distinct(true);
+            .groupBy('project.id');
     }
 }

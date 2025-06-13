@@ -2,8 +2,10 @@ import { Module } from '@nestjs/common';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { APP_FILTER, APP_GUARD, APP_INTERCEPTOR } from '@nestjs/core';
 import { JwtModule } from '@nestjs/jwt';
+import { MongooseModule } from '@nestjs/mongoose';
 import { PassportModule } from '@nestjs/passport';
 import { TypeOrmModule } from '@nestjs/typeorm';
+import { ActivityLogService } from './application/services/activity-log.service';
 import { AppService } from './application/services/app.service';
 import { AuthService } from './application/services/auth.service';
 import { UserLogService } from './application/services/user-log.service';
@@ -26,6 +28,7 @@ import { Project } from './domain/entities/project.entity';
 import { Task } from './domain/entities/task.entity';
 import { UserLog } from './domain/entities/user-log.entity';
 import { User } from './domain/entities/user.entity';
+import { ActivityLogRepository } from './infrastructure/adapters/repositories/activity-log.repository';
 import { ProjectInvitationRepository } from './infrastructure/adapters/repositories/project-invitation.repository';
 import { ProjectRepository } from './infrastructure/adapters/repositories/project.repository';
 import { TaskRepository } from './infrastructure/adapters/repositories/task.repository';
@@ -35,6 +38,8 @@ import { AppConfig } from './infrastructure/config/app.config';
 import { DatabaseConfig } from './infrastructure/config/database.config';
 import { JwtStrategy } from './infrastructure/config/jwt.strategy';
 import { LoggingConfigService } from './infrastructure/config/logging.config';
+import { MongoDBConfig } from './infrastructure/config/mongodb.config';
+import { ActivityLogController } from './presentation/controllers/activity-log.controller';
 import { AppController } from './presentation/controllers/app.controller';
 import { AuthController } from './presentation/controllers/auth.controller';
 import { CommentController } from './presentation/controllers/comment.controller';
@@ -66,6 +71,13 @@ import { JwtConfigService } from './shared/config/jwt.config';
       inject: [ConfigService],
     }),
 
+    // MongoDB 설정
+    MongooseModule.forRootAsync({
+      imports: [ConfigModule],
+      useClass: MongoDBConfig,
+      inject: [ConfigService],
+    }),
+
     // TypeORM 엔터티 등록
     TypeOrmModule.forFeature([
       User,
@@ -73,8 +85,8 @@ import { JwtConfigService } from './shared/config/jwt.config';
       ProjectMember,
       Task,
       Comment,
-      ActivityLog,
       Notification,
+      ActivityLog,
       ProjectInvitation,
       UserLog
     ]),
@@ -105,6 +117,7 @@ import { JwtConfigService } from './shared/config/jwt.config';
     UserLogController,
     InvitationController,
     ProjectController,
+    ActivityLogController,
   ],
   providers: [
     // Configuration Services
@@ -116,6 +129,7 @@ import { JwtConfigService } from './shared/config/jwt.config';
     AppService,
     AuthService,
     UserLogService,
+    ActivityLogService,
 
     // Use Cases
     CreateInvitationUseCase,
@@ -201,6 +215,10 @@ import { JwtConfigService } from './shared/config/jwt.config';
     {
       provide: APP_INTERCEPTOR,
       useClass: LoggingInterceptor,
+    },
+    {
+      provide: 'ActivityLogRepositoryPort',
+      useClass: ActivityLogRepository,
     },
   ],
 })

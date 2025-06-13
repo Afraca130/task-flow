@@ -617,4 +617,9 @@ export const userLogsApi = {
   },
 };
 
+// Utility function to safely get lexoRank
+export const safeLexoRank = (task: Task): string => {
+  return task.lexoRank ?? 'U';
+};
+
 export default api;

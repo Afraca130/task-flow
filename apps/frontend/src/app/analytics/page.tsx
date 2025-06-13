@@ -1,30 +1,26 @@
 'use client';
 
 import { NotificationBell } from '@/components/notifications/notification-bell';
-import { activityLogsApi, projectsApi, Task, tasksApi } from '@/lib/api';
+import { activityLogsApi, projectsApi, tasksApi } from '@/lib/api';
 import { useAuthStore } from '@/store/auth';
 import { useProjectsStore } from '@/store/projects';
 import {
   Activity,
   ArrowRight,
-  BarChart3,
   Calendar,
   ChevronDown,
-  FileText,
   FolderOpen,
   HelpCircle,
   List,
   Mail,
   Menu,
-  Play,
   Search,
   Settings,
   TrendingUp,
-  UserCheck,
   Users,
 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useState } from 'react';
 import {
   Bar,
   BarChart,
@@ -38,43 +34,25 @@ import {
   YAxis,
 } from 'recharts';
 
-// 사용자별 색상 생성 함수
-const getUserColor = (userId: string) => {
-  const colors = [
-    '#3B82F6', // blue
-    '#10B981', // emerald
-    '#F59E0B', // amber
-    '#EF4444', // red
-    '#8B5CF6', // violet
-    '#06B6D4', // cyan
-    '#84CC16', // lime
-    '#F97316', // orange
-    '#EC4899', // pink
-    '#6366F1', // indigo
-  ];
-
-  let hash = 0;
-  for (let i = 0; i < userId.length; i++) {
-    const char = userId.charCodeAt(i);
-    hash = (hash << 5) - hash + char;
-    hash = hash & hash;
-  }
-
-  return colors[Math.abs(hash) % colors.length];
-};
-
-const getUserColorStyle = (user: any) => {
-  if (user?.profileColor) {
-    return { backgroundColor: user.profileColor };
-  }
-  return { backgroundColor: user?.id ? getUserColor(user.id) : '#3B82F6' };
-};
+interface UserTaskStats {
+  userId: string;
+  userName: string;
+  userEmail: string;
+  todoCount: number;
+  inProgressCount: number;
+  completedCount: number;
+  totalTasks: number;
+  completionRate: number;
+}
 
 interface MemberPerformance {
   userId: string;
   userName: string;
   userColor: string;
-  dailyTasks: { date: string; count: number }[];
+  dailyTasks: Array<{
+    date: string;
+    count: number;
+  }>;
   totalCompleted: number;
 }
 
@@ -93,14 +71,15 @@ interface ActivityLogItem {
 
 export default function AnalyticsPage() {
   const router = useRouter();
-  const { user, isAuthenticated } = useAuthStore();
+  const { isAuthenticated, user } = useAuthStore();
   const { projects, setProjects } = useProjectsStore();
-  const [tasks, setTasks] = useState<Task[]>([]);
-  const [activityLogs, setActivityLogs] = useState<ActivityLogItem[]>([]);
-  const [loading, setLoading] = useState(true);
   const [selectedProjectId, setSelectedProjectId] = useState<string>('all');
+  const [loading, setLoading] = useState(true);
+  const [dateRange, setDateRange] = useState<number>(7);
+  const [memberPerformanceData, setMemberPerformanceData] = useState<MemberPerformance[]>([]);
+  const [userTaskStats, setUserTaskStats] = useState<UserTaskStats[]>([]);
+  const [activityLogs, setActivityLogs] = useState<ActivityLogItem[]>([]);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
-  const [dateRange, setDateRange] = useState(30); // 기본 30일
 
   // Check authentication
   useEffect(() => {
@@ -128,40 +107,50 @@ export default function AnalyticsPage() {
     loadProjects();
   }, [isAuthenticated, setProjects]);
 
-  // Load data
+  // Load data when project selection changes
   useEffect(() => {
-    if (!isAuthenticated) return;
-    loadData();
-  }, [isAuthenticated, selectedProjectId, dateRange]);
+    if (projects.length > 0) {
+      loadData();
+    }
+  }, [selectedProjectId, projects]);
 
   const loadData = async () => {
+    setLoading(true);
     try {
-      setLoading(true);
-
-      // Load tasks
-      let allTasks: Task[] = [];
-      if (selectedProjectId === 'all') {
-        const result = await tasksApi.getTasks({ limit: 1000 });
-        allTasks = result.data || [];
-      } else {
-        allTasks = await tasksApi.getTasksByProject(selectedProjectId);
-      }
-
-      // Filter tasks by date range
-      const cutoffDate = new Date();
-      cutoffDate.setDate(cutoffDate.getDate() - dateRange);
-      const filteredTasks = allTasks.filter(task => {
-        const taskDate = new Date(task.updatedAt);
-        return taskDate >= cutoffDate;
-      });
-
-      setTasks(filteredTasks);
-
       // Load activity logs
       const logs = await activityLogsApi.getActivityLogs(
-        selectedProjectId === 'all' ? undefined : selectedProjectId
+        selectedProjectId !== 'all' ? selectedProjectId : undefined
       );
-      setActivityLogs(logs.slice(0, 10)); // 최근 10개만
+      setActivityLogs(logs);
+
+      // Load user task statistics
+      await loadUserTaskStats();
+
+      // Load member performance data
+      const performanceData = await Promise.all(
+        projects.map(async project => {
+          const tasks = await tasksApi.getTasksByProject(project.id);
+          const completedTasks = tasks.filter(task => task.status === 'COMPLETED');
+          const dailyTasks = completedTasks.reduce((acc: Record<string, number>, task) => {
+            const date = new Date(task.updatedAt).toLocaleDateString();
+            acc[date] = (acc[date] || 0) + 1;
+            return acc;
+          }, {});
+
+          return {
+            userId: project.ownerId,
+            userName: project.owner?.name || 'Unknown User',
+            userColor: `#${Math.floor(Math.random() * 16777215).toString(16)}`,
+            dailyTasks: Object.entries(dailyTasks).map(([date, count]) => ({
+              date,
+              count: count as number,
+            })),
+            totalCompleted: completedTasks.length,
+          };
+        })
+      );
+
+      setMemberPerformanceData(performanceData);
     } catch (error) {
       console.error('Failed to load data:', error);
     } finally {
@@ -169,83 +158,64 @@ export default function AnalyticsPage() {
     }
   };
 
-  // 멤버별 성과 데이터 계산
-  const memberPerformanceData = useMemo(() => {
-    const memberMap = new Map<string, MemberPerformance>();
+  const loadUserTaskStats = async () => {
+    try {
+      // Get all tasks
+      const allTasks =
+        selectedProjectId === 'all'
+          ? await Promise.all(projects.map(p => tasksApi.getTasksByProject(p.id))).then(results =>
+              results.flat()
+            )
+          : await tasksApi.getTasksByProject(selectedProjectId);
 
-    // 날짜 범위 생성
-    const dates: string[] = [];
-    for (let i = dateRange - 1; i >= 0; i--) {
-      const date = new Date();
-      date.setDate(date.getDate() - i);
-      dates.push(date.toISOString().split('T')[0]);
-    }
+      // Group tasks by user
+      const userTaskMap = new Map<string, { user: any; tasks: any[] }>();
 
-    // 완료된 작업만 필터링
-    const completedTasks = tasks.filter(task => task.status === 'COMPLETED');
-
-    completedTasks.forEach(task => {
-      if (!task.assignee) return;
-
-      const userId = task.assignee.id;
-      const userName = task.assignee.name;
-      const userColor = task.assignee.profileColor || getUserColor(userId);
-      const taskDate = new Date(task.updatedAt).toISOString().split('T')[0];
-
-      if (!memberMap.has(userId)) {
-        memberMap.set(userId, {
-          userId,
-          userName,
-          userColor,
-          dailyTasks: dates.map(date => ({ date, count: 0 })),
-          totalCompleted: 0,
-        });
+      for (const task of allTasks) {
+        if (task.assigneeId && task.assignee) {
+          if (!userTaskMap.has(task.assigneeId)) {
+            userTaskMap.set(task.assigneeId, {
+              user: task.assignee,
+              tasks: [],
+            });
+          }
+          userTaskMap.get(task.assigneeId)!.tasks.push(task);
+        }
       }
 
-      const member = memberMap.get(userId)!;
-      member.totalCompleted++;
+      // Calculate statistics for each user
+      const stats: UserTaskStats[] = Array.from(userTaskMap.entries()).map(
+        ([userId, { user, tasks }]) => {
+          const todoCount = tasks.filter(t => t.status === 'TODO').length;
+          const inProgressCount = tasks.filter(t => t.status === 'IN_PROGRESS').length;
+          const completedCount = tasks.filter(t => t.status === 'COMPLETED').length;
+          const totalTasks = tasks.length;
+          const completionRate =
+            totalTasks > 0 ? Math.round((completedCount / totalTasks) * 100) : 0;
 
-      // 해당 날짜의 작업 수 증가
-      const dayData = member.dailyTasks.find(d => d.date === taskDate);
-      if (dayData) {
-        dayData.count++;
-      }
-    });
+          return {
+            userId,
+            userName: user.name || 'Unknown User',
+            userEmail: user.email || '',
+            todoCount,
+            inProgressCount,
+            completedCount,
+            totalTasks,
+            completionRate,
+          };
+        }
+      );
 
-    return Array.from(memberMap.values());
-  }, [tasks, dateRange]);
-
-  // 라인 차트 데이터 (날짜별 멤버 작업 수)
-  const lineChartData = useMemo(() => {
-    const dates: string[] = [];
-    for (let i = dateRange - 1; i >= 0; i--) {
-      const date = new Date();
-      date.setDate(date.getDate() - i);
-      dates.push(date.toISOString().split('T')[0]);
+      setUserTaskStats(stats.sort((a, b) => b.totalTasks - a.totalTasks));
+    } catch (error) {
+      console.error('Failed to load user task stats:', error);
     }
+  };
 
-    return dates.map(date => {
-      const dataPoint: any = {
-        date: new Date(date).toLocaleDateString('ko-KR', { month: 'short', day: 'numeric' }),
-      };
-
-      memberPerformanceData.forEach(member => {
-        const dayData = member.dailyTasks.find(d => d.date === date);
-        dataPoint[member.userName] = dayData?.count || 0;
-      });
-
-      return dataPoint;
-    });
-  }, [memberPerformanceData, dateRange]);
-
-  // 막대 차트 데이터 (총 누적 수)
-  const barChartData = useMemo(() => {
-    return memberPerformanceData.map(member => ({
-      name: member.userName,
-      total: member.totalCompleted,
-      color: member.userColor,
-    }));
-  }, [memberPerformanceData]);
+  const getUserColorStyle = (user: any) => {
+    if (!user?.profileColor) return { backgroundColor: '#3B82F6' };
+    return { backgroundColor: user.profileColor };
+  };
 
   function NavItem({
     icon,
@@ -271,11 +241,38 @@ export default function AnalyticsPage() {
     if (path.startsWith('/')) {
       router.push(path);
     } else {
-      alert('이 기능은 곧 출시될 예정입니다!');
+      // Handle other navigation cases
+      console.log('Navigation to:', path);
     }
   };
 
   const selectedProject = projects.find(p => p.id === selectedProjectId);
+
+  // Prepare chart data
+  const lineChartData = memberPerformanceData.reduce((acc, member) => {
+    member.dailyTasks.forEach(({ date, count }) => {
+      const existingDate = acc.find(d => d.date === date);
+      if (existingDate) {
+        existingDate[member.userName] = count;
+      } else {
+        acc.push({ date, [member.userName]: count });
+      }
+    });
+    return acc;
+  }, [] as any[]);
+
+  const barChartData = memberPerformanceData.map(member => ({
+    name: member.userName,
+    total: member.totalCompleted,
+  }));
+
+  const handleProjectChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    setSelectedProjectId(e.target.value);
+  };
+
+  const handleDateRangeChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    setDateRange(Number(e.target.value));
+  };
 
   return (
     <div className='min-h-screen bg-gray-50'>
@@ -359,7 +356,7 @@ export default function AnalyticsPage() {
                   />
                   <select
                     value={selectedProjectId}
-                    onChange={e => setSelectedProjectId(e.target.value)}
+                    onChange={handleProjectChange}
                     className='w-full p-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500'
                   >
                     <option value='all'>모든 프로젝트</option>
@@ -379,18 +376,13 @@ export default function AnalyticsPage() {
                 <div className='space-y-1'>
                   <NavItem
                     icon={<Calendar className='w-4 h-4 text-blue-500' />}
-                    label='로드맵'
-                    onClick={() => handleNavigation('roadmap')}
+                    label='캘린더'
+                    onClick={() => handleNavigation('/calendar')}
                   />
                   <NavItem
-                    icon={<List className='w-4 h-4 text-green-500' />}
-                    label='이슈'
-                    onClick={() => handleNavigation('/dashboard')}
-                  />
-                  <NavItem
-                    icon={<Play className='w-4 h-4 text-purple-500' />}
-                    label='백로그'
-                    onClick={() => handleNavigation('backlog')}
+                    icon={<List className='w-4 h-4 text-blue-500' />}
+                    label='작업 목록'
+                    onClick={() => handleNavigation('/tasks')}
                   />
                 </div>
               </div>
@@ -401,14 +393,9 @@ export default function AnalyticsPage() {
                 </div>
                 <div className='space-y-1'>
                   <NavItem
-                    icon={<Users className='w-4 h-4 text-indigo-500' />}
-                    label='사람'
-                    onClick={() => handleNavigation('people')}
-                  />
-                  <NavItem
-                    icon={<UserCheck className='w-4 h-4 text-green-500' yhjfuyfu />}
-                    label='프로젝트 설정'
-                    onClick={() => handleNavigation('/projects')}
+                    icon={<Users className='w-4 h-4 text-blue-500' />}
+                    label='멤버'
+                    onClick={() => handleNavigation('/members')}
                   />
                   <NavItem
                     icon={<Mail className='w-4 h-4 text-blue-500' />}
@@ -424,14 +411,9 @@ export default function AnalyticsPage() {
                 </div>
                 <div className='space-y-1'>
                   <NavItem
-                    icon={<BarChart3 className='w-4 h-4 text-indigo-500' />}
-                    label='분석'
-                    onClick={() => handleNavigation('/analytics')}
-                  />
-                  <NavItem
-                    icon={<FileText className='w-4 h-4 text-violet-500' />}
-                    label='리포트'
-                    onClick={() => handleNavigation('reports')}
+                    icon={<Activity className='w-4 h-4 text-indigo-500' />}
+                    label='활동 로그'
+                    onClick={() => handleNavigation('/reports')}
                   />
                 </div>
               </div>
@@ -454,7 +436,7 @@ export default function AnalyticsPage() {
               <div className='flex items-center gap-4'>
                 <select
                   value={dateRange}
-                  onChange={e => setDateRange(Number(e.target.value))}
+                  onChange={handleDateRangeChange}
                   className='px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500'
                 >
                   <option value={7}>최근 7일</option>
@@ -473,6 +455,137 @@ export default function AnalyticsPage() {
               </div>
             ) : (
               <>
+                {/* 사용자별 작업현황 막대그래프 */}
+                <div className='bg-white rounded-lg border border-gray-200 shadow-sm p-6'>
+                  <div className='flex items-center justify-between mb-6'>
+                    <div>
+                      <h3 className='text-lg font-semibold text-gray-900'>사용자별 작업현황</h3>
+                      <p className='text-sm text-gray-600'>
+                        각 사용자의 할 일, 진행 중, 완료된 작업 현황
+                      </p>
+                    </div>
+                    <Users className='w-5 h-5 text-blue-500' />
+                  </div>
+
+                  {userTaskStats.length > 0 ? (
+                    <div className='h-80'>
+                      <ResponsiveContainer width='100%' height='100%'>
+                        <BarChart
+                          data={userTaskStats}
+                          margin={{ top: 20, right: 30, left: 20, bottom: 5 }}
+                        >
+                          <CartesianGrid strokeDasharray='3 3' />
+                          <XAxis
+                            dataKey='userName'
+                            angle={-45}
+                            textAnchor='end'
+                            height={80}
+                            interval={0}
+                          />
+                          <YAxis />
+                          <Tooltip
+                            formatter={(value, name) => {
+                              const labels = {
+                                todoCount: '할 일',
+                                inProgressCount: '진행 중',
+                                completedCount: '완료',
+                              };
+                              return [value, labels[name as keyof typeof labels] || name];
+                            }}
+                            labelFormatter={label => `사용자: ${label}`}
+                          />
+                          <Legend
+                            formatter={value => {
+                              const labels = {
+                                todoCount: '할 일',
+                                inProgressCount: '진행 중',
+                                completedCount: '완료',
+                              };
+                              return labels[value as keyof typeof labels] || value;
+                            }}
+                          />
+                          <Bar dataKey='todoCount' stackId='a' fill='#FFB3BA' name='todoCount' />
+                          <Bar
+                            dataKey='inProgressCount'
+                            stackId='a'
+                            fill='#FFDFBA'
+                            name='inProgressCount'
+                          />
+                          <Bar
+                            dataKey='completedCount'
+                            stackId='a'
+                            fill='#BAFFC9'
+                            name='completedCount'
+                          />
+                        </BarChart>
+                      </ResponsiveContainer>
+                    </div>
+                  ) : (
+                    <div className='flex items-center justify-center h-40'>
+                      <p className='text-gray-500'>작업이 할당된 사용자가 없습니다.</p>
+                    </div>
+                  )}
+
+                  {/* 사용자별 완료율 테이블 */}
+                  {userTaskStats.length > 0 && (
+                    <div className='mt-6'>
+                      <h4 className='text-md font-medium text-gray-900 mb-4'>사용자별 완료율</h4>
+                      <div className='overflow-x-auto'>
+                        <table className='min-w-full divide-y divide-gray-200'>
+                          <thead className='bg-gray-50'>
+                            <tr>
+                              <th className='px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider'>
+                                사용자
+                              </th>
+                              <th className='px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider'>
+                                총 작업
+                              </th>
+                              <th className='px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider'>
+                                완료
+                              </th>
+                              <th className='px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider'>
+                                완료율
+                              </th>
+                            </tr>
+                          </thead>
+                          <tbody className='bg-white divide-y divide-gray-200'>
+                            {userTaskStats.map(stat => (
+                              <tr key={stat.userId}>
+                                <td className='px-6 py-4 whitespace-nowrap'>
+                                  <div className='flex items-center'>
+                                    <div className='text-sm font-medium text-gray-900'>
+                                      {stat.userName}
+                                    </div>
+                                  </div>
+                                </td>
+                                <td className='px-6 py-4 whitespace-nowrap text-sm text-gray-900'>
+                                  {stat.totalTasks}
+                                </td>
+                                <td className='px-6 py-4 whitespace-nowrap text-sm text-gray-900'>
+                                  {stat.completedCount}
+                                </td>
+                                <td className='px-6 py-4 whitespace-nowrap'>
+                                  <div className='flex items-center'>
+                                    <div className='text-sm text-gray-900 mr-2'>
+                                      {stat.completionRate}%
+                                    </div>
+                                    <div className='w-16 bg-gray-200 rounded-full h-2'>
+                                      <div
+                                        className='bg-green-500 h-2 rounded-full'
+                                        style={{ width: `${stat.completionRate}%` }}
+                                      ></div>
+                                    </div>
+                                  </div>
+                                </td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    </div>
+                  )}
+                </div>
+
                 {/* 멤버별 일일 작업 수행 라인 차트 */}
                 <div className='bg-white rounded-lg border border-gray-200 shadow-sm p-6'>
                   <div className='flex items-center justify-between mb-6'>
@@ -515,7 +628,7 @@ export default function AnalyticsPage() {
                         선택된 기간 동안 각 멤버가 완료한 총 작업 수
                       </p>
                     </div>
-                    <Users className='w-5 h-5 text-green-500' />
+                    <Users className='w-5 h-5 text-blue-500' />
                   </div>
 
                   <div className='h-80'>
@@ -579,9 +692,9 @@ export default function AnalyticsPage() {
                           </div>
                         ))}
 
-                        <div className='pt-4 border-t border-gray-200'>
+                        <div className='flex justify-end mt-4'>
                           <button
-                            onClick={() => router.push('/activity-logs')}
+                            onClick={() => router.push('/reports')}
                             className='flex items-center gap-2 text-sm text-blue-600 hover:text-blue-700 font-medium'
                           >
                             모든 활동 보기

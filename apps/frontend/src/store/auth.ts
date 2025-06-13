@@ -140,6 +140,13 @@ class AuthStore {
   };
 
   logout = () => {
+    // Clear localStorage first
+    if (typeof window !== 'undefined') {
+      localStorage.removeItem('auth-token');
+      localStorage.removeItem('auth-user');
+    }
+
+    // Clear state
     this.setState({
       user: null,
       token: null,
@@ -147,10 +154,9 @@ class AuthStore {
       isLoading: false,
     });
 
-    // Clear localStorage
+    // Immediate redirect to prevent any intermediate page rendering
     if (typeof window !== 'undefined') {
-      localStorage.removeItem('auth-token');
-      localStorage.removeItem('auth-user');
+      window.location.replace('/login');
     }
   };
 

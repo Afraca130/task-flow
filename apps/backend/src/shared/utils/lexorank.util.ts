@@ -306,7 +306,7 @@ export class LexoRankUtil {
 
         console.log('Filtered and sorted items:', filteredItems.map(item => ({ id: item.id, rank: item.lexoRank })));
 
-        // 첫 번째 아이템인 경우
+        // 첫 번째 아이템인 경우 또는 newIndex가 0인 경우
         if (filteredItems.length === 0 || newIndex === 0) {
             if (filteredItems.length === 0) {
                 console.log('No items, returning initial rank');
@@ -319,12 +319,8 @@ export class LexoRankUtil {
             return newRank;
         }
 
-        // 인덱스 범위 검증 및 조정
-        const safeIndex = Math.min(newIndex, filteredItems.length);
-        console.log('Safe index:', safeIndex, 'of', filteredItems.length);
-
-        // 마지막 위치인 경우
-        if (safeIndex >= filteredItems.length) {
+        // 마지막 위치인 경우 (newIndex가 filteredItems.length 이상)
+        if (newIndex >= filteredItems.length) {
             const lastRank = LexoRank.parse(filteredItems[filteredItems.length - 1].lexoRank);
             const newRank = LexoRank.between(lastRank, null).getValue();
             console.log('Moving to end, new rank:', newRank);
@@ -332,14 +328,38 @@ export class LexoRankUtil {
         }
 
         // 중간에 삽입하는 경우
-        const prevRank = LexoRank.parse(filteredItems[safeIndex - 1].lexoRank);
-        const nextRank = LexoRank.parse(filteredItems[safeIndex].lexoRank);
+        // newIndex가 1이면 첫 번째와 두 번째 사이
+        // newIndex가 2이면 두 번째와 세 번째 사이
+        const prevIndex = newIndex - 1;
+        const nextIndex = newIndex;
+
+        // 배열 접근 안전성 확인
+        if (prevIndex < 0 || nextIndex >= filteredItems.length) {
+            console.warn('Invalid array access, using fallback');
+
+            if (prevIndex < 0) {
+                // 맨 앞에 삽입
+                const firstRank = LexoRank.parse(filteredItems[0].lexoRank);
+                const newRank = LexoRank.between(null, firstRank).getValue();
+                console.log('Fallback to front, new rank:', newRank);
+                return newRank;
+            } else {
+                // 맨 뒤에 삽입
+                const lastRank = LexoRank.parse(filteredItems[filteredItems.length - 1].lexoRank);
+                const newRank = LexoRank.between(lastRank, null).getValue();
+                console.log('Fallback to end, new rank:', newRank);
+                return newRank;
+            }
+        }
+
+        const prevRank = LexoRank.parse(filteredItems[prevIndex].lexoRank);
+        const nextRank = LexoRank.parse(filteredItems[nextIndex].lexoRank);
 
         console.log('Between ranks:', {
             prev: prevRank.getValue(),
             next: nextRank.getValue(),
-            prevIndex: safeIndex - 1,
-            nextIndex: safeIndex
+            prevIndex,
+            nextIndex
         });
 
         // 순서 검증
@@ -347,17 +367,9 @@ export class LexoRankUtil {
             console.warn('Invalid order detected, regenerating all ranks');
             // 전체 순서 재생성
             const newRanks = LexoRank.generateRanks(filteredItems.length + 1);
+            const safeIndex = Math.max(0, Math.min(newIndex, newRanks.length - 1));
             const newRank = newRanks[safeIndex].getValue();
             console.log('Generated new rank from regeneration:', newRank);
-            return newRank;
-        }
-
-        // 같은 rank 검증
-        if (prevRank.getValue() === nextRank.getValue()) {
-            console.warn('Same ranks detected, regenerating all ranks');
-            const newRanks = LexoRank.generateRanks(filteredItems.length + 1);
-            const newRank = newRanks[safeIndex].getValue();
-            console.log('Generated new rank from same rank fix:', newRank);
             return newRank;
         }
 
@@ -370,6 +382,7 @@ export class LexoRankUtil {
             if (newRank <= prevRank.getValue() || newRank >= nextRank.getValue()) {
                 console.warn('Generated rank is out of bounds, regenerating');
                 const newRanks = LexoRank.generateRanks(filteredItems.length + 1);
+                const safeIndex = Math.max(0, Math.min(newIndex, newRanks.length - 1));
                 const fallbackRank = newRanks[safeIndex].getValue();
                 console.log('Using fallback rank:', fallbackRank);
                 return fallbackRank;
@@ -380,6 +393,7 @@ export class LexoRankUtil {
             console.error('Error generating between rank:', error);
             // 에러 발생 시 전체 재생성
             const newRanks = LexoRank.generateRanks(filteredItems.length + 1);
+            const safeIndex = Math.max(0, Math.min(newIndex, newRanks.length - 1));
             const fallbackRank = newRanks[safeIndex].getValue();
             console.log('Using error fallback rank:', fallbackRank);
             return fallbackRank;

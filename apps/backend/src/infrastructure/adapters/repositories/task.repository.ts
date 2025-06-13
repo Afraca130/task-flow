@@ -30,7 +30,7 @@ export class TaskRepository implements TaskRepositoryPort {
             return await this.taskRepository.find({
                 where: { projectId },
                 relations: ['assignee', 'assigner', 'project'],
-                order: { createdAt: 'DESC' },
+                order: { lexoRank: 'ASC' },
             });
         } catch (error) {
             this.logger.error(`Failed to find tasks by project id: ${projectId}`, error);
@@ -169,7 +169,6 @@ export class TaskRepository implements TaskRepositoryPort {
         search?: string;
         page?: number;
         limit?: number;
-        lexoRank?: string;
     }): Promise<{ tasks: Task[]; total: number }> {
         try {
             const queryBuilder = this.taskRepository.createQueryBuilder('task')
@@ -205,9 +204,9 @@ export class TaskRepository implements TaskRepositoryPort {
                 const offset = (filters.page - 1) * filters.limit;
                 queryBuilder.skip(offset).take(filters.limit);
             }
-
             // Order by creation date
-            queryBuilder.orderBy('task.lexoRank', 'DESC');
+            queryBuilder.orderBy('task.createdAt', 'DESC');
+
 
             const tasks = await queryBuilder.getMany();
 
