@@ -6,7 +6,7 @@ import { ConfigService } from '@nestjs/config';
  */
 @Injectable()
 export class AppConfig {
-  constructor(private readonly configService: ConfigService) {}
+  constructor(private readonly configService: ConfigService) { }
 
   // 애플리케이션 설정
   get nodeEnv(): string {
@@ -81,7 +81,7 @@ export class AppConfig {
   public validateRequiredEnvVars(): void {
     const requiredVars = [
       'DB_HOST',
-      'DB_PORT', 
+      'DB_PORT',
       'DB_USERNAME',
       'DB_PASSWORD',
       'DB_DATABASE',
@@ -126,4 +126,4 @@ export class AppConfig {
       },
     };
   }
-} 
+}
