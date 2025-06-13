@@ -1,12 +1,22 @@
 import axios from 'axios';
 
 // API 기본 설정
+const getBaseURL = () => {
+  // 프로덕션 환경에서는 프록시를 통해 연결
+  if (typeof window !== 'undefined' && window.location.origin.includes('vercel.app')) {
+    return '/api';
+  }
+  // 로컬 개발 환경
+  return (process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001') + '/api';
+};
+
 const api = axios.create({
-  baseURL: (process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001') + '/api',
-  timeout: 10000,
+  baseURL: getBaseURL(),
+  timeout: 15000,
   headers: {
     'Content-Type': 'application/json',
   },
+  withCredentials: false, // CORS 이슈 방지
 });
 
 // 통합 에러 처리 클래스

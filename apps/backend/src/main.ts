@@ -36,10 +36,26 @@ async function bootstrap(): Promise<void> {
 
     // CORS 설정
     app.enableCors({
-      origin: process.env.FRONTEND_URL || 'http://localhost:3000',
+      origin: [
+        'http://localhost:3000',
+        'http://127.0.0.1:3000',
+        'https://taskflow-frontend.vercel.app',
+        /\.vercel\.app$/,
+        /^https:\/\/.*\.vercel\.app$/,
+        process.env.FRONTEND_URL
+      ].filter(Boolean),
       credentials: true,
       methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
-      allowedHeaders: ['Content-Type', 'Authorization', 'Accept'],
+      allowedHeaders: [
+        'Content-Type',
+        'Authorization',
+        'Accept',
+        'Origin',
+        'X-Requested-With',
+        'Access-Control-Allow-Origin',
+        'Access-Control-Allow-Credentials'
+      ],
+      optionsSuccessStatus: 200
     });
 
     // 보안 헤더 설정
