@@ -12,6 +12,7 @@ interface TaskModalProps {
   onSave: (task: Partial<Task>) => void;
   onDelete?: (taskId: string) => void;
   currentProjectId?: string;
+  fixedProjectId?: string;
 }
 
 export function TaskModal({
