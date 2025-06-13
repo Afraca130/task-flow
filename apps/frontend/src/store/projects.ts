@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 interface ProjectsState {
   projects: Project[];
   currentProject: Project | null;
+  selectedProjectId: string | null;
   members: ProjectMember[];
   tasks: Task[];
   isLoading: boolean;
@@ -14,6 +15,7 @@ class ProjectsStore {
   private state: ProjectsState = {
     projects: [],
     currentProject: null,
+    selectedProjectId: null,
     members: [],
     tasks: [],
     isLoading: false,
@@ -75,6 +77,21 @@ class ProjectsStore {
 
   setCurrentProject = (project: Project | null) => {
     this.setState({ currentProject: project });
+  };
+
+  setSelectedProjectId = (projectId: string | null) => {
+    this.setState({ selectedProjectId: projectId });
+    // Save to localStorage
+    if (projectId) {
+      localStorage.setItem('selectedProjectId', projectId);
+    } else {
+      localStorage.removeItem('selectedProjectId');
+    }
+  };
+
+  getSelectedProjectId = (): string | null => {
+    if (typeof window === 'undefined') return null;
+    return localStorage.getItem('selectedProjectId');
   };
 
   // Member actions
@@ -166,6 +183,7 @@ class ProjectsStore {
     this.setState({
       projects: [],
       currentProject: null,
+      selectedProjectId: null,
       members: [],
       tasks: [],
       isLoading: false,
@@ -196,6 +214,8 @@ export const useProjectsStore = () => {
     updateProject: projectsStore.updateProject,
     deleteProject: projectsStore.deleteProject,
     setCurrentProject: projectsStore.setCurrentProject,
+    setSelectedProjectId: projectsStore.setSelectedProjectId,
+    getSelectedProjectId: projectsStore.getSelectedProjectId,
     setMembers: projectsStore.setMembers,
     addMember: projectsStore.addMember,
     updateMember: projectsStore.updateMember,

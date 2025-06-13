@@ -329,27 +329,37 @@ export default function DashboardPage() {
         const urlParams = new URLSearchParams(window.location.search);
         const projectIdFromUrl = urlParams.get('projectId');
 
+        // localStorage에서 마지막으로 선택한 프로젝트 ID 확인
+        const savedProjectId = localStorage.getItem('selectedProjectId');
+
+        let selectedId = '';
+
         if (projectIdFromUrl && projectList.length > 0) {
           // URL에서 지정된 프로젝트가 있으면 선택
           const targetProject = projectList.find(p => p.id === projectIdFromUrl);
           if (targetProject) {
-            setSelectedProjectId(projectIdFromUrl);
-          } else {
-            // 지정된 프로젝트가 없으면 첫 번째 프로젝트 선택하고 URL 업데이트
-            const firstProjectId = projectList[0].id;
-            setSelectedProjectId(firstProjectId);
-            // URL 파라미터 업데이트
-            const newUrl = new URL(window.location.href);
-            newUrl.searchParams.set('projectId', firstProjectId);
-            window.history.replaceState({}, '', newUrl.toString());
+            selectedId = projectIdFromUrl;
           }
-        } else if (projectList.length > 0) {
-          // URL 파라미터가 없으면 첫 번째 프로젝트 선택하고 URL에 추가
-          const firstProjectId = projectList[0].id;
-          setSelectedProjectId(firstProjectId);
-          // URL 파라미터 추가
+        } else if (savedProjectId && projectList.length > 0) {
+          // localStorage에 저장된 프로젝트가 있으면 선택
+          const savedProject = projectList.find(p => p.id === savedProjectId);
+          if (savedProject) {
+            selectedId = savedProjectId;
+          }
+        }
+
+        if (!selectedId && projectList.length > 0) {
+          // 둘 다 없으면 첫 번째 프로젝트 선택
+          selectedId = projectList[0].id;
+        }
+
+        if (selectedId) {
+          setSelectedProjectId(selectedId);
+          // localStorage에 저장
+          localStorage.setItem('selectedProjectId', selectedId);
+          // URL 파라미터 업데이트
           const newUrl = new URL(window.location.href);
-          newUrl.searchParams.set('projectId', firstProjectId);
+          newUrl.searchParams.set('projectId', selectedId);
           window.history.replaceState({}, '', newUrl.toString());
         }
       } catch (error) {

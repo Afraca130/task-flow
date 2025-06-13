@@ -159,6 +159,6 @@ export class ProjectRepository implements ProjectRepositoryPort {
                 '(project.ownerId = :userId OR project.createdBy = :userId OR member.userId = :userId)',
                 { userId }
             )
-            .groupBy('project.id');
+            .distinct(true);
     }
 }

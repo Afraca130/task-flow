@@ -33,6 +33,7 @@ export function TaskModal({
     dueDate: task?.dueDate ? task.dueDate.split('T')[0] : '',
     estimatedHours: task?.estimatedHours?.toString() || '',
     tags: task?.tags?.join(', ') || '',
+    rank: task?.lexoRank || '',
   });
 
   const [projectMembers, setProjectMembers] = useState<any[]>([]);
@@ -118,6 +119,7 @@ export function TaskModal({
             .filter(Boolean)
         : undefined,
       dueDate: formData.dueDate || undefined,
+      lexoRank: formData.rank || undefined,
     };
     onSave(taskData);
   };
@@ -419,6 +421,20 @@ export function TaskModal({
                   value={formData.tags}
                   onChange={e => setFormData({ ...formData, tags: e.target.value })}
                   placeholder='태그를 쉼표로 구분하여 입력하세요 (예: 백엔드, 인증, 보안)'
+                  className='w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500'
+                />
+              </div>
+
+              <div>
+                <label className='block text-sm font-medium text-gray-700 mb-2'>
+                  순서 (Rank)
+                  <span className='text-xs text-gray-500 ml-1'>- 빈 값이면 자동 생성됩니다</span>
+                </label>
+                <input
+                  type='text'
+                  value={formData.rank}
+                  onChange={e => setFormData({ ...formData, rank: e.target.value })}
+                  placeholder='예: A, B, C 또는 1, 2, 3'
                   className='w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500'
                 />
               </div>

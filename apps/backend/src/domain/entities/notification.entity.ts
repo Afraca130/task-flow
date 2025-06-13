@@ -1,8 +1,8 @@
-import { Entity, PrimaryGeneratedColumn, Column, ManyToOne, JoinColumn, CreateDateColumn } from 'typeorm';
-import { User } from './user.entity';
-import { Task } from './task.entity';
-import { Project } from './project.entity';
+import { Column, CreateDateColumn, Entity, JoinColumn, ManyToOne, PrimaryGeneratedColumn } from 'typeorm';
 import { TimeUtil } from '../../shared/utils/time.util';
+import { Project } from './project.entity';
+import { Task } from './task.entity';
+import { User } from './user.entity';
 
 export enum NotificationType {
   TASK_ASSIGNED = 'TASK_ASSIGNED',
@@ -44,7 +44,7 @@ export class Notification {
   @Column({ type: 'text' })
   message: string;
 
-  @Column({ type: 'json', nullable: true })
+  @Column({ type: 'jsonb', nullable: true })
   data?: any;
 
   @Column({ name: 'is_read', type: 'boolean', default: false })
@@ -174,4 +174,4 @@ export class Notification {
     notification.message = `"${taskTitle}" 업무의 마감일(${dueDate.toLocaleDateString()})이 다가옵니다.`;
     return notification;
   }
-} 
+}

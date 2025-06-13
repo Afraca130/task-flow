@@ -67,7 +67,7 @@ export class Task {
   @Column({ name: 'actual_hours', type: 'decimal', precision: 5, scale: 2, nullable: true })
   actualHours?: number;
 
-  @Column({ type: 'json', nullable: true })
+  @Column({ type: 'jsonb', nullable: true })
   tags?: string[];
 
   @Column({ name: 'lexo_rank', type: 'varchar', length: 50, default: 'U' })

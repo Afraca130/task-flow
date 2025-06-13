@@ -6,7 +6,6 @@ import { useAuthStore } from '@/store/auth';
 import { useProjectsStore } from '@/store/projects';
 import {
   Activity,
-  ArrowRight,
   Calendar,
   ChevronDown,
   FolderOpen,
@@ -73,7 +72,12 @@ export default function AnalyticsPage() {
   const router = useRouter();
   const { isAuthenticated, user } = useAuthStore();
   const { projects, setProjects } = useProjectsStore();
-  const [selectedProjectId, setSelectedProjectId] = useState<string>('all');
+  const [selectedProjectId, setSelectedProjectId] = useState<string>(() => {
+    if (typeof window !== 'undefined') {
+      return localStorage.getItem('selectedProjectId') || 'all';
+    }
+    return 'all';
+  });
   const [loading, setLoading] = useState(true);
   const [dateRange, setDateRange] = useState<number>(7);
   const [memberPerformanceData, setMemberPerformanceData] = useState<MemberPerformance[]>([]);
@@ -127,28 +131,49 @@ export default function AnalyticsPage() {
       await loadUserTaskStats();
 
       // Load member performance data
-      const performanceData = await Promise.all(
+      const userPerformanceMap = new Map<string, MemberPerformance>();
+
+      // Get all tasks from all projects
+      const allTasks = await Promise.all(
         projects.map(async project => {
           const tasks = await tasksApi.getTasksByProject(project.id);
-          const completedTasks = tasks.filter(task => task.status === 'COMPLETED');
-          const dailyTasks = completedTasks.reduce((acc: Record<string, number>, task) => {
-            const date = new Date(task.updatedAt).toLocaleDateString();
-            acc[date] = (acc[date] || 0) + 1;
-            return acc;
-          }, {});
-
-          return {
-            userId: project.ownerId,
-            userName: project.owner?.name || 'Unknown User',
-            userColor: `#${Math.floor(Math.random() * 16777215).toString(16)}`,
-            dailyTasks: Object.entries(dailyTasks).map(([date, count]) => ({
-              date,
-              count: count as number,
-            })),
-            totalCompleted: completedTasks.length,
-          };
+          return tasks;
         })
-      );
+      ).then(results => results.flat());
+
+      // Group completed tasks by user
+      const completedTasks = allTasks.filter(task => task.status === 'COMPLETED');
+
+      for (const task of completedTasks) {
+        if (task.assignee) {
+          const userId = task.assignee.id;
+          const userName = task.assignee.name || task.assignee.email || '사용자';
+
+          if (!userPerformanceMap.has(userId)) {
+            userPerformanceMap.set(userId, {
+              userId,
+              userName,
+              userColor: `#${Math.floor(Math.random() * 16777215).toString(16)}`,
+              dailyTasks: [],
+              totalCompleted: 0,
+            });
+          }
+
+          const user = userPerformanceMap.get(userId)!;
+          user.totalCompleted++;
+
+          // Add to daily tasks
+          const date = new Date(task.updatedAt).toLocaleDateString('ko-KR');
+          const existingDay = user.dailyTasks.find(d => d.date === date);
+          if (existingDay) {
+            existingDay.count++;
+          } else {
+            user.dailyTasks.push({ date, count: 1 });
+          }
+        }
+      }
+
+      const performanceData = Array.from(userPerformanceMap.values());
 
       setMemberPerformanceData(performanceData);
     } catch (error) {
@@ -267,7 +292,14 @@ export default function AnalyticsPage() {
   }));
 
   const handleProjectChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
-    setSelectedProjectId(e.target.value);
+    const projectId = e.target.value;
+    setSelectedProjectId(projectId);
+    // localStorage에 저장
+    if (projectId !== 'all') {
+      localStorage.setItem('selectedProjectId', projectId);
+    } else {
+      localStorage.removeItem('selectedProjectId');
+    }
   };
 
   const handleDateRangeChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
@@ -376,13 +408,13 @@ export default function AnalyticsPage() {
                 <div className='space-y-1'>
                   <NavItem
                     icon={<Calendar className='w-4 h-4 text-blue-500' />}
-                    label='캘린더'
-                    onClick={() => handleNavigation('/calendar')}
+                    label='로드맵'
+                    onClick={() => handleNavigation('roadmap')}
                   />
                   <NavItem
-                    icon={<List className='w-4 h-4 text-blue-500' />}
-                    label='작업 목록'
-                    onClick={() => handleNavigation('/tasks')}
+                    icon={<List className='w-4 h-4 text-green-500' />}
+                    label='이슈'
+                    onClick={() => handleNavigation('/dashboard')}
                   />
                 </div>
               </div>
@@ -393,9 +425,9 @@ export default function AnalyticsPage() {
                 </div>
                 <div className='space-y-1'>
                   <NavItem
-                    icon={<Users className='w-4 h-4 text-blue-500' />}
-                    label='멤버'
-                    onClick={() => handleNavigation('/members')}
+                    icon={<Users className='w-4 h-4 text-indigo-500' />}
+                    label='사람'
+                    onClick={() => handleNavigation('people')}
                   />
                   <NavItem
                     icon={<Mail className='w-4 h-4 text-blue-500' />}
@@ -410,6 +442,11 @@ export default function AnalyticsPage() {
                   분석
                 </div>
                 <div className='space-y-1'>
+                  <NavItem
+                    icon={<TrendingUp className='w-4 h-4 text-purple-500' />}
+                    label='분석'
+                    onClick={() => handleNavigation('/analytics')}
+                  />
                   <NavItem
                     icon={<Activity className='w-4 h-4 text-indigo-500' />}
                     label='활동 로그'
@@ -641,73 +678,6 @@ export default function AnalyticsPage() {
                         <Bar dataKey='total' fill='#3B82F6' />
                       </BarChart>
                     </ResponsiveContainer>
-                  </div>
-                </div>
-
-                {/* Activity Log */}
-                <div className='bg-white rounded-lg border border-gray-200 shadow-sm p-6'>
-                  <div className='flex items-center justify-between mb-6'>
-                    <div>
-                      <h3 className='text-lg font-semibold text-gray-900'>최근 활동</h3>
-                      <p className='text-sm text-gray-600'>프로젝트의 최근 활동 내역</p>
-                    </div>
-                    <Activity className='w-5 h-5 text-purple-500' />
-                  </div>
-
-                  <div className='space-y-4'>
-                    {activityLogs.length > 0 ? (
-                      <>
-                        {activityLogs.map(log => (
-                          <div
-                            key={log.id}
-                            className='flex items-start gap-3 p-3 hover:bg-gray-50 rounded-lg'
-                          >
-                            <div
-                              className='w-8 h-8 rounded-full flex items-center justify-center text-white text-xs font-medium flex-shrink-0'
-                              style={getUserColorStyle(log.user)}
-                            >
-                              {log.user?.name?.charAt(0) || 'U'}
-                            </div>
-                            <div className='flex-1 min-w-0'>
-                              <p className='text-sm text-gray-900'>
-                                <span className='font-medium'>
-                                  {log.user?.name || '알 수 없는 사용자'}
-                                </span>{' '}
-                                <span className='text-gray-600'>{log.description}</span>
-                              </p>
-                              <div className='flex items-center gap-2 mt-1'>
-                                <span className='text-xs text-gray-500'>
-                                  {new Date(log.timestamp).toLocaleString('ko-KR')}
-                                </span>
-                                {log.project && (
-                                  <>
-                                    <span className='text-xs text-gray-400'>•</span>
-                                    <span className='text-xs text-gray-500'>
-                                      {log.project.name}
-                                    </span>
-                                  </>
-                                )}
-                              </div>
-                            </div>
-                          </div>
-                        ))}
-
-                        <div className='flex justify-end mt-4'>
-                          <button
-                            onClick={() => router.push('/reports')}
-                            className='flex items-center gap-2 text-sm text-blue-600 hover:text-blue-700 font-medium'
-                          >
-                            모든 활동 보기
-                            <ArrowRight className='w-4 h-4' />
-                          </button>
-                        </div>
-                      </>
-                    ) : (
-                      <div className='text-center py-8'>
-                        <Activity className='w-12 h-12 text-gray-300 mx-auto mb-3' />
-                        <p className='text-gray-500'>최근 활동이 없습니다.</p>
-                      </div>
-                    )}
                   </div>
                 </div>
               </>
