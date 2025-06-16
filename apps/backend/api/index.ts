@@ -1,10 +1,10 @@
+import { HttpExceptionFilter } from '@/filters/http-exception.filter';
 import { ValidationPipe, VersioningType } from '@nestjs/common';
 import { NestFactory } from '@nestjs/core';
 import { ExpressAdapter } from '@nestjs/platform-express';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import express from 'express';
 import { AppModule } from '../src/app.module';
-import { HttpExceptionFilter } from '../src/presentation/filters/http-exception.filter';
 
 const server = express();
 

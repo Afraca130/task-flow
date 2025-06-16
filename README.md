@@ -31,7 +31,7 @@ taskflow/
 
 - **Framework**: NestJS v10
 - **Language**: TypeScript
-- **Database**: PostgreSQL with TypeORM, MongoDB with Mongoose (알림 시스템)
+- **Database**: PostgreSQL with TypeORM
 - **Authentication**: JWT with Passport
 - **Validation**: class-validator, class-transformer
 - **Documentation**: Swagger/OpenAPI
@@ -92,8 +92,7 @@ DB_USERNAME=taskflow
 DB_PASSWORD=taskflow
 DB_DATABASE=taskflow
 
-# MongoDB Database (알림 시스템)
-MONGODB_URI=mongodb://taskflow:taskflow@localhost:27017/taskflow?authSource=admin
+
 
 # JWT
 JWT_SECRET=your-secret-key-here
@@ -136,12 +135,11 @@ npm run docker:clean
 
 Docker 없이 로컬에서 실행하려면:
 
-1. PostgreSQL과 MongoDB를 로컬에 설치하거나 Docker로 실행:
+1. PostgreSQL을 로컬에 설치하거나 Docker로 실행:
 
 ```bash
-# PostgreSQL과 MongoDB만 Docker로 실행
+# PostgreSQL만 Docker로 실행
 docker run -d --name taskflow-postgres -e POSTGRES_DB=taskflow -e POSTGRES_USER=taskflow -e POSTGRES_PASSWORD=taskflow -p 5432:5432 postgres:15-alpine
-docker run -d --name taskflow-mongodb -e MONGO_INITDB_ROOT_USERNAME=taskflow -e MONGO_INITDB_ROOT_PASSWORD=taskflow -e MONGO_INITDB_DATABASE=taskflow -p 27017:27017 mongo:7.0-jammy
 ```
 
 2. 환경 변수를 설정하고 애플리케이션 실행:
@@ -209,37 +207,29 @@ npm run build:backend
 npm run build:frontend
 ```
 
-## 📁 클린 아키텍처 구조
+## 📁 프로젝트 구조
 
-### 백엔드 레이어 구조
+### 백엔드 구조 (기본 NestJS 패턴)
 
-#### 1. Domain Layer (도메인 레이어)
-
-- **Entities**: 핵심 비즈니스 객체
-- **Value Objects**: 불변 값 객체
-- **Domain Services**: 도메인 로직
-- **Specifications**: 비즈니스 규칙
-
-#### 2. Application Layer (애플리케이션 레이어)
-
-- **Use Cases**: 애플리케이션 비즈니스 규칙
-- **Ports**: 외부 의존성 인터페이스
-- **Commands/Queries**: CQRS 패턴
-- **Application Services**: 유스케이스 조합
-
-#### 3. Infrastructure Layer (인프라 레이어)
-
-- **Adapters**: 포트 구현체
-- **Repositories**: 데이터 접근 구현
-- **External Services**: 외부 서비스 연동
-- **Persistence**: 데이터베이스 관련
-
-#### 4. Presentation Layer (프레젠테이션 레이어)
-
-- **Controllers**: HTTP 요청/응답 처리
-- **DTOs**: 데이터 전송 객체
-- **Guards**: 인증/인가
-- **Filters**: 예외 처리
+```
+src/
+├── controllers/     # HTTP 요청/응답 처리
+├── services/       # 비즈니스 로직 및 유스케이스
+├── entities/       # TypeORM 엔터티
+├── dto/           # 데이터 전송 객체
+├── repositories/   # 데이터 접근 레이어
+├── config/        # 애플리케이션 설정
+├── guards/        # 인증/인가 가드
+├── filters/       # 예외 필터
+├── interceptors/  # 요청/응답 인터셉터
+├── decorators/    # 커스텀 데코레이터
+├── swagger/       # API 문서화
+├── database/      # 데이터베이스 마이그레이션
+├── interfaces/    # TypeScript 인터페이스
+├── exceptions/    # 커스텀 예외 클래스
+├── common/        # 공통 유틸리티
+└── modules/       # NestJS 모듈
+```
 
 ## 🤝 기여하기
 

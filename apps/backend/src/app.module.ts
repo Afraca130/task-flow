@@ -1,59 +1,31 @@
 import { Module } from '@nestjs/common';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { APP_FILTER, APP_GUARD, APP_INTERCEPTOR } from '@nestjs/core';
-import { JwtModule } from '@nestjs/jwt';
-import { MongooseModule } from '@nestjs/mongoose';
-import { PassportModule } from '@nestjs/passport';
 import { TypeOrmModule } from '@nestjs/typeorm';
-import { ActivityLogService } from './application/services/activity-log.service';
-import { AppService } from './application/services/app.service';
-import { AuthService } from './application/services/auth.service';
-import { UserLogService } from './application/services/user-log.service';
-import { GetTaskCommentsUseCase } from './application/use-cases/comment/get-task-comments.use-case';
-import { AcceptInvitationUseCase } from './application/use-cases/invitation/accept-invitation.use-case';
-import { CreateInvitationUseCase } from './application/use-cases/invitation/create-invitation.use-case';
-import { DeclineInvitationUseCase } from './application/use-cases/invitation/decline-invitation.use-case';
-import { CreateProjectUseCase } from './application/use-cases/project/create-project.usecase';
-import { GetProjectUseCase } from './application/use-cases/project/get-project.usecase';
-import { GetProjectsUseCase } from './application/use-cases/project/get-projects.usecase';
-import { CreateTaskUseCase } from './application/use-cases/task/create-task.use-case';
-import { ReorderTaskUseCase } from './application/use-cases/task/reorder-task.use-case';
-import { UpdateTaskUseCase } from './application/use-cases/task/update-task.use-case';
-import { ActivityLog } from './domain/entities/activity-log.entity';
-import { Comment } from './domain/entities/comment.entity';
-import { Notification } from './domain/entities/notification.entity';
-import { ProjectInvitation } from './domain/entities/project-invitation.entity';
-import { ProjectMember } from './domain/entities/project-member.entity';
-import { Project } from './domain/entities/project.entity';
-import { Task } from './domain/entities/task.entity';
-import { UserLog } from './domain/entities/user-log.entity';
-import { User } from './domain/entities/user.entity';
-import { ActivityLogRepository } from './infrastructure/adapters/repositories/activity-log.repository';
-import { ProjectInvitationRepository } from './infrastructure/adapters/repositories/project-invitation.repository';
-import { ProjectRepository } from './infrastructure/adapters/repositories/project.repository';
-import { TaskRepository } from './infrastructure/adapters/repositories/task.repository';
-import { UserLogRepository } from './infrastructure/adapters/repositories/user-log.repository';
-import { UserRepository } from './infrastructure/adapters/repositories/user.repository';
-import { AppConfig } from './infrastructure/config/app.config';
-import { DatabaseConfig } from './infrastructure/config/database.config';
-import { JwtStrategy } from './infrastructure/config/jwt.strategy';
-import { LoggingConfigService } from './infrastructure/config/logging.config';
-import { MongoDBConfig } from './infrastructure/config/mongodb.config';
-import { ActivityLogController } from './presentation/controllers/activity-log.controller';
-import { AppController } from './presentation/controllers/app.controller';
-import { AuthController } from './presentation/controllers/auth.controller';
-import { CommentController } from './presentation/controllers/comment.controller';
-import { InvitationController } from './presentation/controllers/invitation.controller';
-import { NotificationController } from './presentation/controllers/notification.controller';
-import { ProjectController } from './presentation/controllers/project.controller';
-import { TaskController } from './presentation/controllers/task.controller';
-import { UserLogController } from './presentation/controllers/user-log.controller';
-import { HttpExceptionFilter } from './presentation/filters/http-exception.filter';
-import { JwtAuthGuard } from './presentation/guards/jwt-auth.guard';
-import { LoggingInterceptor } from './presentation/interceptors/logging.interceptor';
-import { ResponseInterceptor } from './presentation/interceptors/response.interceptor';
-import { CommentModule } from './presentation/modules/comment.module';
-import { JwtConfigService } from './shared/config/jwt.config';
+
+// Feature Modules
+import { AuthModule } from './auth/auth.module';
+import { CommentsModule } from './comments/comments.module';
+import { ProjectsModule } from './projects/projects.module';
+import { TasksModule } from './tasks/tasks.module';
+import { UsersModule } from './users/users.module';
+
+// Config
+import { AppConfig } from './config/app.config';
+import { DatabaseConfig } from './config/database.config';
+import { JwtConfigService } from './config/jwt.config';
+import { JwtStrategy } from './config/jwt.strategy';
+import { LoggingConfigService } from './config/logging.config';
+
+// App Controller & Service
+import { AppController } from './app.controller';
+import { AppService } from './app.service';
+
+// Global Guards, Filters, Interceptors
+import { HttpExceptionFilter } from './filters/http-exception.filter';
+import { JwtAuthGuard } from './guards/jwt-auth.guard';
+import { LoggingInterceptor } from './interceptors/logging.interceptor';
+import { ResponseInterceptor } from './interceptors/response.interceptor';
 
 @Module({
   imports: [
@@ -61,139 +33,36 @@ import { JwtConfigService } from './shared/config/jwt.config';
     ConfigModule.forRoot({
       isGlobal: true,
       envFilePath: ['.env.local', '.env'],
-      cache: true, // 환경변수 캐싱으로 성능 향상
+      cache: true,
     }),
 
-    // PostgreSQL 데이터베이스 설정 - 별도 설정 클래스 사용
+    // PostgreSQL 데이터베이스 설정
     TypeOrmModule.forRootAsync({
       imports: [ConfigModule],
       useClass: DatabaseConfig,
       inject: [ConfigService],
     }),
 
-    // MongoDB 설정
-    MongooseModule.forRootAsync({
-      imports: [ConfigModule],
-      useClass: MongoDBConfig,
-      inject: [ConfigService],
-    }),
-
-    // TypeORM 엔터티 등록
-    TypeOrmModule.forFeature([
-      User,
-      Project,
-      ProjectMember,
-      Task,
-      Comment,
-      Notification,
-      ActivityLog,
-      ProjectInvitation,
-      UserLog
-    ]),
-
-    // JWT 설정
-    PassportModule,
-    JwtModule.registerAsync({
-      imports: [ConfigModule],
-      useFactory: (configService: ConfigService) => {
-        return {
-          secret: configService.get<string>('JWT_SECRET', 'taskflow-jwt-secret-key'),
-          signOptions: {
-            expiresIn: configService.get<string>('JWT_EXPIRES_IN', '7d'),
-          },
-        };
-      },
-      inject: [ConfigService],
-    }),
-
-    CommentModule,
+    // Feature Modules
+    UsersModule,
+    ProjectsModule,
+    TasksModule,
+    CommentsModule,
+    AuthModule,
   ],
-  controllers: [
-    AppController,
-    AuthController,
-    TaskController,
-    CommentController,
-    NotificationController,
-    UserLogController,
-    InvitationController,
-    ProjectController,
-    ActivityLogController,
-  ],
+  controllers: [AppController],
   providers: [
     // Configuration Services
     DatabaseConfig,
     AppConfig,
     LoggingConfigService,
 
-    // Application Services
+    // App Service
     AppService,
-    AuthService,
-    UserLogService,
-    ActivityLogService,
-
-    // Use Cases
-    CreateInvitationUseCase,
-    AcceptInvitationUseCase,
-    DeclineInvitationUseCase,
-    CreateTaskUseCase,
-    UpdateTaskUseCase,
-    ReorderTaskUseCase,
-    CreateProjectUseCase,
-    GetProjectUseCase,
-    GetProjectsUseCase,
-    GetTaskCommentsUseCase,
 
     // JWT
     JwtConfigService,
     JwtStrategy,
-
-    // Repositories
-    {
-      provide: 'UserRepositoryPort',
-      useClass: UserRepository,
-    },
-    {
-      provide: 'UserLogRepositoryPort',
-      useClass: UserLogRepository,
-    },
-    {
-      provide: 'ProjectInvitationRepositoryPort',
-      useClass: ProjectInvitationRepository,
-    },
-    {
-      provide: 'TaskRepositoryPort',
-      useClass: TaskRepository,
-    },
-    {
-      provide: 'ProjectRepositoryPort',
-      useClass: ProjectRepository,
-    },
-
-    // Use Case Providers
-    {
-      provide: 'CreateTaskUseCase',
-      useClass: CreateTaskUseCase,
-    },
-    {
-      provide: 'UpdateTaskUseCase',
-      useClass: UpdateTaskUseCase,
-    },
-    {
-      provide: 'ReorderTaskUseCase',
-      useClass: ReorderTaskUseCase,
-    },
-    {
-      provide: 'CreateProjectUseCase',
-      useClass: CreateProjectUseCase,
-    },
-    {
-      provide: 'GetProjectUseCase',
-      useClass: GetProjectUseCase,
-    },
-    {
-      provide: 'GetProjectsUseCase',
-      useClass: GetProjectsUseCase,
-    },
 
     // Guards (global)
     {
@@ -215,10 +84,6 @@ import { JwtConfigService } from './shared/config/jwt.config';
     {
       provide: APP_INTERCEPTOR,
       useClass: LoggingInterceptor,
-    },
-    {
-      provide: 'ActivityLogRepositoryPort',
-      useClass: ActivityLogRepository,
     },
   ],
 })
