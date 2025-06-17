@@ -16,6 +16,7 @@ export class ActivityLogService {
         projectId: string,
         taskId: string,
         taskTitle: string,
+        assigneeId?: string,
     ): Promise<void> {
         try {
             const request: CreateActivityLogRequest = {
@@ -24,9 +25,9 @@ export class ActivityLogService {
                 entityId: taskId,
                 entityType: EntityType.TASK,
                 action: ActivityAction.CREATE,
-                description: `새 업무 "${taskTitle}"를 생성했습니다.`,
+                description: `새 작업 "${taskTitle}"을(를) 생성했습니다.`,
                 resourceType: 'task',
-                metadata: { taskTitle },
+                metadata: { taskTitle, assigneeId },
             };
 
             await this.activityLogRepository.create(request);
@@ -50,7 +51,7 @@ export class ActivityLogService {
                 entityId: taskId,
                 entityType: EntityType.TASK,
                 action: ActivityAction.UPDATE,
-                description: `업무 "${taskTitle}"를 수정했습니다.`,
+                description: `작업 "${taskTitle}"을(를) 수정했습니다.`,
                 resourceType: 'task',
                 metadata: { taskTitle, changes },
             };
@@ -77,7 +78,7 @@ export class ActivityLogService {
                 entityId: taskId,
                 entityType: EntityType.TASK,
                 action: ActivityAction.STATUS_CHANGE,
-                description: `"${taskTitle}" 업무 상태를 ${oldStatus}에서 ${newStatus}로 변경했습니다.`,
+                description: `작업 "${taskTitle}" 상태를 ${oldStatus}에서 ${newStatus}로 변경했습니다.`,
                 resourceType: 'task',
                 metadata: { taskTitle, oldStatus, newStatus },
             };
@@ -104,7 +105,7 @@ export class ActivityLogService {
                 entityId: taskId,
                 entityType: EntityType.TASK,
                 action: ActivityAction.ASSIGN,
-                description: `"${taskTitle}" 업무를 ${assigneeName}에게 할당했습니다.`,
+                description: `작업 "${taskTitle}"을(를) ${assigneeName}에게 할당했습니다.`,
                 resourceType: 'task',
                 metadata: { taskTitle, assigneeId, assigneeName },
             };
@@ -112,7 +113,7 @@ export class ActivityLogService {
             await this.activityLogRepository.create(request);
             this.logger.log(`Activity log created for task assignment: ${taskId}`);
         } catch (error) {
-            this.logger.error('Failed to log task assignment', error);
+            this.logger.error(`Failed to log task assignment: ${taskId}`, error);
         }
     }
 
@@ -129,14 +130,42 @@ export class ActivityLogService {
                 entityId: taskId,
                 entityType: EntityType.TASK,
                 action: ActivityAction.DELETE,
-                description: `업무 "${taskTitle}"를 삭제했습니다.`,
+                description: `작업 "${taskTitle}"을(를) 삭제했습니다.`,
                 resourceType: 'task',
                 metadata: { taskTitle },
             };
 
             await this.activityLogRepository.create(request);
+            this.logger.log(`Activity log created for task deletion: ${taskId}`);
         } catch (error) {
-            this.logger.error('Failed to log task deletion', error);
+            this.logger.error(`Failed to log task deletion: ${taskId}`, error);
+        }
+    }
+
+    async logTaskPriorityChanged(
+        userId: string,
+        projectId: string,
+        taskId: string,
+        taskTitle: string,
+        oldPriority: string,
+        newPriority: string,
+    ): Promise<void> {
+        try {
+            const request: CreateActivityLogRequest = {
+                userId,
+                projectId,
+                entityId: taskId,
+                entityType: EntityType.TASK,
+                action: ActivityAction.PRIORITY_CHANGE,
+                description: `작업 "${taskTitle}" 우선순위를 ${oldPriority}에서 ${newPriority}로 변경했습니다.`,
+                resourceType: 'task',
+                metadata: { taskTitle, oldPriority, newPriority },
+            };
+
+            await this.activityLogRepository.create(request);
+            this.logger.log(`Activity log created for task priority change: ${taskId}`);
+        } catch (error) {
+            this.logger.error(`Failed to log task priority change: ${taskId}`, error);
         }
     }
 

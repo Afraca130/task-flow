@@ -1,20 +1,19 @@
-import { Logger, ValidationPipe } from '@nestjs/common';
+import { ValidationPipe } from '@nestjs/common';
 import { NestFactory } from '@nestjs/core';
 import { AppModule } from './app.module';
 import { SwaggerConfig } from './config/swagger.config';
 import { AllExceptionsFilter, HttpExceptionFilter } from './filters/http-exception.filter';
 
+let app: any;
 
+async function bootstrap() {
+  if (!app) {
+    console.log('🚀 Initializing NestJS app for Vercel...');
 
-/**
- * 애플리케이션 부트스트랩 함수
- */
-async function bootstrap(): Promise<void> {
-  const logger = new Logger('Bootstrap');
-
-  try {
-    const app = await NestFactory.create(AppModule, {
-      logger: ['log', 'error', 'warn', 'debug', 'verbose'],
+    app = await NestFactory.create(AppModule, {
+      logger: process.env.NODE_ENV === 'production'
+        ? ['error', 'warn']
+        : ['log', 'error', 'warn', 'debug', 'verbose'],
     });
 
     // 전역 파이프 설정
@@ -40,7 +39,7 @@ async function bootstrap(): Promise<void> {
     app.enableCors({
       origin: [
         'http://localhost:3000',
-        'http://127.0.0.1:3000',
+        'https://task-flow-frontend.vercel.app',
         'https://taskflow-frontend.vercel.app',
         /\.vercel\.app$/,
         /^https:\/\/.*\.vercel\.app$/,
@@ -61,17 +60,17 @@ async function bootstrap(): Promise<void> {
     });
 
     // 보안 헤더 설정
-    app.use((req, res, next) => {
+    app.use((req: any, res: any, next: any) => {
       res.header('X-Content-Type-Options', 'nosniff');
       res.header('X-Frame-Options', 'DENY');
       res.header('X-XSS-Protection', '1; mode=block');
       next();
     });
 
-    //Swagger 문서화 설정
+    // Swagger 설정 (개발 환경에서만)
     if (process.env.NODE_ENV !== 'production') {
       SwaggerConfig.setup(app);
-      logger.log('📚 Swagger documentation is enabled');
+      console.log('📚 Swagger documentation enabled');
     }
 
     // 글로벌 프리픽스 설정
@@ -79,21 +78,41 @@ async function bootstrap(): Promise<void> {
       exclude: ['/health', '/'],
     });
 
-
-    const port = process.env.PORT || 3001;
-    await app.listen(port);
-
-    logger.log(`TaskFlow Backend API is running on: http://localhost:${port}`);
-    logger.log(`Environment: ${process.env.NODE_ENV || 'development'}`);
-
-    if (process.env.NODE_ENV !== 'production') {
-      logger.log(`Swagger docs available at: http://localhost:${port}/api/docs`);
-    }
-
-  } catch (error) {
-    logger.error('❌ Failed to start application', error);
-    process.exit(1);
+    await app.init();
+    console.log('✅ NestJS app initialized successfully');
   }
+
+  return app;
 }
 
-bootstrap();
+// Vercel Serverless 함수로 내보내기
+export default async (req: any, res: any) => {
+  try {
+    const server = await bootstrap();
+    const httpAdapter = server.getHttpAdapter();
+    const instance = httpAdapter.getInstance();
+
+    return instance(req, res);
+  } catch (error) {
+    console.error('❌ Error in serverless function:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Internal server error',
+      error: process.env.NODE_ENV === 'production' ? 'Something went wrong' : error.message
+    });
+  }
+};
+
+// 로컬 개발용
+if (process.env.NODE_ENV !== 'production') {
+  bootstrap().then((app) => {
+    const port = process.env.PORT || 3001;
+    app.listen(port, () => {
+      console.log(`🚀 TaskFlow Backend API is running on: http://localhost:${port}`);
+      console.log(`📚 Swagger docs available at: http://localhost:${port}/api/docs`);
+    });
+  }).catch(error => {
+    console.error('❌ Failed to start application:', error);
+    process.exit(1);
+  });
+}

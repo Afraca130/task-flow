@@ -28,7 +28,7 @@ import { TasksService } from './tasks.service';
 @UseGuards(JwtAuthGuard)
 @ApiBearerAuth('JWT-auth')
 @Controller('tasks')
-export class TaskController {
+export class TasksController {
     constructor(
         private readonly tasksService: TasksService,
     ) { }

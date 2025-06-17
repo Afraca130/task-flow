@@ -53,7 +53,6 @@ export class TasksService {
 
     /**
      * Create a new task
-     * Consolidated from CreateTaskUseCase
      */
     async createTask(command: CreateTaskDto): Promise<Task> {
         this.logger.log(`Creating task: ${command.title}`);
@@ -129,27 +128,38 @@ export class TasksService {
             // Save task
             const savedTask = await this.taskRepository.save(task);
 
-            // Log activity - TODO: Update to use new ActivityLogService methods
-            // await this.activityLogService.logTaskCreated(
-            //     command.assignerId,
-            //     command.projectId,
-            //     savedTask.id,
-            //     savedTask.title
-            // );
+            // Log task creation activity
+            await this.activityLogService.logTaskCreated(
+                command.assignerId,
+                command.projectId,
+                savedTask.id,
+                savedTask.title,
+                command.assigneeId
+            );
+
+            // Log assignment if task is assigned to someone else
+            if (command.assigneeId && command.assigneeId !== command.assignerId) {
+                await this.activityLogService.logTaskAssigned(
+                    command.assignerId,
+                    command.projectId,
+                    savedTask.id,
+                    savedTask.title,
+                    command.assigneeId,
+                    'Assignee' // TODO: Get actual user name
+                );
+            }
 
             this.logger.log(`Task created successfully: ${savedTask.id}`);
             return savedTask;
 
         } catch (error) {
             this.logger.error(`Failed to create task: ${command.title}`, error);
-            // Log error - TODO: Update to use new ActivityLogService methods
             throw error;
         }
     }
 
     /**
      * Update a task
-     * Consolidated from UpdateTaskUseCase
      */
     async updateTask(taskId: string, userId: string, command: UpdateTaskDto): Promise<Task> {
         this.logger.log(`Updating task: ${taskId}`);
@@ -198,69 +208,65 @@ export class TasksService {
                 }
             }
 
-            // Update due date
-            if (command.dueDate !== undefined) {
-                const existingDueDate = existingTask.dueDate?.toISOString();
-                const newDueDate = TimeUtil.formatISO(TimeUtil.toDate(command.dueDate));
-                if (existingDueDate !== newDueDate) {
-                    changes.dueDate = { from: existingTask.dueDate, to: command.dueDate };
-                    if (command.dueDate) {
-                        existingTask.setDueDate(TimeUtil.toDate(command.dueDate));
-                    } else {
-                        existingTask.removeDueDate();
-                    }
-                }
-            }
-
-            // Update estimated hours
-            if (command.estimatedHours !== undefined && command.estimatedHours !== existingTask.estimatedHours) {
-                changes.estimatedHours = { from: existingTask.estimatedHours, to: command.estimatedHours };
-                existingTask.updateEstimatedHours(command.estimatedHours);
-            }
-
-            // Update actual hours
-            if (command.actualHours !== undefined && command.actualHours !== existingTask.actualHours) {
-                changes.actualHours = { from: existingTask.actualHours, to: command.actualHours };
-                existingTask.updateActualHours(command.actualHours);
-            }
-
-            // Update tags
-            if (command.tags !== undefined) {
-                const existingTags = existingTask.tags || [];
-                const newTags = command.tags;
-                if (JSON.stringify(existingTags.sort()) !== JSON.stringify(newTags.sort())) {
-                    changes.tags = { from: existingTags, to: newTags };
-                    existingTask.tags = newTags;
-                }
-            }
-
             // Save updated task
             const updatedTask = await this.taskRepository.save(existingTask);
 
-            // Log activity - TODO: Update to use new ActivityLogService methods
-            // if (Object.keys(changes).length > 0) {
-            //     await this.activityLogService.logTaskUpdated(
-            //         userId,
-            //         updatedTask.projectId,
-            //         updatedTask.id,
-            //         updatedTask.title,
-            //         changes
-            //     );
-            // }
+            // Log specific activity changes
+            if (changes.status) {
+                await this.activityLogService.logTaskStatusChanged(
+                    userId,
+                    updatedTask.projectId,
+                    updatedTask.id,
+                    updatedTask.title,
+                    changes.status.from,
+                    changes.status.to
+                );
+            }
+
+            if (changes.priority) {
+                await this.activityLogService.logTaskPriorityChanged(
+                    userId,
+                    updatedTask.projectId,
+                    updatedTask.id,
+                    updatedTask.title,
+                    changes.priority.from,
+                    changes.priority.to
+                );
+            }
+
+            if (changes.assignee) {
+                await this.activityLogService.logTaskAssigned(
+                    userId,
+                    updatedTask.projectId,
+                    updatedTask.id,
+                    updatedTask.title,
+                    changes.assignee.to,
+                    'Assignee' // TODO: Get actual user name
+                );
+            }
+
+            // Log general update if other changes exist
+            if (Object.keys(changes).length > 0 && !changes.status && !changes.priority && !changes.assignee) {
+                await this.activityLogService.logTaskUpdated(
+                    userId,
+                    updatedTask.projectId,
+                    updatedTask.id,
+                    updatedTask.title,
+                    changes
+                );
+            }
 
             this.logger.log(`Task updated successfully: ${updatedTask.id}`);
             return updatedTask;
 
         } catch (error) {
             this.logger.error(`Failed to update task: ${taskId}`, error);
-            // Log error - TODO: Update to use new ActivityLogService methods
             throw error;
         }
     }
 
     /**
      * Reorder a task
-     * Consolidated from ReorderTaskUseCase
      */
     async reorderTask(
         taskId: string,
@@ -310,7 +316,7 @@ export class TasksService {
 
             const updatedTask = await this.taskRepository.save(taskToMove);
 
-            // 8. Handle affected tasks (if needed)
+            // 8. Handle affected tasks
             const affectedTasks: Task[] = [];
 
             // Check for LexoRank duplicates and reorder if necessary
@@ -331,19 +337,18 @@ export class TasksService {
 
             // Log activity if userId is provided
             if (userId) {
-                await this.activityLogService.logActivity({
-                    userId: userId,
-                    actionType: UserActionType.TASK_UPDATE,
-                    description: `작업 순서 변경: ${updatedTask.title}`,
-                    resourceId: updatedTask.id,
-                    resourceType: 'task',
-                    details: {
-                        taskTitle: updatedTask.title,
-                        projectId: updatedTask.projectId,
-                        newPosition,
-                        statusChanged: statusChanged ? { from: taskToMove.status, to: targetStatus } : null
+                await this.activityLogService.logTaskUpdated(
+                    userId,
+                    updatedTask.projectId,
+                    updatedTask.id,
+                    updatedTask.title,
+                    {
+                        reordered: {
+                            newPosition,
+                            statusChanged: statusChanged ? { from: taskToMove.status, to: targetStatus } : null
+                        }
                     }
-                });
+                );
             }
 
             this.logger.log(`Task reordered successfully: ${updatedTask.id}`);
@@ -377,17 +382,15 @@ export class TasksService {
 
             // Log activity if userId is provided
             if (userId) {
-                await this.activityLogService.logActivity({
-                    userId: userId,
-                    actionType: UserActionType.TASK_UPDATE,
-                    description: `작업 순서 변경: ${updatedTask.title}`,
-                    resourceId: updatedTask.id,
-                    resourceType: 'task',
-                    details: {
-                        taskTitle: updatedTask.title,
+                await this.activityLogService.logTaskUpdated(
+                    userId,
+                    updatedTask.projectId,
+                    updatedTask.id,
+                    updatedTask.title,
+                    {
                         lexoRankChange: { from: oldLexoRank, to: newLexoRank }
                     }
-                });
+                );
             }
 
             return updatedTask;
@@ -401,7 +404,18 @@ export class TasksService {
     /**
      * Delete a task
      */
-    async deleteTask(id: string): Promise<void> {
+    async deleteTask(id: string, userId?: string): Promise<void> {
+        if (userId) {
+            const task = await this.taskRepository.findById(id);
+            if (task) {
+                await this.activityLogService.logTaskDeleted(
+                    userId,
+                    task.projectId,
+                    task.id,
+                    task.title
+                );
+            }
+        }
         await this.taskRepository.delete(id);
     }
 

@@ -5,8 +5,17 @@ import {
     Logger,
     NestInterceptor,
 } from '@nestjs/common';
-import { Observable, tap } from 'rxjs';
-import { ActivityLogService } from '../activity-logs/activity-log.service';
+import { Request, Response } from 'express';
+import { Observable } from 'rxjs';
+import { tap } from 'rxjs/operators';
+
+export interface AuthenticatedRequest extends Request {
+    user?: {
+        id: string;
+        email: string;
+        name: string;
+    };
+}
 
 /**
  * API 호출 로깅 인터셉터
@@ -15,59 +24,54 @@ import { ActivityLogService } from '../activity-logs/activity-log.service';
 export class LoggingInterceptor implements NestInterceptor {
     private readonly logger = new Logger(LoggingInterceptor.name);
 
-    constructor(
-        private readonly activityLogService: ActivityLogService,
-    ) { }
+    constructor() { }
 
     intercept(context: ExecutionContext, next: CallHandler): Observable<any> {
-        const now = Date.now();
-        const request = context.switchToHttp().getRequest();
-        const { method, url, user } = request;
+        const request = context.switchToHttp().getRequest<AuthenticatedRequest>();
+        const response = context.switchToHttp().getResponse<Response>();
+        const method = request.method;
+        const url = request.url;
+        const userAgent = request.get('User-Agent') || '';
+        const ip = request.ip || request.connection.remoteAddress;
+        const userId = request.user?.id;
 
-        return next.handle().pipe(
-            tap(async () => {
-                const responseTime = Date.now() - now;
-                this.logger.log(`${method} ${url} - ${responseTime}ms`);
+        const startTime = Date.now();
 
-                // Log API activity if user is authenticated
-                if (user?.id && this.shouldLogActivity(url, method)) {
-                    try {
-                        await this.activityLogService.create({
-                            userId: user.id,
-                            action: this.mapMethodToAction(method),
-                            description: `API call: ${method} ${url}`,
-                            resourceType: 'api',
-                            resourceId: url,
-                            metadata: {
-                                method,
-                                url,
+        return next
+            .handle()
+            .pipe(
+                tap({
+                    next: (data) => {
+                        const endTime = Date.now();
+                        const responseTime = endTime - startTime;
+                        const statusCode = response.statusCode;
+
+                        // Basic HTTP logging
+                        this.logger.log(
+                            `${method} ${url} ${statusCode} ${responseTime}ms - ${userAgent} - ${ip}${userId ? ` - User: ${userId}` : ''}`
+                        );
+
+                        // Log additional details for non-GET requests
+                        if (method !== 'GET' && userId) {
+                            this.logger.debug(`Request details for ${method} ${url}:`, {
+                                userId,
+                                ip,
+                                userAgent,
                                 responseTime,
-                                timestamp: new Date().toISOString(),
-                            },
-                        });
-                    } catch (error) {
-                        this.logger.error('Failed to log API activity', error);
+                                statusCode
+                            });
+                        }
+                    },
+                    error: (error) => {
+                        const endTime = Date.now();
+                        const responseTime = endTime - startTime;
+                        const statusCode = error.status || 500;
+
+                        this.logger.error(
+                            `${method} ${url} ${statusCode} ${responseTime}ms - ${userAgent} - ${ip}${userId ? ` - User: ${userId}` : ''} - Error: ${error.message}`
+                        );
                     }
-                }
-            }),
-        );
-    }
-
-    private shouldLogActivity(url: string, method: string): boolean {
-        // Skip logging for health checks, metrics, and GET requests to avoid spam
-        const skipPaths = ['/health', '/metrics', '/api/docs'];
-        const skipMethods = ['GET'];
-
-        return !skipPaths.some(path => url.includes(path)) && !skipMethods.includes(method);
-    }
-
-    private mapMethodToAction(method: string): string {
-        switch (method) {
-            case 'POST': return 'CREATE';
-            case 'PUT':
-            case 'PATCH': return 'UPDATE';
-            case 'DELETE': return 'DELETE';
-            default: return 'ACCESS';
-        }
+                })
+            );
     }
 }

@@ -2,9 +2,10 @@ import { CommentsModule } from '@/comments/comments.module';
 import { UsersModule } from '@/users/users.module';
 import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
+import { ActivityLogModule } from '../activity-logs/activity-log.module';
 import { Task } from './entities/task.entity';
 import { TaskRepository } from './task.repository';
-import { TaskController } from './tasks.controller';
+import { TasksController } from './tasks.controller';
 import { TasksService } from './tasks.service';
 
 @Module({
@@ -12,8 +13,9 @@ import { TasksService } from './tasks.service';
         TypeOrmModule.forFeature([Task]),
         UsersModule,
         CommentsModule,
+        ActivityLogModule,
     ],
-    controllers: [TaskController],
+    controllers: [TasksController],
     providers: [
         TasksService,
         TaskRepository,

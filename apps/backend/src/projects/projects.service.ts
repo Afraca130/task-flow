@@ -46,7 +46,16 @@ export class ProjectsService {
         const project = this.createProjectEntity(command);
 
         // Persist the project
-        return await this.projectRepository.create(project);
+        const savedProject = await this.projectRepository.create(project);
+
+        // Log project creation activity
+        await this.activityLogService.logProjectCreated(
+            command.userId,
+            savedProject.id,
+            savedProject.name
+        );
+
+        return savedProject;
     }
 
     /**
@@ -248,13 +257,26 @@ export class ProjectsService {
     }
 
     /**
-     * Delete a project
+     * Delete/archive a project
      */
     async deleteProject(projectId: string, userId: string): Promise<void> {
         // Validate access
-        await this.getProjectById(new GetProjectQuery(projectId, userId));
+        const project = await this.getProjectById(new GetProjectQuery(projectId, userId));
 
-        // Soft delete or hard delete based on business rules
+        // Check if user is owner
+        const currentUserMember = project.members?.find(m => m.userId === userId);
+        if (!currentUserMember || !currentUserMember.isOwner()) {
+            throw new ForbiddenException('Only project owners can delete projects');
+        }
+
+        // Log project deletion activity before deletion
+        await this.activityLogService.logProjectUpdated(
+            userId,
+            project.id,
+            project.name,
+            { status: { from: project.status, to: 'DELETED' } }
+        );
+
         const projectIdVO = ProjectId.create(projectId);
         await this.projectRepository.delete(projectIdVO);
     }
