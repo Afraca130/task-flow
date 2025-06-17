@@ -1,179 +1,237 @@
+import { JwtAuthGuard } from '@/guards/jwt-auth.guard';
 import {
     Controller,
-    DefaultValuePipe,
     Get,
-    ParseIntPipe,
+    Param,
+    ParseUUIDPipe,
     Query,
-    UseGuards
+    Request,
+    UseGuards,
 } from '@nestjs/common';
 import {
-    ApiBadRequestResponse,
     ApiBearerAuth,
-    ApiInternalServerErrorResponse,
-    ApiOkResponse,
     ApiOperation,
+    ApiParam,
     ApiQuery,
+    ApiResponse,
     ApiTags,
-    ApiUnauthorizedResponse,
 } from '@nestjs/swagger';
-import { JwtAuthGuard } from '../guards/jwt-auth.guard';
-
-import { ErrorResponseDto } from '../common/dto/response/error-response.dto';
 import { ActivityLogRepository } from './activity-log.repository';
+import { ActivityLogService } from './activity-log.service';
 import { ActivityLog } from './entities/activity-log.entity';
 
 @ApiTags('activity-logs')
-@Controller('activity-logs')
+@Controller({ path: 'activity-logs', version: '1' })
 @UseGuards(JwtAuthGuard)
 @ApiBearerAuth('JWT-auth')
-export class ActivityLogController {
+export class ActivityLogsController {
     constructor(
+        private readonly activityLogService: ActivityLogService,
         private readonly activityLogRepository: ActivityLogRepository,
     ) { }
 
-    @Get()
+    @Get('project/:projectId')
     @ApiOperation({
-        summary: 'Get activity logs',
-        description: 'Retrieves activity logs with optional filtering by project',
+        summary: 'Get project activity logs',
+        description: 'Retrieves activity logs for a specific project',
     })
-    @ApiQuery({
+    @ApiParam({
         name: 'projectId',
-        description: 'Filter by project ID',
-        required: false,
+        description: 'Project ID',
         type: 'string',
-    })
-    @ApiQuery({
-        name: 'page',
-        description: 'Page number (1-based)',
-        required: false,
-        type: 'integer',
-        example: 1,
+        format: 'uuid',
     })
     @ApiQuery({
         name: 'limit',
-        description: 'Number of items per page',
-        required: false,
+        description: 'Number of logs to retrieve',
         type: 'integer',
-        example: 20,
+        required: false,
+        example: 50,
     })
     @ApiQuery({
-        name: 'entityType',
-        description: 'Filter by entity type',
+        name: 'offset',
+        description: 'Number of logs to skip',
+        type: 'integer',
         required: false,
-        type: 'string',
-        enum: ['TASK', 'PROJECT', 'USER', 'COMMENT', 'PROJECT_MEMBER'],
+        example: 0,
     })
-    @ApiOkResponse({
+    @ApiResponse({
+        status: 200,
         description: 'Activity logs retrieved successfully',
-        schema: {
-            type: 'object',
-            properties: {
-                success: { type: 'boolean', example: true },
-                status: { type: 'integer', example: 200 },
-                message: { type: 'string', example: 'Activity logs retrieved successfully' },
-                data: {
-                    type: 'array',
-                    items: {
-                        type: 'object',
-                        properties: {
-                            id: { type: 'string', format: 'uuid' },
-                            userId: { type: 'string', format: 'uuid' },
-                            projectId: { type: 'string', format: 'uuid' },
-                            entityId: { type: 'string', format: 'uuid' },
-                            entityType: { type: 'string', enum: ['TASK', 'PROJECT', 'USER', 'COMMENT', 'PROJECT_MEMBER'] },
-                            action: { type: 'string' },
-                            description: { type: 'string' },
-                            metadata: { type: 'object' },
-                            timestamp: { type: 'string', format: 'date-time' },
-                            user: {
-                                type: 'object',
-                                properties: {
-                                    id: { type: 'string' },
-                                    name: { type: 'string' },
-                                    email: { type: 'string' },
-                                },
-                            },
-                            project: {
-                                type: 'object',
-                                properties: {
-                                    id: { type: 'string' },
-                                    name: { type: 'string' },
-                                },
-                            },
-                        },
-                    },
-                },
-                timestamp: { type: 'string', format: 'date-time' },
-            },
-        },
+        type: [ActivityLog],
     })
-    @ApiUnauthorizedResponse({
-        description: 'Authentication required',
-        type: ErrorResponseDto,
-    })
-    @ApiBadRequestResponse({
-        description: 'Invalid query parameters',
-        type: ErrorResponseDto,
-    })
-    @ApiInternalServerErrorResponse({
-        description: 'Internal server error',
-        type: ErrorResponseDto,
-    })
-    async getActivityLogs(
-        @Query('projectId') projectId?: string,
-        @Query('page', new DefaultValuePipe(1), ParseIntPipe) page: number = 1,
-        @Query('limit', new DefaultValuePipe(20), ParseIntPipe) limit: number = 20,
-        @Query('entityType') entityType?: string,
-    ): Promise<{ data: ActivityLog[]; meta: any }> {
-        const result = await this.activityLogRepository.findMany({
+    @ApiResponse({ status: 401, description: 'Unauthorized' })
+    @ApiResponse({ status: 404, description: 'Project not found' })
+    async getProjectActivityLogs(
+        @Param('projectId', ParseUUIDPipe) projectId: string,
+        @Query('limit') limit: number = 50,
+        @Query('offset') offset: number = 0,
+        @Request() req: any,
+    ): Promise<ActivityLog[]> {
+        return await this.activityLogRepository.getActivityLogs({
             projectId,
-            entityType,
-            page,
-            limit,
+            limit: Math.min(limit, 100), // Cap at 100
+            offset,
         });
+    }
 
-        return {
-            data: result.data,
-            meta: {
-                page: result.page,
-                limit: result.limit,
-                total: result.total,
-                totalPages: result.totalPages,
-            },
-        };
+    @Get('user/:userId')
+    @ApiOperation({
+        summary: 'Get user activity logs',
+        description: 'Retrieves activity logs for a specific user',
+    })
+    @ApiParam({
+        name: 'userId',
+        description: 'User ID',
+        type: 'string',
+        format: 'uuid',
+    })
+    @ApiQuery({
+        name: 'limit',
+        description: 'Number of logs to retrieve',
+        type: 'integer',
+        required: false,
+        example: 50,
+    })
+    @ApiQuery({
+        name: 'offset',
+        description: 'Number of logs to skip',
+        type: 'integer',
+        required: false,
+        example: 0,
+    })
+    @ApiResponse({
+        status: 200,
+        description: 'Activity logs retrieved successfully',
+        type: [ActivityLog],
+    })
+    @ApiResponse({ status: 401, description: 'Unauthorized' })
+    async getUserActivityLogs(
+        @Param('userId', ParseUUIDPipe) userId: string,
+        @Query('limit') limit: number = 50,
+        @Query('offset') offset: number = 0,
+        @Request() req: any,
+    ): Promise<ActivityLog[]> {
+        return await this.activityLogRepository.getActivityLogs({
+            userId,
+            limit: Math.min(limit, 100), // Cap at 100
+            offset,
+        });
     }
 
     @Get('recent')
     @ApiOperation({
         summary: 'Get recent activity logs',
-        description: 'Retrieves the most recent activity logs',
+        description: 'Retrieves recent activity logs for the authenticated user',
+    })
+    @ApiQuery({
+        name: 'limit',
+        description: 'Number of logs to retrieve',
+        type: 'integer',
+        required: false,
+        example: 20,
     })
     @ApiQuery({
         name: 'projectId',
         description: 'Filter by project ID',
-        required: false,
         type: 'string',
+        required: false,
+    })
+    @ApiResponse({
+        status: 200,
+        description: 'Recent activity logs retrieved successfully',
+        type: [ActivityLog],
+    })
+    @ApiResponse({ status: 401, description: 'Unauthorized' })
+    async getRecentActivityLogs(
+        @Request() req: any,
+        @Query('limit') limit: number = 20,
+        @Query('projectId') projectId?: string,
+    ): Promise<ActivityLog[]> {
+        const filters: any = {
+            limit: Math.min(limit, 50), // Cap at 50 for recent logs
+            offset: 0,
+        };
+
+        if (projectId) {
+            filters.projectId = projectId;
+        }
+
+        return await this.activityLogRepository.getActivityLogs(filters);
+    }
+
+    @Get('search')
+    @ApiOperation({
+        summary: 'Search activity logs',
+        description: 'Search activity logs by description or action',
+    })
+    @ApiQuery({
+        name: 'q',
+        description: 'Search query',
+        type: 'string',
+        required: true,
+    })
+    @ApiQuery({
+        name: 'projectId',
+        description: 'Filter by project ID',
+        type: 'string',
+        required: false,
+    })
+    @ApiQuery({
+        name: 'userId',
+        description: 'Filter by user ID',
+        type: 'string',
+        required: false,
     })
     @ApiQuery({
         name: 'limit',
-        description: 'Number of recent logs to retrieve',
-        required: false,
+        description: 'Number of logs to retrieve',
         type: 'integer',
-        example: 10,
+        required: false,
+        example: 20,
     })
-    @ApiOkResponse({
-        description: 'Recent activity logs retrieved successfully',
+    @ApiResponse({
+        status: 200,
+        description: 'Search results retrieved successfully',
+        type: [ActivityLog],
     })
-    async getRecentActivityLogs(
+    @ApiResponse({ status: 401, description: 'Unauthorized' })
+    async searchActivityLogs(
+        @Query('q') query: string,
+        @Request() req: any,
         @Query('projectId') projectId?: string,
-        @Query('limit', new DefaultValuePipe(10), ParseIntPipe) limit: number = 10,
+        @Query('userId') userId?: string,
+        @Query('limit') limit: number = 20,
     ): Promise<ActivityLog[]> {
-        const result = await this.activityLogRepository.findMany({
+        return await this.activityLogRepository.searchActivityLogs(query, {
             projectId,
-            page: 1,
-            limit,
+            userId,
+            limit: Math.min(limit, 50),
         });
+    }
 
-        return result.data;
+    @Get(':id')
+    @ApiOperation({
+        summary: 'Get activity log by ID',
+        description: 'Retrieves a specific activity log by its ID',
+    })
+    @ApiParam({
+        name: 'id',
+        description: 'Activity log ID',
+        type: 'string',
+        format: 'uuid',
+    })
+    @ApiResponse({
+        status: 200,
+        description: 'Activity log found and returned',
+        type: ActivityLog,
+    })
+    @ApiResponse({ status: 401, description: 'Unauthorized' })
+    @ApiResponse({ status: 404, description: 'Activity log not found' })
+    async getActivityLogById(
+        @Param('id', ParseUUIDPipe) id: string,
+        @Request() req: any,
+    ): Promise<ActivityLog | null> {
+        return await this.activityLogRepository.findById(id);
     }
 }

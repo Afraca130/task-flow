@@ -5,11 +5,8 @@ import {
     Logger,
     NestInterceptor,
 } from '@nestjs/common';
-import { Request, Response } from 'express';
-import { Observable } from 'rxjs';
-import { tap } from 'rxjs/operators';
-import { LoggingConfigService } from '../config/logging.config';
-import { UserLogService } from '../users/user-log.service';
+import { Observable, tap } from 'rxjs';
+import { ActivityLogService } from '../activity-logs/activity-log.service';
 
 /**
  * API 호출 로깅 인터셉터
@@ -19,64 +16,58 @@ export class LoggingInterceptor implements NestInterceptor {
     private readonly logger = new Logger(LoggingInterceptor.name);
 
     constructor(
-        private readonly userLogService: UserLogService,
-        private readonly loggingConfig: LoggingConfigService,
+        private readonly activityLogService: ActivityLogService,
     ) { }
 
     intercept(context: ExecutionContext, next: CallHandler): Observable<any> {
-        if (!this.loggingConfig.isAPILoggingEnabled()) {
-            return next.handle();
-        }
-
-        const request = context.switchToHttp().getRequest<Request>();
-        const response = context.switchToHttp().getResponse<Response>();
-        const startTime = Date.now();
-
-        // 사용자 ID 추출 (JWT에서)
-        const userId = this.extractUserId(request);
+        const now = Date.now();
+        const request = context.switchToHttp().getRequest();
+        const { method, url, user } = request;
 
         return next.handle().pipe(
-            tap({
-                next: (responseData) => {
-                    const responseTime = Date.now() - startTime;
-                    const statusCode = response.statusCode;
+            tap(async () => {
+                const responseTime = Date.now() - now;
+                this.logger.log(`${method} ${url} - ${responseTime}ms`);
 
-                    // 비동기로 로그 기록 (성능 영향 최소화)
-                    setImmediate(() => {
-                        this.userLogService.logApiCall(
-                            request,
-                            responseTime,
-                            statusCode,
-                            userId,
-                        ).catch(error => {
-                            this.logger.error('Failed to log API call in interceptor', error);
+                // Log API activity if user is authenticated
+                if (user?.id && this.shouldLogActivity(url, method)) {
+                    try {
+                        await this.activityLogService.create({
+                            userId: user.id,
+                            action: this.mapMethodToAction(method),
+                            description: `API call: ${method} ${url}`,
+                            resourceType: 'api',
+                            resourceId: url,
+                            metadata: {
+                                method,
+                                url,
+                                responseTime,
+                                timestamp: new Date().toISOString(),
+                            },
                         });
-                    });
-                },
-                error: (error) => {
-                    const responseTime = Date.now() - startTime;
-                    const statusCode = error.status || response.statusCode || 500;
-
-                    // 에러 로깅
-                    setImmediate(() => {
-                        this.userLogService.logApiCall(
-                            request,
-                            responseTime,
-                            statusCode,
-                            userId,
-                            error,
-                        ).catch(logError => {
-                            this.logger.error('Failed to log API error in interceptor', logError);
-                        });
-                    });
-                },
+                    } catch (error) {
+                        this.logger.error('Failed to log API activity', error);
+                    }
+                }
             }),
         );
     }
 
-    private extractUserId(request: Request): string | undefined {
-        // JWT 토큰에서 사용자 ID 추출
-        const user = (request as any).user;
-        return user?.id || user?.userId || user?.sub;
+    private shouldLogActivity(url: string, method: string): boolean {
+        // Skip logging for health checks, metrics, and GET requests to avoid spam
+        const skipPaths = ['/health', '/metrics', '/api/docs'];
+        const skipMethods = ['GET'];
+
+        return !skipPaths.some(path => url.includes(path)) && !skipMethods.includes(method);
+    }
+
+    private mapMethodToAction(method: string): string {
+        switch (method) {
+            case 'POST': return 'CREATE';
+            case 'PUT':
+            case 'PATCH': return 'UPDATE';
+            case 'DELETE': return 'DELETE';
+            default: return 'ACCESS';
+        }
     }
 }

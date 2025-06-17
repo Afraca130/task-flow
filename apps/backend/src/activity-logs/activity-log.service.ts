@@ -258,4 +258,164 @@ export class ActivityLogService {
             this.logger.error('Failed to log member leave', error);
         }
     }
+
+    // Issue-related activity logs
+    async logIssueCreated(
+        userId: string,
+        projectId: string,
+        issueId: string,
+        issueTitle: string,
+        issueType: string,
+        priority: string,
+    ): Promise<void> {
+        try {
+            const request: CreateActivityLogRequest = {
+                userId,
+                projectId,
+                entityId: issueId,
+                entityType: EntityType.ISSUE,
+                action: ActivityAction.CREATE,
+                description: `새 이슈 "${issueTitle}"을(를) 생성했습니다.`,
+                resourceType: 'issue',
+                metadata: { issueTitle, issueType, priority },
+            };
+
+            await this.activityLogRepository.create(request);
+            this.logger.log(`Activity log created for issue creation: ${issueId}`);
+        } catch (error) {
+            this.logger.error(`Failed to log issue creation: ${issueId}`, error);
+        }
+    }
+
+    async logIssueUpdated(
+        userId: string,
+        projectId: string,
+        issueId: string,
+        issueTitle: string,
+        changes: Record<string, any>,
+    ): Promise<void> {
+        try {
+            const request: CreateActivityLogRequest = {
+                userId,
+                projectId,
+                entityId: issueId,
+                entityType: EntityType.ISSUE,
+                action: ActivityAction.UPDATE,
+                description: `이슈 "${issueTitle}"을(를) 수정했습니다.`,
+                resourceType: 'issue',
+                metadata: { issueTitle, changes },
+            };
+
+            await this.activityLogRepository.create(request);
+            this.logger.log(`Activity log created for issue update: ${issueId}`);
+        } catch (error) {
+            this.logger.error(`Failed to log issue update: ${issueId}`, error);
+        }
+    }
+
+    async logIssueStatusChanged(
+        userId: string,
+        projectId: string,
+        issueId: string,
+        issueTitle: string,
+        oldStatus: string,
+        newStatus: string,
+    ): Promise<void> {
+        try {
+            const request: CreateActivityLogRequest = {
+                userId,
+                projectId,
+                entityId: issueId,
+                entityType: EntityType.ISSUE,
+                action: ActivityAction.STATUS_CHANGE,
+                description: `이슈 "${issueTitle}" 상태를 ${oldStatus}에서 ${newStatus}로 변경했습니다.`,
+                resourceType: 'issue',
+                metadata: { issueTitle, oldStatus, newStatus },
+            };
+
+            await this.activityLogRepository.create(request);
+            this.logger.log(`Activity log created for issue status change: ${issueId}`);
+        } catch (error) {
+            this.logger.error(`Failed to log issue status change: ${issueId}`, error);
+        }
+    }
+
+    async logIssueAssigned(
+        userId: string,
+        projectId: string,
+        issueId: string,
+        issueTitle: string,
+        assigneeId: string,
+        assigneeName: string,
+    ): Promise<void> {
+        try {
+            const request: CreateActivityLogRequest = {
+                userId,
+                projectId,
+                entityId: issueId,
+                entityType: EntityType.ISSUE,
+                action: ActivityAction.ASSIGN,
+                description: `이슈 "${issueTitle}"을(를) ${assigneeName}에게 할당했습니다.`,
+                resourceType: 'issue',
+                metadata: { issueTitle, assigneeId, assigneeName },
+            };
+
+            await this.activityLogRepository.create(request);
+            this.logger.log(`Activity log created for issue assignment: ${issueId}`);
+        } catch (error) {
+            this.logger.error(`Failed to log issue assignment: ${issueId}`, error);
+        }
+    }
+
+    async logIssueDeleted(
+        userId: string,
+        projectId: string,
+        issueId: string,
+        issueTitle: string,
+    ): Promise<void> {
+        try {
+            const request: CreateActivityLogRequest = {
+                userId,
+                projectId,
+                entityId: issueId,
+                entityType: EntityType.ISSUE,
+                action: ActivityAction.DELETE,
+                description: `이슈 "${issueTitle}"을(를) 삭제했습니다.`,
+                resourceType: 'issue',
+                metadata: { issueTitle },
+            };
+
+            await this.activityLogRepository.create(request);
+            this.logger.log(`Activity log created for issue deletion: ${issueId}`);
+        } catch (error) {
+            this.logger.error(`Failed to log issue deletion: ${issueId}`, error);
+        }
+    }
+
+    async logIssuePriorityChanged(
+        userId: string,
+        projectId: string,
+        issueId: string,
+        issueTitle: string,
+        oldPriority: string,
+        newPriority: string,
+    ): Promise<void> {
+        try {
+            const request: CreateActivityLogRequest = {
+                userId,
+                projectId,
+                entityId: issueId,
+                entityType: EntityType.ISSUE,
+                action: ActivityAction.PRIORITY_CHANGE,
+                description: `이슈 "${issueTitle}" 우선순위를 ${oldPriority}에서 ${newPriority}로 변경했습니다.`,
+                resourceType: 'issue',
+                metadata: { issueTitle, oldPriority, newPriority },
+            };
+
+            await this.activityLogRepository.create(request);
+            this.logger.log(`Activity log created for issue priority change: ${issueId}`);
+        } catch (error) {
+            this.logger.error(`Failed to log issue priority change: ${issueId}`, error);
+        }
+    }
 }

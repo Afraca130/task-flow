@@ -1,5 +1,5 @@
-import { UserLogService } from '@/users/user-log.service';
 import { BadRequestException, ForbiddenException, Injectable, Logger, NotFoundException } from '@nestjs/common';
+import { ActivityLogService } from '../activity-logs/activity-log.service';
 import { ProjectId } from '../common/value-objects/project-id.vo';
 import { ProjectName } from '../common/value-objects/project-name.vo';
 import { ProjectAlreadyExistsException, ProjectNotFoundException } from '../exceptions/domain.exception';
@@ -31,7 +31,7 @@ export class ProjectsService {
 
     constructor(
         private readonly projectRepository: ProjectRepository,
-        private readonly userLogService: UserLogService,
+        private readonly activityLogService: ActivityLogService,
     ) { }
 
     /**

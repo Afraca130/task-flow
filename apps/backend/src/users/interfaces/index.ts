@@ -1,1 +1,1 @@
-export * from './user-log.interface';
+// Export user interfaces only

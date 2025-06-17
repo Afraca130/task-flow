@@ -10,14 +10,14 @@ export class ActivityLogRepository {
 
     constructor(
         @InjectRepository(ActivityLog)
-        private readonly activityLogRepository: Repository<ActivityLog>,
+        private readonly repository: Repository<ActivityLog>,
     ) { }
 
     async create(request: CreateActivityLogRequest): Promise<ActivityLog> {
         try {
             const activityLog = new ActivityLog();
             Object.assign(activityLog, request);
-            return await this.activityLogRepository.save(activityLog);
+            return await this.repository.save(activityLog);
         } catch (error) {
             this.logger.error('Failed to create activity log', error);
             throw error;
@@ -31,7 +31,7 @@ export class ActivityLogRepository {
                 Object.assign(log, request);
                 return log;
             });
-            return await this.activityLogRepository.save(activityLogs);
+            return await this.repository.save(activityLogs);
         } catch (error) {
             this.logger.error('Failed to create multiple activity logs', error);
             throw error;
@@ -40,7 +40,7 @@ export class ActivityLogRepository {
 
     async findById(id: string): Promise<ActivityLog | null> {
         try {
-            return await this.activityLogRepository.findOne({
+            return await this.repository.findOne({
                 where: { id },
                 relations: ['user', 'project'],
             });
@@ -50,80 +50,66 @@ export class ActivityLogRepository {
         }
     }
 
-    async findMany(
-        filter: ActivityLogFilter & ActivityLogPaginationOptions,
-    ): Promise<PaginatedActivityLogResult> {
-        try {
-            const { page, limit, sortBy = 'timestamp', sortOrder = 'DESC', ...filterOptions } = filter;
-            const skip = (page - 1) * limit;
+    async findMany(options: ActivityLogFilter & ActivityLogPaginationOptions): Promise<PaginatedActivityLogResult> {
+        const {
+            projectId,
+            userId,
+            entityType,
+            action,
+            startDate,
+            endDate,
+            page = 1,
+            limit = 20,
+        } = options;
 
-            const queryBuilder = this.activityLogRepository
-                .createQueryBuilder('activityLog')
-                .leftJoinAndSelect('activityLog.user', 'user')
-                .leftJoinAndSelect('activityLog.project', 'project');
+        const queryBuilder = this.repository.createQueryBuilder('activityLog');
 
-            // Apply filters
-            if (filterOptions.projectId) {
-                queryBuilder.andWhere('activityLog.projectId = :projectId', {
-                    projectId: filterOptions.projectId,
-                });
-            }
-
-            if (filterOptions.userId) {
-                queryBuilder.andWhere('activityLog.userId = :userId', {
-                    userId: filterOptions.userId,
-                });
-            }
-
-            if (filterOptions.entityType) {
-                queryBuilder.andWhere('activityLog.entityType = :entityType', {
-                    entityType: filterOptions.entityType,
-                });
-            }
-
-            if (filterOptions.entityId) {
-                queryBuilder.andWhere('activityLog.entityId = :entityId', {
-                    entityId: filterOptions.entityId,
-                });
-            }
-
-            if (filterOptions.action) {
-                queryBuilder.andWhere('activityLog.action = :action', {
-                    action: filterOptions.action,
-                });
-            }
-
-            if (filterOptions.startDate) {
-                queryBuilder.andWhere('activityLog.timestamp >= :startDate', {
-                    startDate: filterOptions.startDate,
-                });
-            }
-
-            if (filterOptions.endDate) {
-                queryBuilder.andWhere('activityLog.timestamp <= :endDate', {
-                    endDate: filterOptions.endDate,
-                });
-            }
-
-            // Apply sorting
-            queryBuilder.orderBy(`activityLog.${sortBy}`, sortOrder);
-
-            // Apply pagination
-            queryBuilder.skip(skip).take(limit);
-
-            const [data, total] = await queryBuilder.getManyAndCount();
-
-            return {
-                data,
-                page,
-                limit,
-                total,
-                totalPages: Math.ceil(total / limit),
-            };
-        } catch (error) {
-            this.logger.error('Failed to find activity logs', error);
-            throw error;
+        // Apply filters
+        if (projectId) {
+            queryBuilder.andWhere('activityLog.projectId = :projectId', { projectId });
         }
+
+        if (userId) {
+            queryBuilder.andWhere('activityLog.userId = :userId', { userId });
+        }
+
+        if (entityType) {
+            queryBuilder.andWhere('activityLog.entityType = :entityType', { entityType });
+        }
+
+        if (action) {
+            queryBuilder.andWhere('activityLog.action = :action', { action });
+        }
+
+        if (startDate) {
+            queryBuilder.andWhere('activityLog.timestamp >= :startDate', { startDate });
+        }
+
+        if (endDate) {
+            queryBuilder.andWhere('activityLog.timestamp <= :endDate', { endDate });
+        }
+
+        // Add joins
+        queryBuilder
+            .leftJoinAndSelect('activityLog.user', 'user')
+            .leftJoinAndSelect('activityLog.project', 'project');
+
+        // Add ordering
+        queryBuilder.orderBy('activityLog.timestamp', 'DESC');
+
+        // Add pagination
+        const skip = (page - 1) * limit;
+        queryBuilder.skip(skip).take(limit);
+
+        const [data, total] = await queryBuilder.getManyAndCount();
+
+        return {
+            data,
+            page,
+            limit,
+            total,
+            totalPages: Math.ceil(total / limit),
+        };
     }
 
     async findByProjectId(
@@ -142,7 +128,7 @@ export class ActivityLogRepository {
 
     async findRecent(projectId?: string, limit: number = 10): Promise<ActivityLog[]> {
         try {
-            const queryBuilder = this.activityLogRepository
+            const queryBuilder = this.repository
                 .createQueryBuilder('activityLog')
                 .leftJoinAndSelect('activityLog.user', 'user')
                 .leftJoinAndSelect('activityLog.project', 'project');
@@ -167,7 +153,7 @@ export class ActivityLogRepository {
             const cutoffDate = new Date();
             cutoffDate.setDate(cutoffDate.getDate() - olderThanDays);
 
-            const result = await this.activityLogRepository.delete({
+            const result = await this.repository.delete({
                 timestamp: LessThan(cutoffDate),
             });
 
@@ -176,5 +162,65 @@ export class ActivityLogRepository {
             this.logger.error(`Failed to delete old activity logs older than ${olderThanDays} days`, error);
             throw error;
         }
+    }
+
+    async getActivityLogs(filters: {
+        projectId?: string;
+        userId?: string;
+        entityType?: string;
+        limit?: number;
+        offset?: number;
+    }): Promise<ActivityLog[]> {
+        const queryBuilder = this.repository.createQueryBuilder('activityLog');
+
+        if (filters.projectId) {
+            queryBuilder.andWhere('activityLog.projectId = :projectId', { projectId: filters.projectId });
+        }
+
+        if (filters.userId) {
+            queryBuilder.andWhere('activityLog.userId = :userId', { userId: filters.userId });
+        }
+
+        if (filters.entityType) {
+            queryBuilder.andWhere('activityLog.entityType = :entityType', { entityType: filters.entityType });
+        }
+
+        queryBuilder
+            .leftJoinAndSelect('activityLog.user', 'user')
+            .leftJoinAndSelect('activityLog.project', 'project')
+            .orderBy('activityLog.timestamp', 'DESC')
+            .take(filters.limit || 50)
+            .skip(filters.offset || 0);
+
+        return await queryBuilder.getMany();
+    }
+
+    async searchActivityLogs(query: string, filters: {
+        projectId?: string;
+        userId?: string;
+        limit?: number;
+    }): Promise<ActivityLog[]> {
+        const queryBuilder = this.repository.createQueryBuilder('activityLog');
+
+        queryBuilder.where(
+            '(activityLog.description ILIKE :query OR activityLog.action ILIKE :query)',
+            { query: `%${query}%` }
+        );
+
+        if (filters.projectId) {
+            queryBuilder.andWhere('activityLog.projectId = :projectId', { projectId: filters.projectId });
+        }
+
+        if (filters.userId) {
+            queryBuilder.andWhere('activityLog.userId = :userId', { userId: filters.userId });
+        }
+
+        queryBuilder
+            .leftJoinAndSelect('activityLog.user', 'user')
+            .leftJoinAndSelect('activityLog.project', 'project')
+            .orderBy('activityLog.timestamp', 'DESC')
+            .take(filters.limit || 50);
+
+        return await queryBuilder.getMany();
     }
 }

@@ -22,6 +22,7 @@ export enum EntityType {
   USER = 'User',
   COMMENT = 'Comment',
   PROJECT_MEMBER = 'ProjectMember',
+  ISSUE = 'Issue',
 }
 
 @Entity('activity_logs')

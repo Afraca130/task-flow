@@ -1,13 +1,17 @@
 import { Module } from "@nestjs/common";
 import { TypeOrmModule } from "@nestjs/typeorm";
+import { ActivityLogRepository } from "./activity-log.repository";
 import { ActivityLogService } from "./activity-log.service";
-import { ActivityLogController } from "./activity-logs.controller";
+import { ActivityLogsController } from "./activity-logs.controller";
 import { ActivityLog } from "./entities/activity-log.entity";
 
 @Module({
     imports: [TypeOrmModule.forFeature([ActivityLog])],
-    controllers: [ActivityLogController],
-    providers: [ActivityLogService,],
-    exports: [ActivityLogService],
+    controllers: [ActivityLogsController],
+    providers: [
+        ActivityLogService,
+        ActivityLogRepository,
+    ],
+    exports: [ActivityLogService, ActivityLogRepository],
 })
 export class ActivityLogModule { }

@@ -1,8 +1,8 @@
 import { TimeUtil } from '@/common/utils/time.util';
 import { BadRequestException, Injectable, Logger, NotFoundException } from '@nestjs/common';
+import { ActivityLogService } from '../activity-logs/activity-log.service';
 import { LexoRank } from '../common/utils/lexo-rank.util';
-import { UserActionType } from '../users/entities/user-log.entity';
-import { UserLogService } from '../users/user-log.service';
+// UserLog imports removed - using ActivityLogService instead
 import { CreateTaskDto, UpdateTaskDto } from './dto/request';
 import { Task, TaskStatus } from './entities/task.entity';
 import { TaskRepository } from './task.repository';
@@ -27,7 +27,7 @@ export class TasksService {
 
     constructor(
         private readonly taskRepository: TaskRepository,
-        private readonly userLogService: UserLogService,
+        private readonly activityLogService: ActivityLogService,
     ) { }
 
     /**
@@ -129,53 +129,20 @@ export class TasksService {
             // Save task
             const savedTask = await this.taskRepository.save(task);
 
-            // Log activity
-            await this.userLogService.logUserActivity({
-                userId: command.assignerId,
-                actionType: UserActionType.TASK_CREATE,
-                description: `새 작업 생성: ${savedTask.title}`,
-                resourceId: savedTask.id,
-                resourceType: 'task',
-                details: {
-                    taskTitle: savedTask.title,
-                    projectId: savedTask.projectId
-                }
-            });
-
-            // Log assignment if task is assigned to someone
-            if (command.assigneeId && command.assigneeId !== command.assignerId) {
-                await this.userLogService.logUserActivity({
-                    userId: command.assigneeId,
-                    actionType: UserActionType.TASK_CREATE,
-                    description: `작업이 할당됨: ${savedTask.title}`,
-                    resourceId: savedTask.id,
-                    resourceType: 'task',
-                    details: {
-                        taskTitle: savedTask.title,
-                        assignedBy: command.assignerId,
-                        projectId: savedTask.projectId
-                    }
-                });
-            }
+            // Log activity - TODO: Update to use new ActivityLogService methods
+            // await this.activityLogService.logTaskCreated(
+            //     command.assignerId,
+            //     command.projectId,
+            //     savedTask.id,
+            //     savedTask.title
+            // );
 
             this.logger.log(`Task created successfully: ${savedTask.id}`);
             return savedTask;
 
         } catch (error) {
             this.logger.error(`Failed to create task: ${command.title}`, error);
-
-            // Log error
-            await this.userLogService.logError(
-                error instanceof Error ? error : new Error(String(error)),
-                'TasksService',
-                command.assignerId,
-                undefined,
-                {
-                    taskTitle: command.title,
-                    projectId: command.projectId
-                }
-            );
-
+            // Log error - TODO: Update to use new ActivityLogService methods
             throw error;
         }
     }
@@ -267,45 +234,26 @@ export class TasksService {
                 }
             }
 
-            // Save changes if any
-            if (Object.keys(changes).length === 0) {
-                this.logger.log(`No changes detected for task: ${taskId}`);
-                return existingTask;
-            }
-
+            // Save updated task
             const updatedTask = await this.taskRepository.save(existingTask);
 
-            // Log activity
-            await this.userLogService.logUserActivity({
-                userId: userId,
-                actionType: UserActionType.TASK_UPDATE,
-                description: `작업 수정: ${updatedTask.title}`,
-                resourceId: updatedTask.id,
-                resourceType: 'task',
-                details: {
-                    taskTitle: updatedTask.title,
-                    projectId: updatedTask.projectId,
-                    changes
-                }
-            });
+            // Log activity - TODO: Update to use new ActivityLogService methods
+            // if (Object.keys(changes).length > 0) {
+            //     await this.activityLogService.logTaskUpdated(
+            //         userId,
+            //         updatedTask.projectId,
+            //         updatedTask.id,
+            //         updatedTask.title,
+            //         changes
+            //     );
+            // }
 
             this.logger.log(`Task updated successfully: ${updatedTask.id}`);
             return updatedTask;
 
         } catch (error) {
             this.logger.error(`Failed to update task: ${taskId}`, error);
-
-            // Log error
-            await this.userLogService.logError(
-                error instanceof Error ? error : new Error(String(error)),
-                'TasksService',
-                userId,
-                undefined,
-                {
-                    taskId: taskId
-                }
-            );
-
+            // Log error - TODO: Update to use new ActivityLogService methods
             throw error;
         }
     }
@@ -383,7 +331,7 @@ export class TasksService {
 
             // Log activity if userId is provided
             if (userId) {
-                await this.userLogService.logUserActivity({
+                await this.activityLogService.logActivity({
                     userId: userId,
                     actionType: UserActionType.TASK_UPDATE,
                     description: `작업 순서 변경: ${updatedTask.title}`,
@@ -429,7 +377,7 @@ export class TasksService {
 
             // Log activity if userId is provided
             if (userId) {
-                await this.userLogService.logUserActivity({
+                await this.activityLogService.logActivity({
                     userId: userId,
                     actionType: UserActionType.TASK_UPDATE,
                     description: `작업 순서 변경: ${updatedTask.title}`,

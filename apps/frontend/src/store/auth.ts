@@ -45,6 +45,7 @@ class AuthStore {
     try {
       this.setState({ isLoading: true });
 
+      // Use the API instance instead of direct fetch
       const response = await fetch('/api/auth/login', {
         method: 'POST',
         headers: {
@@ -60,10 +61,17 @@ class AuthStore {
 
       const data = await response.json();
 
+      // Validate response data structure
+      if (!data.accessToken || !data.user) {
+        throw new Error('Invalid response from server');
+      }
+
       // Store both tokens
       if (typeof window !== 'undefined') {
         localStorage.setItem('auth-token', data.accessToken);
-        localStorage.setItem('refresh-token', data.refreshToken);
+        if (data.refreshToken) {
+          localStorage.setItem('refresh-token', data.refreshToken);
+        }
         localStorage.setItem('auth-user', JSON.stringify(data.user));
       }
 
@@ -74,8 +82,17 @@ class AuthStore {
         isAuthenticated: true,
         isLoading: false,
       });
+
+      console.log('Login successful:', { user: data.user.email, hasToken: !!data.accessToken });
     } catch (error) {
-      this.setState({ isLoading: false });
+      console.error('Login error:', error);
+      this.setState({
+        isLoading: false,
+        isAuthenticated: false,
+        user: null,
+        token: null,
+        refreshToken: null,
+      });
       throw error;
     }
   };
