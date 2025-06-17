@@ -34,6 +34,12 @@ export class UserDto {
   })
   profileColor?: string;
 
+  @ApiPropertyOptional({
+    description: '소속 조직/회사',
+    example: '테크컴퍼니',
+  })
+  organization?: string;
+
   @ApiProperty({
     description: '계정 활성화 상태',
     example: true,

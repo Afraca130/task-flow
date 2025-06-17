@@ -32,6 +32,9 @@ export class User {
   @Column({ name: 'profile_color', type: 'varchar', length: 7, default: '#3B82F6' })
   profileColor: string;
 
+  @Column({ type: 'varchar', length: 255, nullable: true })
+  organization?: string;
+
   @Column({ name: 'is_active', type: 'boolean', default: true })
   isActive: boolean;
 
@@ -79,7 +82,7 @@ export class User {
   issueComments?: IssueComment[];
 
   // Domain methods
-  public updateProfile(name: string, profileImage?: string, profileColor?: string): void {
+  public updateProfile(name: string, profileImage?: string, profileColor?: string, organization?: string): void {
     if (!name || name.trim().length === 0) {
       throw new Error('Name cannot be empty');
     }
@@ -90,6 +93,9 @@ export class User {
     }
     if (profileColor !== undefined) {
       this.profileColor = profileColor;
+    }
+    if (organization !== undefined) {
+      this.organization = organization;
     }
   }
 

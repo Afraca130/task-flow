@@ -91,6 +91,16 @@ export class UpdateProfileRequestDto {
   @IsOptional()
   @IsHexColor({ message: '올바른 HEX 색상 코드를 입력해주세요. (예: #3B82F6)' })
   profileColor?: string;
+
+  @ApiPropertyOptional({
+    description: '소속 조직/회사',
+    example: '테크컴퍼니',
+    maxLength: 255,
+  })
+  @IsOptional()
+  @IsString()
+  @MaxLength(255, { message: '소속은 최대 255자까지 가능합니다.' })
+  organization?: string;
 }
 
 /**
