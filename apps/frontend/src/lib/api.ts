@@ -2,12 +2,18 @@ import axios from 'axios';
 
 // API 기본 설정
 const getBaseURL = () => {
-  // 프로덕션 환경에서는 프록시를 통해 연결
+  // Production environment check
   if (typeof window !== 'undefined' && window.location.origin.includes('vercel.app')) {
+    console.log('🌐 Using Vercel proxy:', '/api');
     return '/api';
   }
-  // 로컬 개발 환경
-  return (process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001') + '/api';
+
+  // Development environment
+  const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
+  const fullUrl = `${apiUrl}/api`;
+  console.log('🔗 API Base URL:', fullUrl);
+
+  return fullUrl;
 };
 
 const api = axios.create({
@@ -18,6 +24,8 @@ const api = axios.create({
   },
   withCredentials: true, // CORS 이슈 방지
 });
+
+console.log('🚀 API instance created with baseURL:', api.defaults.baseURL);
 
 // 통합 에러 처리 클래스
 class ApiErrorHandler {

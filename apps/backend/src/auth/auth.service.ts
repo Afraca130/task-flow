@@ -63,7 +63,6 @@ export class AuthService {
     if (!user.isActive) {
       throw new UnauthorizedException('비활성화된 계정입니다.');
     }
-    console.log(user.password);
     // 비밀번호 확인
     const isPasswordValid = await this.verifyPassword(password, user.password);
     if (!isPasswordValid) {

@@ -7,6 +7,7 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 import { AuthModule } from './auth/auth.module';
 import { CommentsModule } from './comments/comments.module';
 import { InvitationsModule } from './invitations/invitations.module';
+import { IssueModule } from './issues/issues.module';
 import { ProjectsModule } from './projects/projects.module';
 import { TasksModule } from './tasks/tasks.module';
 import { UsersModule } from './users/users.module';
@@ -28,7 +29,6 @@ import { HttpExceptionFilter } from './filters/http-exception.filter';
 import { JwtAuthGuard } from './guards/jwt-auth.guard';
 import { LoggingInterceptor } from './interceptors/logging.interceptor';
 import { ResponseInterceptor } from './interceptors/response.interceptor';
-import { IssueModule } from './issues/issue.module';
 import { NotificationsModule } from './notifications/notifications.module';
 
 @Module({

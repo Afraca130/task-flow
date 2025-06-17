@@ -29,11 +29,16 @@ export default function LoginPage() {
     }
   }, [searchParams]);
 
+  // Handle authentication state changes
   useEffect(() => {
-    if (isAuthenticated) {
-      router.push('/dashboard');
+    console.log('🔍 Auth state changed:', { isAuthenticated, isLoading });
+
+    if (isAuthenticated && !isLoading) {
+      console.log('🚀 Redirecting to dashboard...');
+      // Use replace to prevent going back to login page
+      router.replace('/dashboard');
     }
-  }, [isAuthenticated, router]);
+  }, [isAuthenticated, isLoading, router]);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
@@ -80,15 +85,32 @@ export default function LoginPage() {
     }
 
     try {
+      console.log('📝 Submitting login form...');
       await login(formData.email, formData.password);
-      router.push('/dashboard');
+      console.log('✅ Login completed, auth state should be updated');
+
+      // Don't manually redirect here - let the useEffect handle it
     } catch (error) {
+      console.error('💥 Login submission error:', error);
       setErrors(prev => ({
         ...prev,
-        general: '이메일 또는 비밀번호가 올바르지 않습니다.',
+        general:
+          error instanceof Error ? error.message : '이메일 또는 비밀번호가 올바르지 않습니다.',
       }));
     }
   };
+
+  // Show loading state while checking authentication
+  if (isLoading) {
+    return (
+      <div className='min-h-screen bg-gray-50 flex items-center justify-center'>
+        <div className='text-center'>
+          <div className='animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4'></div>
+          <p className='text-gray-600'>로그인 중...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className='min-h-screen bg-gray-50 flex flex-col justify-center py-12 sm:px-6 lg:px-8'>

@@ -45,36 +45,50 @@ class AuthStore {
     try {
       this.setState({ isLoading: true });
 
-      // Use the API instance instead of direct fetch
-      const response = await fetch('/api/auth/login', {
+      console.log('🔐 Attempting login for:', email);
+
+      // Use direct fetch to backend API
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001'}/api/auth/login`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({ email, password }),
+        credentials: 'include', // Include cookies
       });
 
+      console.log('📡 Login response status:', response.status);
+
       if (!response.ok) {
-        const errorData = await response.json();
+        const errorData = await response.json().catch(() => ({ message: 'Login failed' }));
+        console.error('❌ Login failed:', errorData);
         throw new Error(errorData.message || 'Login failed');
       }
 
       const data = await response.json();
+      console.log('✅ Login response data:', {
+        hasAccessToken: !!data.accessToken,
+        hasUser: !!data.user,
+        userEmail: data.user?.email
+      });
 
       // Validate response data structure
       if (!data.accessToken || !data.user) {
+        console.error('❌ Invalid response structure:', data);
         throw new Error('Invalid response from server');
       }
 
-      // Store both tokens
+      // Store tokens and user data
       if (typeof window !== 'undefined') {
         localStorage.setItem('auth-token', data.accessToken);
         if (data.refreshToken) {
           localStorage.setItem('refresh-token', data.refreshToken);
         }
         localStorage.setItem('auth-user', JSON.stringify(data.user));
+        console.log('💾 Stored auth data in localStorage');
       }
 
+      // Update state BEFORE any navigation
       this.setState({
         user: data.user,
         token: data.accessToken,
@@ -83,9 +97,21 @@ class AuthStore {
         isLoading: false,
       });
 
-      console.log('Login successful:', { user: data.user.email, hasToken: !!data.accessToken });
+      console.log('🎉 Login successful - state updated:', {
+        isAuthenticated: true,
+        userEmail: data.user.email
+      });
+
     } catch (error) {
-      console.error('Login error:', error);
+      console.error('💥 Login error:', error);
+
+      // Clear any existing auth data on error
+      if (typeof window !== 'undefined') {
+        localStorage.removeItem('auth-token');
+        localStorage.removeItem('refresh-token');
+        localStorage.removeItem('auth-user');
+      }
+
       this.setState({
         isLoading: false,
         isAuthenticated: false,
@@ -93,6 +119,7 @@ class AuthStore {
         token: null,
         refreshToken: null,
       });
+
       throw error;
     }
   };
@@ -123,8 +150,6 @@ class AuthStore {
       if (error.response?.data?.message) {
         throw new Error(error.response.data.message);
       } else if (error.message) {
-        throw new Error(error.message);
-      } else {
         throw new Error('회원가입 중 오류가 발생했습니다.');
       }
     }

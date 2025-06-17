@@ -6,12 +6,13 @@ import { Issue, IssuePriority, IssueStatus, IssueType } from './entities/issue.e
 import { IssueServiceInterface } from './interfaces/issue-service.interface';
 import { IssuesRepository } from './issues.repository';
 
+
 @Injectable()
 export class IssuesService implements IssueServiceInterface {
     private readonly logger = new Logger(IssuesService.name);
 
     constructor(
-        @Inject('IssuesRepository')
+        @Inject(IssuesRepository)
         private readonly issuesRepository: IssuesRepository,
         private readonly activityLogService: ActivityLogService,
     ) { }

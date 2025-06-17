@@ -1,18 +1,14 @@
-import { Body, Controller, Get, Patch, Post, Req, UseGuards } from '@nestjs/common';
+import { Body, Controller, Get, Patch, Post, UseGuards } from '@nestjs/common';
 import { ApiBearerAuth, ApiBody, ApiCreatedResponse, ApiOperation, ApiResponse, ApiTags, ApiUnauthorizedResponse } from '@nestjs/swagger';
-import { Request } from 'express';
 
 import { ErrorResponseDto } from '@/common/dto/response/error-response.dto';
+import { GetUser } from '@/decorators/authenticated-user.decorator';
 import { User } from '@/users/entities/user.entity';
 import { Public } from '../decorators/public.decorator';
 import { JwtAuthGuard } from '../guards/jwt-auth.guard';
 import { AuthService } from './auth.service';
 import { LoginResponseDto, RegisterResponseDto, UserDto } from './dto/auth-response.dto';
 import { ChangePasswordRequestDto, LoginRequestDto, RefreshTokenRequestDto, RegisterRequestDto, UpdateProfileRequestDto } from './dto/request/auth-request.dto';
-
-interface AuthenticatedRequest extends Request {
-  user: User;
-}
 
 /**
  * 인증 컨트롤러
@@ -56,7 +52,6 @@ export class AuthController {
   async login(
     @Body() loginDto: LoginRequestDto,
   ): Promise<LoginResponseDto> {
-    console.log('loginDto', loginDto);
     return await this.authService.login(loginDto);
   }
 
@@ -74,9 +69,9 @@ export class AuthController {
   })
   @ApiResponse({ status: 401, description: '인증 필요' })
   async getProfile(
-    @Req() req: AuthenticatedRequest,
+    @GetUser() user: User,
   ): Promise<UserDto> {
-    return await this.authService.getProfile(req.user.id);
+    return await this.authService.getProfile(user.id);
   }
 
   /**
@@ -93,10 +88,10 @@ export class AuthController {
   })
   @ApiResponse({ status: 401, description: '인증 필요' })
   async updateProfile(
-    @Req() req: AuthenticatedRequest,
+    @GetUser() user: User,
     @Body() updateProfileDto: UpdateProfileRequestDto,
   ): Promise<UserDto> {
-    return await this.authService.updateProfile(req.user.id, updateProfileDto);
+    return await this.authService.updateProfile(user.id, updateProfileDto);
   }
 
   /**
@@ -112,10 +107,10 @@ export class AuthController {
   })
   @ApiResponse({ status: 401, description: '인증 실패' })
   async changePassword(
-    @Req() req: AuthenticatedRequest,
+    @GetUser() user: User,
     @Body() changePasswordDto: ChangePasswordRequestDto,
   ): Promise<{ message: string }> {
-    await this.authService.changePassword(req.user.id, changePasswordDto);
+    await this.authService.changePassword(user.id, changePasswordDto);
     return { message: '비밀번호가 성공적으로 변경되었습니다.' };
   }
 

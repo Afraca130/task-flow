@@ -1,3 +1,4 @@
+import { TimeUtil } from '@/common/utils/time.util';
 import {
     CallHandler,
     ExecutionContext,
@@ -31,24 +32,23 @@ export class LoggingInterceptor implements NestInterceptor {
         const response = context.switchToHttp().getResponse<Response>();
         const method = request.method;
         const url = request.url;
-        const userAgent = request.get('User-Agent') || '';
         const ip = request.ip || request.connection.remoteAddress;
         const userId = request.user?.id;
 
-        const startTime = Date.now();
+        const startTime = TimeUtil.now().getTime();
 
         return next
             .handle()
             .pipe(
                 tap({
                     next: (data) => {
-                        const endTime = Date.now();
+                        const endTime = TimeUtil.now().getTime();
                         const responseTime = endTime - startTime;
                         const statusCode = response.statusCode;
 
                         // Basic HTTP logging
                         this.logger.log(
-                            `${method} ${url} ${statusCode} ${responseTime}ms - ${userAgent} - ${ip}${userId ? ` - User: ${userId}` : ''}`
+                            `${method} ${url} ${statusCode} ${responseTime}ms - ${ip}${userId ? ` - User: ${userId}` : ''}`
                         );
 
                         // Log additional details for non-GET requests
@@ -56,7 +56,6 @@ export class LoggingInterceptor implements NestInterceptor {
                             this.logger.debug(`Request details for ${method} ${url}:`, {
                                 userId,
                                 ip,
-                                userAgent,
                                 responseTime,
                                 statusCode
                             });
@@ -68,7 +67,7 @@ export class LoggingInterceptor implements NestInterceptor {
                         const statusCode = error.status || 500;
 
                         this.logger.error(
-                            `${method} ${url} ${statusCode} ${responseTime}ms - ${userAgent} - ${ip}${userId ? ` - User: ${userId}` : ''} - Error: ${error.message}`
+                            `${method} ${url} ${statusCode} ${responseTime}ms - ${ip}${userId ? ` - User: ${userId}` : ''} - Error: ${error.message}`
                         );
                     }
                 })
