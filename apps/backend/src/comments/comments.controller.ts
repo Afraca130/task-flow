@@ -1,3 +1,4 @@
+import { JwtAuthGuard } from '@/guards/jwt-auth.guard';
 import {
     Body,
     Controller,
@@ -18,15 +19,9 @@ import {
     ApiResponse,
     ApiTags,
 } from '@nestjs/swagger';
-
-import { JwtAuthGuard } from '../guards/jwt-auth.guard';
-import { CreateCommentUseCase } from './create-comment.use-case';
-import { DeleteCommentUseCase } from './delete-comment.use-case';
-import { CreateCommentDto } from './dto/request/create-comment.dto';
-import { UpdateCommentDto } from './dto/request/update-comment.dto';
-import { CommentResponseDto } from './dto/response/comment-response.dto';
-import { GetTaskCommentsUseCase } from './get-task-comments.use-case';
-import { UpdateCommentUseCase } from './update-comment.use-case';
+import { CommentsService } from './comments.service';
+import { CreateCommentDto, UpdateCommentDto } from './dto/request';
+import { CommentResponseDto } from './dto/response';
 
 @ApiTags('comments')
 @Controller({ path: 'comments', version: '1' })
@@ -34,10 +29,7 @@ import { UpdateCommentUseCase } from './update-comment.use-case';
 @ApiBearerAuth('JWT-auth')
 export class CommentController {
     constructor(
-        private readonly createCommentUseCase: CreateCommentUseCase,
-        private readonly getTaskCommentsUseCase: GetTaskCommentsUseCase,
-        private readonly updateCommentUseCase: UpdateCommentUseCase,
-        private readonly deleteCommentUseCase: DeleteCommentUseCase,
+        private readonly commentsService: CommentsService,
     ) { }
 
     @Post()
@@ -58,10 +50,10 @@ export class CommentController {
         @Body() createCommentDto: CreateCommentDto,
         @Request() req: any,
     ): Promise<CommentResponseDto> {
-        const result = await this.createCommentUseCase.execute({
-            ...createCommentDto,
-            userId: req.user.id,
-        });
+        const result = await this.commentsService.createComment(
+            req.user.id,
+            createCommentDto,
+        );
         return CommentResponseDto.fromDomain(result);
     }
 
@@ -86,7 +78,7 @@ export class CommentController {
     async getTaskComments(
         @Param('taskId', ParseUUIDPipe) taskId: string,
     ): Promise<CommentResponseDto[]> {
-        const comments = await this.getTaskCommentsUseCase.execute({ taskId });
+        const comments = await this.commentsService.getTaskComments(taskId);
         return comments.map(comment => CommentResponseDto.fromDomain(comment));
     }
 
@@ -116,11 +108,11 @@ export class CommentController {
         @Body() updateCommentDto: UpdateCommentDto,
         @Request() req: any,
     ): Promise<CommentResponseDto> {
-        const result = await this.updateCommentUseCase.execute({
-            commentId: id,
-            content: updateCommentDto.content,
-            userId: req.user.id,
-        });
+        const result = await this.commentsService.updateComment(
+            req.user.id,
+            id,
+            updateCommentDto,
+        );
         return CommentResponseDto.fromDomain(result);
     }
 
@@ -146,10 +138,7 @@ export class CommentController {
         @Param('id', ParseUUIDPipe) id: string,
         @Request() req: any,
     ): Promise<{ message: string }> {
-        await this.deleteCommentUseCase.execute({
-            commentId: id,
-            userId: req.user.id,
-        });
+        await this.commentsService.deleteComment(req.user.id, id);
         return { message: 'Comment deleted successfully' };
     }
 }

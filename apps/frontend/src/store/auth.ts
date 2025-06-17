@@ -4,6 +4,7 @@ import { User, authApi } from '@/lib/api';
 interface AuthState {
   user: User | null;
   token: string | null;
+  refreshToken: string | null;
   isAuthenticated: boolean;
   isLoading: boolean;
 }
@@ -12,6 +13,7 @@ class AuthStore {
   private state: AuthState = {
     user: null,
     token: null,
+    refreshToken: null,
     isAuthenticated: false,
     isLoading: false,
   };
@@ -39,47 +41,42 @@ class AuthStore {
   };
 
   // Auth actions
-  login = async (email: string, password: string) => {
-    this.setState({ isLoading: true });
-
+  login = async (email: string, password: string): Promise<void> => {
     try {
-      // authApi.login now returns { accessToken: string; user: User } directly
-      const { accessToken, user } = await authApi.login(email, password);
+      this.setState({ isLoading: true });
+
+      const response = await fetch('/api/auth/login', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ email, password }),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || 'Login failed');
+      }
+
+      const data = await response.json();
+
+      // Store both tokens
+      if (typeof window !== 'undefined') {
+        localStorage.setItem('auth-token', data.accessToken);
+        localStorage.setItem('refresh-token', data.refreshToken);
+        localStorage.setItem('auth-user', JSON.stringify(data.user));
+      }
 
       this.setState({
-        user,
-        token: accessToken,
+        user: data.user,
+        token: data.accessToken,
+        refreshToken: data.refreshToken,
         isAuthenticated: true,
         isLoading: false,
       });
-
-      // Save to localStorage
-      if (typeof window !== 'undefined') {
-        localStorage.setItem('auth-token', accessToken);
-        localStorage.setItem('auth-user', JSON.stringify(user));
-      }
-
-      return { user, token: accessToken };
-
-    } catch (error: any) {
+    } catch (error) {
       this.setState({ isLoading: false });
-
-      // Handle different error types
-      if (error.response?.data?.details) {
-        // Backend standard error response with details
-        const details = error.response.data.details;
-        if (Array.isArray(details)) {
-          throw new Error(details.join('\n'));
-        }
-      }
-
-      if (error.response?.data?.message) {
-        throw new Error(error.response.data.message);
-      } else if (error.message) {
-        throw new Error(error.message);
-      } else {
-        throw new Error('로그인 중 오류가 발생했습니다.');
-      }
+      throw error;
     }
   };
 
@@ -143,6 +140,7 @@ class AuthStore {
     // Clear localStorage first
     if (typeof window !== 'undefined') {
       localStorage.removeItem('auth-token');
+      localStorage.removeItem('refresh-token');
       localStorage.removeItem('auth-user');
     }
 
@@ -150,6 +148,7 @@ class AuthStore {
     this.setState({
       user: null,
       token: null,
+      refreshToken: null,
       isAuthenticated: false,
       isLoading: false,
     });
@@ -164,9 +163,10 @@ class AuthStore {
   initialize = () => {
     if (typeof window !== 'undefined') {
       const token = localStorage.getItem('auth-token');
+      const refreshToken = localStorage.getItem('refresh-token');
       const userStr = localStorage.getItem('auth-user');
 
-      if (token && userStr) {
+      if (token && refreshToken && userStr) {
         try {
           const user = JSON.parse(userStr);
 
@@ -175,14 +175,14 @@ class AuthStore {
           const isExpired = tokenPayload && tokenPayload.exp && Date.now() >= tokenPayload.exp * 1000;
 
           if (isExpired) {
-            console.warn('Token expired, clearing auth state');
-            this.logout();
-            return;
+            console.warn('Token expired, will try refresh');
+            // Don't logout immediately, let the interceptor handle refresh
           }
 
           this.setState({
             user,
             token,
+            refreshToken,
             isAuthenticated: true,
           });
         } catch (error) {

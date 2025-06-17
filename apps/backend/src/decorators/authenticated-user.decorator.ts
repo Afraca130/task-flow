@@ -11,23 +11,7 @@ export interface AuthenticatedRequest extends Request {
     user: AuthenticatedUser;
 }
 
-/**
- * Extract authenticated user from request
- *
- * @example
- * ```typescript
- * @Get('profile')
- * async getProfile(@User() user: AuthenticatedUser) {
- *   return user;
- * }
- *
- * @Get('profile')
- * async getUserId(@User('id') userId: string) {
- *   return { userId };
- * }
- * ```
- */
-export const User = createParamDecorator(
+export const GetUser = createParamDecorator(
     (data: keyof AuthenticatedUser | undefined, ctx: ExecutionContext): any => {
         const request = ctx.switchToHttp().getRequest<AuthenticatedRequest>();
         const user = request.user;

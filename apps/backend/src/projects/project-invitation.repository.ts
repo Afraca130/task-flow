@@ -1,11 +1,12 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { LessThan, Repository } from 'typeorm';
-import { CreateInvitationRequest, InvitationFilter, InvitationPaginationOptions, PaginatedInvitationResult, ProjectInvitationRepositoryPort } from '../invitations/interfaces/project-invitation-repository.port';
 import { InvitationStatus, ProjectInvitation } from '../invitations/entities/project-invitation.entity';
+import { CreateInvitationRequest, InvitationFilter, InvitationPaginationOptions, PaginatedInvitationResult } from '../invitations/interfaces/invitation.interface';
+
 
 @Injectable()
-export class ProjectInvitationRepository implements ProjectInvitationRepositoryPort {
+export class ProjectInvitationRepository {
     private readonly logger = new Logger(ProjectInvitationRepository.name);
 
     constructor(
@@ -17,16 +18,8 @@ export class ProjectInvitationRepository implements ProjectInvitationRepositoryP
         try {
             let invitation: ProjectInvitation;
 
-            if (request.inviteeEmail) {
+            if (request.inviteeId) {
                 invitation = ProjectInvitation.create(
-                    request.projectId,
-                    request.inviterId,
-                    request.inviteeEmail,
-                    request.message,
-                    request.expiryDays,
-                );
-            } else if (request.inviteeId) {
-                invitation = ProjectInvitation.createForUser(
                     request.projectId,
                     request.inviterId,
                     request.inviteeId,
@@ -34,7 +27,7 @@ export class ProjectInvitationRepository implements ProjectInvitationRepositoryP
                     request.expiryDays,
                 );
             } else {
-                throw new Error('Either inviteeEmail or inviteeId must be provided');
+                throw new Error('inviteeId must be provided');
             }
 
             return await this.invitationRepository.save(invitation);
@@ -110,19 +103,6 @@ export class ProjectInvitationRepository implements ProjectInvitationRepositoryP
         }
     }
 
-    async findByInviteeEmail(email: string): Promise<ProjectInvitation[]> {
-        try {
-            return await this.invitationRepository.find({
-                where: { inviteeEmail: email },
-                relations: ['project', 'inviter'],
-                order: { createdAt: 'DESC' },
-            });
-        } catch (error) {
-            this.logger.error(`Failed to find invitations by email: ${email}`, error);
-            throw error;
-        }
-    }
-
     async findByInviteeId(userId: string): Promise<ProjectInvitation[]> {
         try {
             return await this.invitationRepository.find({
@@ -141,7 +121,6 @@ export class ProjectInvitationRepository implements ProjectInvitationRepositoryP
             return await this.invitationRepository.find({
                 where: [
                     { inviteeId: userId, status: InvitationStatus.PENDING },
-                    { inviteeEmail: userId, status: InvitationStatus.PENDING }, // 이메일로도 검색
                 ],
                 relations: ['project', 'inviter'],
                 order: { createdAt: 'DESC' },
@@ -200,13 +179,12 @@ export class ProjectInvitationRepository implements ProjectInvitationRepositoryP
 
     async checkExistingInvitation(
         projectId: string,
-        inviteeEmail: string,
     ): Promise<ProjectInvitation | null> {
         try {
             return await this.invitationRepository.findOne({
                 where: {
                     projectId,
-                    inviteeEmail,
+
                     status: InvitationStatus.PENDING,
                 },
             });
@@ -229,10 +207,6 @@ export class ProjectInvitationRepository implements ProjectInvitationRepositoryP
 
         if (filter.inviteeId) {
             conditions.inviteeId = filter.inviteeId;
-        }
-
-        if (filter.inviteeEmail) {
-            conditions.inviteeEmail = filter.inviteeEmail;
         }
 
         if (filter.status) {

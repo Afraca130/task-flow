@@ -55,7 +55,9 @@ export class AppConfig {
   get jwt() {
     return {
       secret: this.configService.get<string>('JWT_SECRET', 'your-super-secret-jwt-key'),
-      expiresIn: this.configService.get<string>('JWT_EXPIRES_IN', '7d'),
+      expiresIn: this.configService.get<string>('JWT_EXPIRES_IN', '1h'),
+      refreshSecret: this.configService.get<string>('JWT_REFRESH_SECRET', 'your-super-secret-refresh-key'),
+      refreshExpiresIn: this.configService.get<string>('JWT_REFRESH_EXPIRES_IN', '14d'),
     };
   }
 

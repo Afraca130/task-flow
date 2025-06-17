@@ -100,7 +100,7 @@ export default function AnalyticsPage() {
     const loadProjects = async () => {
       try {
         const result = await projectsApi.getProjects({ page: 1, limit: 100 });
-        const projectList = Array.isArray(result) ? result : result.data || [];
+        const projectList = Array.isArray(result) ? result : result.projects || [];
         setProjects(projectList);
       } catch (error) {
         console.error('Failed to load projects:', error);
@@ -424,11 +424,6 @@ export default function AnalyticsPage() {
                   팀
                 </div>
                 <div className='space-y-1'>
-                  <NavItem
-                    icon={<Users className='w-4 h-4 text-indigo-500' />}
-                    label='사람'
-                    onClick={() => handleNavigation('people')}
-                  />
                   <NavItem
                     icon={<Mail className='w-4 h-4 text-blue-500' />}
                     label='초대'

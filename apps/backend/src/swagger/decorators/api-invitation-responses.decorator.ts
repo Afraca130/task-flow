@@ -224,7 +224,6 @@ export const ApiGetProjectInvitations = () => {
                     type: 'object',
                     properties: {
                         id: { type: 'string', format: 'uuid' },
-                        inviteeEmail: { type: 'string', format: 'email' },
                         inviteeName: { type: 'string', example: '이사용자' },
                         status: { type: 'string', enum: Object.values(InvitationStatus) },
                         createdAt: { type: 'string', format: 'date-time' },

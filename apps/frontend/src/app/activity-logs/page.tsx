@@ -22,7 +22,6 @@ import {
   Search,
   Settings,
   UserCheck,
-  Users,
 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
@@ -102,7 +101,7 @@ export default function ActivityLogsPage() {
     const loadProjects = async () => {
       try {
         const result = await projectsApi.getProjects({ page: 1, limit: 100 });
-        const projectList = Array.isArray(result) ? result : result.data || [];
+        const projectList = Array.isArray(result) ? result : result.projects || [];
         setProjects(projectList);
       } catch (error) {
         console.error('Failed to load projects:', error);
@@ -332,11 +331,6 @@ export default function ActivityLogsPage() {
                   팀
                 </div>
                 <div className='space-y-1'>
-                  <NavItem
-                    icon={<Users className='w-4 h-4 text-indigo-500' />}
-                    label='사람'
-                    onClick={() => handleNavigation('people')}
-                  />
                   <NavItem
                     icon={<UserCheck className='w-4 h-4 text-green-500' />}
                     label='프로젝트 설정'

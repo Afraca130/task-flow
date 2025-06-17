@@ -65,7 +65,7 @@ export default function ReportsPage() {
     const loadProjects = async () => {
       try {
         const result = await projectsApi.getProjects({ page: 1, limit: 100 });
-        const projectList = Array.isArray(result) ? result : result.data || [];
+        const projectList = Array.isArray(result) ? result : result.projects || [];
         setProjects(projectList);
       } catch (error) {
         console.error('Failed to load projects:', error);

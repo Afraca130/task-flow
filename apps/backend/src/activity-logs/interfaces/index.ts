@@ -1,1 +1,1 @@
-export * from './activity-log-repository.port';
+export * from './activity-log.interface';

@@ -16,7 +16,7 @@ const api = axios.create({
   headers: {
     'Content-Type': 'application/json',
   },
-  withCredentials: false, // CORS 이슈 방지
+  withCredentials: true, // CORS 이슈 방지
 });
 
 // 통합 에러 처리 클래스
@@ -104,25 +104,93 @@ class ApiErrorHandler {
 
 const errorHandler = ApiErrorHandler.getInstance();
 
-// 토큰 인터셉터
+// Add token refresh functionality
+let isRefreshing = false;
+let failedQueue: any[] = [];
+
+const processQueue = (error: any, token: string | null = null) => {
+  failedQueue.forEach(({ resolve, reject }) => {
+    if (error) {
+      reject(error);
+    } else {
+      resolve(token);
+    }
+  });
+
+  failedQueue = [];
+};
+
+// Add request interceptor to include auth token
 api.interceptors.request.use(
   (config) => {
     const token = localStorage.getItem('auth-token');
-    if (token) {
+    if (token && config.headers) {
       config.headers.Authorization = `Bearer ${token}`;
     }
     return config;
   },
-  (error) => {
-    return errorHandler.handleError(error);
-  }
+  (error) => Promise.reject(error)
 );
 
-// 통합 응답 인터셉터
+// Add response interceptor to handle token refresh
 api.interceptors.response.use(
   (response) => response,
-  (error) => {
-    return errorHandler.handleError(error);
+  async (error) => {
+    const originalRequest = error.config;
+
+    if (error.response?.status === 401 && !originalRequest._retry) {
+      if (isRefreshing) {
+        return new Promise((resolve, reject) => {
+          failedQueue.push({ resolve, reject });
+        }).then((token) => {
+          originalRequest.headers.Authorization = `Bearer ${token}`;
+          return api(originalRequest);
+        }).catch((err) => {
+          return Promise.reject(err);
+        });
+      }
+
+      originalRequest._retry = true;
+      isRefreshing = true;
+
+      const refreshToken = localStorage.getItem('refresh-token');
+
+      if (!refreshToken) {
+        // No refresh token, redirect to login
+        localStorage.removeItem('auth-token');
+        localStorage.removeItem('auth-user');
+        localStorage.removeItem('refresh-token');
+        window.location.href = '/login';
+        return Promise.reject(error);
+      }
+
+      try {
+        const response = await api.post('/auth/refresh', {
+          refreshToken: refreshToken
+        });
+
+        const { accessToken, refreshToken: newRefreshToken } = response.data;
+
+        localStorage.setItem('auth-token', accessToken);
+        localStorage.setItem('refresh-token', newRefreshToken);
+
+        processQueue(null, accessToken);
+
+        originalRequest.headers.Authorization = `Bearer ${accessToken}`;
+        return api(originalRequest);
+      } catch (refreshError) {
+        processQueue(refreshError, null);
+        localStorage.removeItem('auth-token');
+        localStorage.removeItem('auth-user');
+        localStorage.removeItem('refresh-token');
+        window.location.href = '/login';
+        return Promise.reject(refreshError);
+      } finally {
+        isRefreshing = false;
+      }
+    }
+
+    return Promise.reject(error);
   }
 );
 
@@ -130,12 +198,12 @@ api.interceptors.response.use(
 export interface User {
   id: string;
   email: string;
-  name: string;
-  profileImage?: string;
+  name?: string;
   profileColor?: string;
-  isActive: boolean;
-  createdAt: string;
-  updatedAt: string;
+  isActive?: boolean;
+  createdAt?: string;
+  updatedAt?: string;
+  lastLoginAt?: string;
 }
 
 export interface Project {
@@ -168,15 +236,12 @@ export interface Project {
 
 export interface ProjectMember {
   id: string;
-  projectId: string;
   userId: string;
+  projectId: string;
   role: 'OWNER' | 'MANAGER' | 'MEMBER';
   joinedAt?: string;
-  invitedBy?: string;
   isActive: boolean;
-  createdAt: string;
   user?: User;
-  inviter?: User;
 }
 
 export interface Task {
@@ -251,13 +316,14 @@ export interface ProjectInvitation {
   id: string;
   projectId: string;
   inviterId: string;
-  inviteeEmail: string;
   inviteeId?: string;
+  inviteeEmail?: string;
+  token: string;
   status: 'PENDING' | 'ACCEPTED' | 'REJECTED' | 'EXPIRED';
-  inviteToken: string;
-  expiresAt: string;
-  respondedAt?: string;
+  message?: string;
+  expiryDate: string;
   createdAt: string;
+  updatedAt: string;
   project?: Project;
   inviter?: User;
   invitee?: User;
@@ -274,7 +340,10 @@ export interface StandardApiResponse<T = any> {
 
 // Helper function to extract data from standard response
 function extractData<T>(response: { data: StandardApiResponse<T> }): T {
-  return response.data.data;
+  if (response.data && response.data.success) {
+    return response.data.data;
+  }
+  throw new Error(response.data?.message || 'API response error');
 }
 
 // Auth API - Auth는 버전이 없음
@@ -341,8 +410,8 @@ export const projectsApi = {
     limit?: number;
     search?: string;
     isActive?: boolean;
-  }): Promise<{ data: Project[]; meta: any }> => {
-    const response = await api.get<StandardApiResponse<{ data: Project[]; meta: any }>>('/projects', { params });
+  }): Promise<{ projects: Project[]; total: number; page: number; limit: number; totalPages: number }> => {
+    const response = await api.get<StandardApiResponse<{ projects: Project[]; total: number; page: number; limit: number; totalPages: number }>>('/projects', { params });
     return extractData(response);
   },
 
@@ -366,6 +435,7 @@ export const projectsApi = {
   updateProject: async (id: string, data: {
     name?: string;
     description?: string;
+    isPublic?: boolean;
     color?: string;
     iconUrl?: string;
     priority?: 'LOW' | 'MEDIUM' | 'HIGH' | 'URGENT';
@@ -380,37 +450,28 @@ export const projectsApi = {
     await api.delete(`/projects/${id}`);
   },
 
-  // Legacy methods for backward compatibility
+  // Project member management
   getProjectMembers: async (projectId: string): Promise<ProjectMember[]> => {
     const response = await api.get<StandardApiResponse<ProjectMember[]>>(`/projects/${projectId}/members`);
     return extractData(response);
   },
 
-  addProjectMember: async (projectId: string, email: string): Promise<ProjectMember> => {
-    const response = await api.post<StandardApiResponse<ProjectMember>>(`/projects/${projectId}/members`, { email });
-    return extractData(response);
+  updateMemberRole: async (projectId: string, userId: string, role: 'OWNER' | 'MANAGER' | 'MEMBER'): Promise<void> => {
+    await api.patch(`/projects/${projectId}/members/${userId}/role`, { role });
   },
 
   removeProjectMember: async (projectId: string, userId: string): Promise<void> => {
     await api.delete(`/projects/${projectId}/members/${userId}`);
   },
 
-  updateMemberRole: async (
-    projectId: string,
-    userId: string,
-    role: 'OWNER' | 'MANAGER' | 'MEMBER'
-  ): Promise<ProjectMember> => {
-    const response = await api.put<StandardApiResponse<ProjectMember>>(`/projects/${projectId}/members/${userId}/role`, { role });
-    return extractData(response);
-  },
-
   inviteToProject: async (projectId: string, data: {
-    inviteeEmail?: string;
     inviteeId?: string;
     message?: string;
-    expiryDays?: number;
   }): Promise<ProjectInvitation> => {
-    const response = await api.post<StandardApiResponse<ProjectInvitation>>('/invitations', { projectId, ...data });
+    const response = await api.post<StandardApiResponse<ProjectInvitation>>('/invitations', {
+      projectId,
+      ...data
+    });
     return extractData(response);
   },
 
@@ -430,8 +491,8 @@ export const tasksApi = {
     page?: number;
     limit?: number;
     lexoRank?: string;
-  }): Promise<{ data: Task[]; meta: any }> => {
-    const response = await api.get<StandardApiResponse<{ data: Task[]; meta: any }>>('/tasks', { params });
+  }): Promise<{ data: Task[]; total: number; page: number; limit: number; totalPages: number }> => {
+    const response = await api.get<StandardApiResponse<{ data: Task[]; total: number; page: number; limit: number; totalPages: number }>>('/tasks', { params });
     return extractData(response);
   },
 
@@ -482,26 +543,8 @@ export const tasksApi = {
     return extractData(response);
   },
 
-  unassignTask: async (taskId: string): Promise<Task> => {
-    const response = await api.put<StandardApiResponse<Task>>(`/tasks/${taskId}`, { assigneeId: null });
-    return extractData(response);
-  },
-
-  getTasksByProjectOrdered: async (projectId: string, status?: 'TODO' | 'IN_PROGRESS' | 'COMPLETED', limit?: number): Promise<{ [key: string]: Task[] }> => {
-    const params: any = {};
-    if (status) params.status = status;
-    if (limit) params.limit = limit;
-    const response = await api.get<StandardApiResponse<{ [key: string]: Task[] }>>(`/tasks/project/${projectId}/ordered`, { params });
-    return extractData(response);
-  },
-
-  reorderTask: async (data: {
-    taskId: string;
-    projectId: string;
-    newPosition: number;
-    newStatus?: 'TODO' | 'IN_PROGRESS' | 'COMPLETED';
-  }): Promise<{ task: Task; affectedTasks: Task[] }> => {
-    const response = await api.put<StandardApiResponse<{ task: Task; affectedTasks: Task[] }>>('/tasks/reorder', data);
+  reorderTask: async (taskId: string, newLexoRank: string): Promise<Task> => {
+    const response = await api.put<StandardApiResponse<Task>>(`/tasks/${taskId}/reorder`, { lexoRank: newLexoRank });
     return extractData(response);
   },
 
@@ -630,6 +673,82 @@ export const userLogsApi = {
 // Utility function to safely get lexoRank
 export const safeLexoRank = (task: Task): string => {
   return task.lexoRank ?? 'U';
+};
+
+// Users API
+export const usersApi = {
+  getUsers: async (): Promise<User[]> => {
+    const response = await api.get<StandardApiResponse<User[]>>('/users/active');
+    return extractData(response);
+  },
+
+  getUser: async (id: string): Promise<User> => {
+    const response = await api.get<StandardApiResponse<User>>(`/users/${id}`);
+    return extractData(response);
+  },
+
+  searchUsers: async (query: string, limit?: number): Promise<User[]> => {
+    const response = await api.get<StandardApiResponse<User[]>>('/users/search', {
+      params: { q: query, limit: limit || 10 }
+    });
+    return extractData(response);
+  },
+
+  updateUser: async (id: string, data: Partial<User>): Promise<User> => {
+    const response = await api.patch<StandardApiResponse<User>>(`/users/${id}`, data);
+    return extractData(response);
+  },
+
+  deleteUser: async (id: string): Promise<void> => {
+    await api.delete(`/users/${id}`);
+  },
+};
+
+// Invitations API
+export const invitationsApi = {
+  createInvitation: async (data: {
+    projectId: string;
+    inviteeId: string;
+    message?: string;
+    expiryDays?: number;
+  }): Promise<ProjectInvitation> => {
+    const response = await api.post<StandardApiResponse<ProjectInvitation>>('/invitations', data);
+    return extractData(response);
+  },
+
+  acceptInvitation: async (token: string): Promise<void> => {
+    await api.put(`/invitations/${token}/accept`);
+  },
+
+  declineInvitation: async (token: string): Promise<void> => {
+    await api.put(`/invitations/${token}/decline`);
+  },
+
+  getInvitation: async (token: string): Promise<ProjectInvitation> => {
+    const response = await api.get<StandardApiResponse<ProjectInvitation>>(`/invitations/${token}`);
+    return extractData(response);
+  },
+
+  getProjectInvitations: async (projectId: string): Promise<ProjectInvitation[]> => {
+    const response = await api.get<StandardApiResponse<ProjectInvitation[]>>(`/invitations/project/${projectId}`);
+    return extractData(response);
+  },
+
+  getReceivedInvitations: async (status?: 'PENDING' | 'ACCEPTED' | 'REJECTED' | 'EXPIRED'): Promise<ProjectInvitation[]> => {
+    const response = await api.get<StandardApiResponse<ProjectInvitation[]>>('/invitations/user/received', {
+      params: status ? { status } : {}
+    });
+    return extractData(response);
+  },
+
+  getPendingInvitations: async (): Promise<ProjectInvitation[]> => {
+    const response = await api.get<StandardApiResponse<ProjectInvitation[]>>('/invitations/user/pending');
+    return extractData(response);
+  },
+
+  deleteInvitation: async (id: string): Promise<void> => {
+    await api.delete(`/invitations/${id}`);
+  },
 };
 
 export default api;

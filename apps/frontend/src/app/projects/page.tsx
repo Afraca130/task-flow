@@ -4,7 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Project, projectsApi } from '@/lib/api';
 import { useAuthStore } from '@/store/auth';
 import { useProjectsStore } from '@/store/projects';
-import { Activity, ArrowLeft, Calendar, FolderOpen, Plus, Users } from 'lucide-react';
+import { Activity, ArrowLeft, Calendar, FolderOpen, Plus, Users, X } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
 
@@ -13,6 +13,15 @@ export default function ProjectsPage() {
   const { isAuthenticated, user } = useAuthStore();
   const { projects, setProjects } = useProjectsStore();
   const [loading, setLoading] = useState(true);
+  const [showCreateModal, setShowCreateModal] = useState(false);
+  const [creating, setCreating] = useState(false);
+  const [createForm, setCreateForm] = useState({
+    name: '',
+    description: '',
+    color: '#3B82F6',
+    priority: 'MEDIUM' as 'LOW' | 'MEDIUM' | 'HIGH' | 'URGENT',
+    dueDate: '',
+  });
 
   // Check authentication
   useEffect(() => {
@@ -29,8 +38,13 @@ export default function ProjectsPage() {
     const loadProjects = async () => {
       try {
         setLoading(true);
+        console.log('Loading projects...');
         const result = await projectsApi.getProjects({ page: 1, limit: 100 });
-        const projectList = Array.isArray(result) ? result : result.data || [];
+        console.log('Projects API response:', result);
+
+        // 응답 형식에 맞게 프로젝트 배열 추출
+        const projectList = result.projects || [];
+        console.log('Extracted projects:', projectList);
         setProjects(projectList);
       } catch (error) {
         console.error('Failed to load projects:', error);
@@ -49,8 +63,46 @@ export default function ProjectsPage() {
   };
 
   const handleCreateProject = () => {
-    // 새 프로젝트 생성 (추후 구현)
-    alert('새 프로젝트 생성 기능은 곧 출시될 예정입니다!');
+    setShowCreateModal(true);
+  };
+
+  const handleCloseModal = () => {
+    setShowCreateModal(false);
+    setCreateForm({
+      name: '',
+      description: '',
+      color: '#3B82F6',
+      priority: 'MEDIUM',
+      dueDate: '',
+    });
+  };
+
+  const handleCreateSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!createForm.name.trim()) return;
+
+    try {
+      setCreating(true);
+      const newProject = await projectsApi.createProject({
+        name: createForm.name.trim(),
+        description: createForm.description.trim() || undefined,
+        color: createForm.color,
+        priority: createForm.priority,
+        dueDate: createForm.dueDate || undefined,
+      });
+
+      // Update projects list
+      setProjects([...projects, newProject]);
+      handleCloseModal();
+
+      // Navigate to the new project
+      router.push(`/dashboard?projectId=${newProject.id}`);
+    } catch (error) {
+      console.error('Failed to create project:', error);
+      alert('프로젝트 생성에 실패했습니다.');
+    } finally {
+      setCreating(false);
+    }
   };
 
   const getProjectColor = (project: Project) => {
@@ -64,6 +116,24 @@ export default function ProjectsPage() {
       day: 'numeric',
     });
   };
+
+  const priorityOptions = [
+    { value: 'LOW', label: '낮음', color: '#6B7280' },
+    { value: 'MEDIUM', label: '보통', color: '#3B82F6' },
+    { value: 'HIGH', label: '높음', color: '#F59E0B' },
+    { value: 'URGENT', label: '긴급', color: '#EF4444' },
+  ];
+
+  const colorOptions = [
+    '#3B82F6', // 파랑
+    '#10B981', // 초록
+    '#F59E0B', // 노랑
+    '#EF4444', // 빨강
+    '#8B5CF6', // 보라
+    '#06B6D4', // 청록
+    '#F97316', // 주황
+    '#EC4899', // 핑크
+  ];
 
   return (
     <div className='min-h-screen bg-gray-50'>
@@ -179,6 +249,110 @@ export default function ProjectsPage() {
           </div>
         )}
       </div>
+
+      {/* 새 프로젝트 생성 모달 */}
+      {showCreateModal && (
+        <div className='fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50'>
+          <div className='bg-white rounded-lg max-w-md w-full p-6'>
+            <div className='flex items-center justify-between mb-6'>
+              <h3 className='text-lg font-semibold text-gray-900'>새 프로젝트 만들기</h3>
+              <button
+                onClick={handleCloseModal}
+                className='p-2 hover:bg-gray-100 rounded-lg transition-colors'
+              >
+                <X className='w-5 h-5' />
+              </button>
+            </div>
+
+            <form onSubmit={handleCreateSubmit} className='space-y-4'>
+              <div>
+                <label className='block text-sm font-medium text-gray-700 mb-2'>
+                  프로젝트 이름 *
+                </label>
+                <input
+                  type='text'
+                  required
+                  value={createForm.name}
+                  onChange={e => setCreateForm({ ...createForm, name: e.target.value })}
+                  className='w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent'
+                  placeholder='프로젝트 이름을 입력하세요'
+                />
+              </div>
+
+              <div>
+                <label className='block text-sm font-medium text-gray-700 mb-2'>
+                  프로젝트 설명
+                </label>
+                <textarea
+                  rows={3}
+                  value={createForm.description}
+                  onChange={e => setCreateForm({ ...createForm, description: e.target.value })}
+                  className='w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent'
+                  placeholder='프로젝트에 대한 설명을 입력하세요'
+                />
+              </div>
+
+              <div>
+                <label className='block text-sm font-medium text-gray-700 mb-2'>
+                  프로젝트 색상
+                </label>
+                <div className='flex gap-2'>
+                  {colorOptions.map(color => (
+                    <button
+                      key={color}
+                      type='button'
+                      onClick={() => setCreateForm({ ...createForm, color })}
+                      className={`w-8 h-8 rounded-lg border-2 ${
+                        createForm.color === color ? 'border-gray-400' : 'border-gray-200'
+                      }`}
+                      style={{ backgroundColor: color }}
+                    />
+                  ))}
+                </div>
+              </div>
+
+              <div>
+                <label className='block text-sm font-medium text-gray-700 mb-2'>우선순위</label>
+                <select
+                  value={createForm.priority}
+                  onChange={e =>
+                    setCreateForm({
+                      ...createForm,
+                      priority: e.target.value as 'LOW' | 'MEDIUM' | 'HIGH' | 'URGENT',
+                    })
+                  }
+                  className='w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent'
+                >
+                  {priorityOptions.map(option => (
+                    <option key={option.value} value={option.value}>
+                      {option.label}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <label className='block text-sm font-medium text-gray-700 mb-2'>마감일</label>
+                <input
+                  type='date'
+                  value={createForm.dueDate}
+                  onChange={e => setCreateForm({ ...createForm, dueDate: e.target.value })}
+                  className='w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent'
+                />
+              </div>
+
+              <div className='flex justify-end gap-3 pt-4'>
+                <Button type='button' variant='outline' onClick={handleCloseModal}>
+                  취소
+                </Button>
+                <Button type='submit' disabled={creating || !createForm.name.trim()}>
+                  {creating ? '생성 중...' : '프로젝트 만들기'}
+                </Button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

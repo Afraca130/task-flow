@@ -3,6 +3,7 @@
 import { notificationsApi } from '@/lib/api';
 import { Bell } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
+import { InvitationModal } from './invitation-modal';
 import { NotificationDropdown } from './notification-dropdown';
 
 interface NotificationBellProps {
@@ -15,6 +16,10 @@ export function NotificationBell({ className = '' }: NotificationBellProps) {
   const [notifications, setNotifications] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
+
+  // 초대 모달 상태
+  const [showInvitationModal, setShowInvitationModal] = useState(false);
+  const [currentInvitation, setCurrentInvitation] = useState<any>(null);
 
   // 외부 클릭 시 드롭다운 닫기
   useEffect(() => {
@@ -84,7 +89,15 @@ export function NotificationBell({ className = '' }: NotificationBellProps) {
       }
     }
 
-    // 알림에 따른 페이지 이동
+    // 초대 알림인 경우 특별 처리
+    if (notification.type === 'PROJECT_INVITED') {
+      setCurrentInvitation(notification);
+      setShowInvitationModal(true);
+      setIsOpen(false);
+      return;
+    }
+
+    // 다른 알림의 경우 기본 처리
     if (notification.action?.type === 'navigate' && notification.action.url) {
       let url = notification.action.url;
 
@@ -102,6 +115,50 @@ export function NotificationBell({ className = '' }: NotificationBellProps) {
     setIsOpen(false);
   };
 
+  const handleAcceptInvitation = async () => {
+    if (!currentInvitation) return;
+
+    try {
+      const invitationId = currentInvitation.metadata?.invitationId;
+      if (invitationId) {
+        // 여기서 초대 수락 API 호출
+        // await invitationsApi.acceptInvitation(invitationId);
+        alert('초대를 수락했습니다! 프로젝트 페이지로 이동합니다.');
+
+        // 프로젝트 페이지로 이동
+        const projectId = currentInvitation.metadata?.projectId;
+        if (projectId) {
+          window.location.href = `/projects/${projectId}`;
+        }
+      }
+    } catch (error) {
+      console.error('Failed to accept invitation:', error);
+      alert('초대 수락에 실패했습니다.');
+    } finally {
+      setShowInvitationModal(false);
+      setCurrentInvitation(null);
+    }
+  };
+
+  const handleDeclineInvitation = async () => {
+    if (!currentInvitation) return;
+
+    try {
+      const invitationId = currentInvitation.metadata?.invitationId;
+      if (invitationId) {
+        // 여기서 초대 거절 API 호출
+        // await invitationsApi.declineInvitation(invitationId);
+        alert('초대를 거절했습니다.');
+      }
+    } catch (error) {
+      console.error('Failed to decline invitation:', error);
+      alert('초대 거절에 실패했습니다.');
+    } finally {
+      setShowInvitationModal(false);
+      setCurrentInvitation(null);
+    }
+  };
+
   const handleMarkAllAsRead = async () => {
     try {
       await notificationsApi.markAllAsRead();
@@ -113,30 +170,46 @@ export function NotificationBell({ className = '' }: NotificationBellProps) {
   };
 
   return (
-    <div className='relative' ref={dropdownRef}>
-      <button
-        onClick={handleBellClick}
-        className={`p-2 hover:bg-gray-100 rounded-md relative transition-colors ${className}`}
-        aria-label='알림'
-      >
-        <Bell className='w-5 h-5 text-gray-600' />
-        {unreadCount > 0 && (
-          <span className='absolute -top-1 -right-1 min-w-[18px] h-[18px] bg-red-500 text-white text-xs rounded-full flex items-center justify-center font-medium'>
-            {unreadCount > 99 ? '99+' : unreadCount}
-          </span>
-        )}
-      </button>
+    <>
+      <div className='relative' ref={dropdownRef}>
+        <button
+          onClick={handleBellClick}
+          className={`p-2 hover:bg-gray-100 rounded-md relative transition-colors ${className}`}
+          aria-label='알림'
+        >
+          <Bell className='w-5 h-5 text-gray-600' />
+          {unreadCount > 0 && (
+            <span className='absolute -top-1 -right-1 min-w-[18px] h-[18px] bg-red-500 text-white text-xs rounded-full flex items-center justify-center font-medium'>
+              {unreadCount > 99 ? '99+' : unreadCount}
+            </span>
+          )}
+        </button>
 
-      {isOpen && (
-        <NotificationDropdown
-          notifications={notifications}
-          loading={loading}
-          unreadCount={unreadCount}
-          onNotificationClick={handleNotificationClick}
-          onMarkAllAsRead={handleMarkAllAsRead}
-          onClose={() => setIsOpen(false)}
-        />
-      )}
-    </div>
+        {isOpen && (
+          <NotificationDropdown
+            notifications={notifications}
+            loading={loading}
+            unreadCount={unreadCount}
+            onNotificationClick={handleNotificationClick}
+            onMarkAllAsRead={handleMarkAllAsRead}
+            onClose={() => setIsOpen(false)}
+          />
+        )}
+      </div>
+
+      {/* 초대 모달 */}
+      <InvitationModal
+        isOpen={showInvitationModal}
+        inviterName={currentInvitation?.metadata?.userName || '누군가'}
+        projectName={currentInvitation?.metadata?.projectName || '프로젝트'}
+        message={currentInvitation?.message}
+        onAccept={handleAcceptInvitation}
+        onDecline={handleDeclineInvitation}
+        onClose={() => {
+          setShowInvitationModal(false);
+          setCurrentInvitation(null);
+        }}
+      />
+    </>
   );
 }

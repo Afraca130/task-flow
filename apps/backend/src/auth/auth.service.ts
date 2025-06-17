@@ -1,8 +1,8 @@
 import { TimeUtil } from '@/common/utils/time.util';
 
 import { User } from '@/users/entities/user.entity';
-import { UserRepositoryPort } from '@/users/interfaces/user-repository.port';
-import { ConflictException, Inject, Injectable, UnauthorizedException } from '@nestjs/common';
+import { UserRepository } from '@/users/user.repository';
+import { ConflictException, Injectable, UnauthorizedException } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import * as bcrypt from 'bcryptjs';
 import { LoginResponseDto, RegisterResponseDto, UserDto } from './dto/auth-response.dto';
@@ -15,8 +15,7 @@ import { ChangePasswordRequestDto, LoginRequestDto, RegisterRequestDto, UpdatePr
 @Injectable()
 export class AuthService {
   constructor(
-    @Inject('UserRepositoryPort')
-    private readonly userRepository: UserRepositoryPort,
+    private readonly userRepository: UserRepository,
     private readonly jwtService: JwtService,
   ) { }
 
@@ -76,11 +75,13 @@ export class AuthService {
 
     // JWT 토큰 생성
     const accessToken = await this.generateAccessToken(user);
+    const refreshToken = await this.generateRefreshToken(user);
 
     return {
       accessToken,
+      refreshToken,
       tokenType: 'Bearer',
-      expiresIn: 86400, // 24시간
+      expiresIn: 3600, // 1시간
       user: this.toUserDto(user),
     };
   }
@@ -180,6 +181,21 @@ export class AuthService {
   }
 
   /**
+   * JWT 리프레시 토큰 생성
+   */
+  private async generateRefreshToken(user: User): Promise<string> {
+    const payload = {
+      sub: user.id,
+      email: user.email,
+      type: 'refresh',
+    };
+
+    return this.jwtService.signAsync(payload, {
+      expiresIn: '14d',
+    });
+  }
+
+  /**
    * User 엔터티를 UserDto로 변환
    */
   private toUserDto(user: User): UserDto {
@@ -193,5 +209,42 @@ export class AuthService {
       lastLoginAt: user.lastLoginAt ? TimeUtil.formatISO(user.lastLoginAt) : undefined,
       createdAt: TimeUtil.formatISO(user.createdAt),
     };
+  }
+
+  /**
+   * 리프레시 토큰으로 액세스 토큰 갱신
+   */
+  async refreshToken(refreshToken: string): Promise<LoginResponseDto> {
+    try {
+      // 리프레시 토큰 검증
+      const payload = await this.jwtService.verifyAsync(refreshToken, {
+        secret: process.env.JWT_REFRESH_SECRET || 'your-super-secret-refresh-key',
+      });
+
+      // 토큰 타입 확인
+      if (payload.type !== 'refresh') {
+        throw new UnauthorizedException('유효하지 않은 리프레시 토큰입니다.');
+      }
+
+      // 사용자 조회
+      const user = await this.userRepository.findById(payload.sub);
+      if (!user || !user.isActive) {
+        throw new UnauthorizedException('사용자를 찾을 수 없습니다.');
+      }
+
+      // 새 토큰 생성
+      const newAccessToken = await this.generateAccessToken(user);
+      const newRefreshToken = await this.generateRefreshToken(user);
+
+      return {
+        accessToken: newAccessToken,
+        refreshToken: newRefreshToken,
+        tokenType: 'Bearer',
+        expiresIn: 3600, // 1시간
+        user: this.toUserDto(user),
+      };
+    } catch (error) {
+      throw new UnauthorizedException('리프레시 토큰이 유효하지 않습니다.');
+    }
   }
 }

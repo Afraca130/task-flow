@@ -2,10 +2,9 @@ import {
     Controller,
     DefaultValuePipe,
     Get,
-    Inject,
     ParseIntPipe,
     Query,
-    UseGuards,
+    UseGuards
 } from '@nestjs/common';
 import {
     ApiBadRequestResponse,
@@ -17,10 +16,10 @@ import {
     ApiTags,
     ApiUnauthorizedResponse,
 } from '@nestjs/swagger';
-
-import { ActivityLogRepositoryPort } from './interfaces/activity-log-repository.port';
-import { ErrorResponseDto } from '../common/dto/response/error-response.dto';
 import { JwtAuthGuard } from '../guards/jwt-auth.guard';
+
+import { ErrorResponseDto } from '../common/dto/response/error-response.dto';
+import { ActivityLogRepository } from './activity-log.repository';
 import { ActivityLog } from './entities/activity-log.entity';
 
 @ApiTags('activity-logs')
@@ -29,8 +28,7 @@ import { ActivityLog } from './entities/activity-log.entity';
 @ApiBearerAuth('JWT-auth')
 export class ActivityLogController {
     constructor(
-        @Inject('ActivityLogRepositoryPort')
-        private readonly activityLogRepository: ActivityLogRepositoryPort,
+        private readonly activityLogRepository: ActivityLogRepository,
     ) { }
 
     @Get()

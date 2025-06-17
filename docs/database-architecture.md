@@ -1,19 +1,19 @@
 erDiagram
-    User ||--o{ ProjectMember : "사용자-프로젝트멤버 관계"
-    Project ||--o{ ProjectMember : "프로젝트-프로젝트멤버"
-    User ||--o{ Task : "할당자 관계"
-    User ||--o{ Task : "피할당자 관계"
-    Project ||--o{ Task : "프로젝트-업무"
-    Task ||--o{ Comment : "업무-댓글"
-    User ||--o{ Comment : "사용자-댓글"
-    User ||--o{ ActivityLog : "사용자-활동로그"
-    Project ||--o{ ActivityLog : "프로젝트-활동로그"
-    User ||--o{ Notification : "사용자-알림"
-    Task ||--o{ Notification : "업무-알림"
-    Project ||--o{ ProjectInvitation : "프로젝트-초대"
-    User ||--o{ ProjectInvitation : "초대자-초대"
-    User ||--o{ ProjectInvitation : "피초대자-초대"
-    Comment ||--o{ Comment : "부모댓글-답글"
+User ||--o{ ProjectMember : "사용자-프로젝트멤버 관계"
+Project ||--o{ ProjectMember : "프로젝트-프로젝트멤버"
+User ||--o{ Task : "할당자 관계"
+User ||--o{ Task : "피할당자 관계"
+Project ||--o{ Task : "프로젝트-업무"
+Task ||--o{ Comment : "업무-댓글"
+User ||--o{ Comment : "사용자-댓글"
+User ||--o{ ActivityLog : "사용자-활동로그"
+Project ||--o{ ActivityLog : "프로젝트-활동로그"
+User ||--o{ Notification : "사용자-알림"
+Task ||--o{ Notification : "업무-알림"
+Project ||--o{ ProjectInvitation : "프로젝트-초대"
+User ||--o{ ProjectInvitation : "초대자-초대"
+User ||--o{ ProjectInvitation : "피초대자-초대"
+Comment ||--o{ Comment : "부모댓글-답글"
 
     User {
         UUID id PK
@@ -108,7 +108,6 @@ erDiagram
         UUID id PK "프로젝트 초대 엔터티"
         UUID projectId FK
         UUID inviterId FK
-        string inviteeEmail
         UUID inviteeId FK
         enum status "상태: PENDING, ACCEPTED, REJECTED, EXPIRED"
         string inviteToken

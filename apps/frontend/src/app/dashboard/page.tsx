@@ -20,7 +20,9 @@ import {
 import {
   Activity,
   ArrowLeft,
+  BarChart3,
   Calendar,
+  CheckSquare,
   ChevronDown,
   FolderOpen,
   HelpCircle,
@@ -33,7 +35,6 @@ import {
   Settings,
   TrendingUp,
   UserCheck,
-  Users,
 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { useEffect, useMemo, useState } from 'react';
@@ -321,8 +322,13 @@ export default function DashboardPage() {
     const loadProjects = async () => {
       try {
         setLoading(true);
+        console.log('Loading projects...');
         const result = await projectsApi.getProjects({ page: 1, limit: 100 });
-        const projectList = Array.isArray(result) ? result : result.data || [];
+        console.log('Projects API response:', result);
+
+        // 새로운 응답 형식에 맞게 프로젝트 배열 추출
+        const projectList = result.projects || [];
+        console.log('Extracted projects:', projectList);
         setProjects(projectList);
 
         // URL 파라미터에서 projectId 확인
@@ -496,13 +502,12 @@ export default function DashboardPage() {
 
         setTasks(optimisticUpdate);
 
-        // 서버 업데이트
-        await tasksApi.reorderTask({
-          taskId: activeId,
-          projectId: selectedProjectId,
-          newPosition: newIndex,
-          newStatus: newStatus,
-        });
+        // 서버 업데이트 (LexoRank 기반)
+        const targetTasks = getTasksByStatus(newStatus);
+        const targetTask = targetTasks[newIndex];
+        if (targetTask) {
+          await tasksApi.reorderTask(activeId, targetTask.lexoRank);
+        }
 
         // 성공 후 전체 데이터 다시 로드
         await loadTasks();
@@ -532,7 +537,6 @@ export default function DashboardPage() {
   };
 
   const handleTaskClick = (task: Task) => {
-    setSelectedTask(task);
     setIsModalOpen(true);
   };
 
@@ -812,7 +816,7 @@ export default function DashboardPage() {
                     <NavItem
                       icon={<List className='w-4 h-4 text-green-500' />}
                       label='이슈'
-                      onClick={() => handleNavigation('/dashboard')}
+                      onClick={() => handleNavigation('/issues')}
                     />
                     <NavItem
                       icon={<Play className='w-4 h-4 text-purple-500' />}
@@ -828,19 +832,20 @@ export default function DashboardPage() {
                   </div>
                   <div className='space-y-1'>
                     <NavItem
-                      icon={<Users className='w-4 h-4 text-indigo-500' />}
-                      label='사람'
-                      onClick={() => handleNavigation('people')}
-                    />
-                    <NavItem
                       icon={<UserCheck className='w-4 h-4 text-green-500' />}
                       label='프로젝트 설정'
-                      onClick={() => handleNavigation('/projects')}
+                      onClick={() => {
+                        if (selectedProjectId) {
+                          handleNavigation(`/projects/${selectedProjectId}/settings`);
+                        } else {
+                          handleNavigation('/projects');
+                        }
+                      }}
                     />
                     <NavItem
                       icon={<Mail className='w-4 h-4 text-blue-500' />}
                       label='초대'
-                      onClick={() => handleNavigation('invite')}
+                      onClick={() => handleNavigation('/invite')}
                     />
                   </div>
                 </div>
@@ -859,6 +864,24 @@ export default function DashboardPage() {
                       icon={<Activity className='w-4 h-4 text-indigo-500' />}
                       label='활동 로그'
                       onClick={() => handleNavigation('/reports')}
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <div className='text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2'>
+                    작업
+                  </div>
+                  <div className='space-y-1'>
+                    <NavItem
+                      icon={<BarChart3 className='w-4 h-4 text-blue-500' />}
+                      label='대시보드'
+                      onClick={() => handleNavigation('/dashboard')}
+                    />
+                    <NavItem
+                      icon={<CheckSquare className='w-4 h-4 text-green-500' />}
+                      label='태스크'
+                      onClick={() => handleNavigation('/tasks')}
                     />
                   </div>
                 </div>

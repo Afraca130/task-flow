@@ -3,10 +3,8 @@ import {
     Controller,
     Delete,
     Get,
-    Inject,
     Param,
     Post,
-    Put,
     Query,
     Req,
     UseGuards
@@ -14,7 +12,6 @@ import {
 import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
 import { Request } from 'express';
 
-import { InvitationFilter, InvitationPaginationOptions, ProjectInvitationRepositoryPort } from './interfaces/project-invitation-repository.port';
 import { JwtAuthGuard } from '../guards/jwt-auth.guard';
 import {
     ApiAcceptInvitation,
@@ -25,87 +22,66 @@ import {
     ApiGetProjectInvitations,
     ApiGetReceivedInvitations,
 } from '../swagger/decorators/api-invitation-responses.decorator';
-import { AcceptInvitationCommand, AcceptInvitationUseCase } from './accept-invitation.use-case';
-import { CreateInvitationCommand, CreateInvitationUseCase } from './create-invitation.use-case';
-import { DeclineInvitationCommand, DeclineInvitationUseCase } from './decline-invitation.use-case';
 import { CreateInvitationDto } from './dto/request/create-invitation.dto';
 import { InvitationStatus } from './entities/project-invitation.entity';
+import { AcceptInvitationCommand, CreateInvitationCommand, DeclineInvitationCommand } from './interfaces/invitation-commands.interface';
+import { InvitationFilter, InvitationPaginationOptions } from './interfaces/invitation.interface';
+import { InvitationsService } from './invitations.service';
 
 @ApiTags('invitations')
 @Controller('invitations')
 @UseGuards(JwtAuthGuard)
 @ApiBearerAuth('JWT-auth')
-export class InvitationController {
+export class InvitationsController {
     constructor(
-        private readonly createInvitationUseCase: CreateInvitationUseCase,
-        private readonly acceptInvitationUseCase: AcceptInvitationUseCase,
-        private readonly declineInvitationUseCase: DeclineInvitationUseCase,
-        @Inject('ProjectInvitationRepositoryPort')
-        private readonly invitationRepository: ProjectInvitationRepositoryPort,
+        private readonly invitationsService: InvitationsService,
     ) { }
 
     @Post()
     @ApiCreateInvitation(CreateInvitationDto)
-    async createInvitation(
-        @Body() dto: CreateInvitationDto,
-        @Req() req: Request,
-    ) {
-        const userId = (req as any).user?.id;
-
+    async createInvitation(@Body() createInvitationDto: CreateInvitationDto, @Req() req: Request) {
         const command: CreateInvitationCommand = {
-            projectId: dto.projectId,
-            inviterId: userId,
-            inviteeEmail: dto.inviteeEmail,
-            inviteeId: dto.inviteeId,
-            message: dto.message,
-            expiryDays: dto.expiryDays,
+            projectId: createInvitationDto.projectId,
+            inviterId: (req as any).user?.id,
+            inviteeId: createInvitationDto.inviteeId,
+            message: createInvitationDto.message,
         };
 
-        return this.createInvitationUseCase.execute(command);
+        return this.invitationsService.createInvitation(createInvitationDto);
     }
 
-    @Put(':token/accept')
+    @Post(':token/accept')
     @ApiAcceptInvitation()
-    async acceptInvitation(
-        @Param('token') token: string,
-        @Req() req: Request,
-    ) {
-        const userId = (req as any).user?.id;
-
+    async acceptInvitation(@Param('token') token: string, @Req() req: Request) {
         const command: AcceptInvitationCommand = {
             token,
-            userId,
+            userId: (req as any).user?.id,
         };
 
-        return this.acceptInvitationUseCase.execute(command);
+        return this.invitationsService.acceptInvitation(token, command.userId);
     }
 
-    @Put(':token/decline')
+    @Post(':token/decline')
     @ApiDeclineInvitation()
-    async declineInvitation(
-        @Param('token') token: string,
-        @Req() req: Request,
-    ) {
-        const userId = (req as any).user?.id;
-
+    async declineInvitation(@Param('token') token: string, @Req() req: Request) {
         const command: DeclineInvitationCommand = {
             token,
-            userId,
+            userId: (req as any).user?.id,
         };
 
-        return this.declineInvitationUseCase.execute(command);
+        return this.invitationsService.declineInvitation(token, command.userId);
     }
 
     @Get(':token')
     @ApiGetInvitation()
     async getInvitationByToken(@Param('token') token: string) {
-        return this.invitationRepository.findByToken(token);
+        return this.invitationsService.getInvitationByToken(token);
     }
 
     @Get('project/:projectId')
     @ApiGetProjectInvitations()
     async getProjectInvitations(@Param('projectId') projectId: string) {
-        return this.invitationRepository.findByProjectId(projectId);
+        return this.invitationsService.getProjectInvitations(projectId);
     }
 
     @Get('user/received')
@@ -127,37 +103,26 @@ export class InvitationController {
             };
 
             // 사용자 ID 또는 이메일로 검색
-            const invitationsById = await this.invitationRepository.findMany(
+            const invitationsById = await this.invitationsService.findMany(
                 { ...filter, inviteeId: userId },
-                options,
-            );
-
-            const invitationsByEmail = await this.invitationRepository.findMany(
-                { ...filter, inviteeEmail: userEmail },
                 options,
             );
 
             // 중복 제거하여 합치기
             const allInvitations = [
                 ...invitationsById.data,
-                ...invitationsByEmail.data.filter(
-                    inv => !invitationsById.data.some(existing => existing.id === inv.id)
-                ),
             ];
 
             return allInvitations;
         }
 
         // 모든 초대 조회
-        const invitationsById = await this.invitationRepository.findByInviteeId(userId);
-        const invitationsByEmail = await this.invitationRepository.findByInviteeEmail(userEmail);
+        const invitationsById = await this.invitationsService.findByInviteeId(userId);
+
 
         // 중복 제거하여 합치기
         const allInvitations = [
             ...invitationsById,
-            ...invitationsByEmail.filter(
-                inv => !invitationsById.some(existing => existing.id === inv.id)
-            ),
         ];
 
         return allInvitations;
@@ -167,7 +132,7 @@ export class InvitationController {
     @ApiGetReceivedInvitations()
     async getPendingInvitations(@Req() req: Request) {
         const userId = (req as any).user?.id;
-        return this.invitationRepository.findPendingInvitations(userId);
+        return this.invitationsService.findPendingInvitations(userId);
     }
 
     @Delete(':id')
@@ -179,7 +144,7 @@ export class InvitationController {
         const userId = (req as any).user?.id;
 
         // 초대 조회 및 권한 확인
-        const invitation = await this.invitationRepository.findById(id);
+        const invitation = await this.invitationsService.findById(id);
         if (!invitation) {
             throw new Error('Invitation not found');
         }
@@ -188,7 +153,7 @@ export class InvitationController {
             throw new Error('You can only delete invitations you sent');
         }
 
-        await this.invitationRepository.delete(id);
+        await this.invitationsService.delete(id);
         return { message: 'Invitation deleted successfully' };
     }
 }

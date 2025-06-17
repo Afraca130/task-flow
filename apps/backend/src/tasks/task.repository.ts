@@ -1,4 +1,4 @@
-import { TaskRepositoryPort } from './interfaces/task-repository.port';
+import { ProjectId } from '@/common/value-objects/project-id.vo';
 import { Injectable, Logger } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
@@ -6,7 +6,7 @@ import { Task, TaskStatus } from './entities/task.entity';
 
 
 @Injectable()
-export class TaskRepository implements TaskRepositoryPort {
+export class TaskRepository {
     private readonly logger = new Logger(TaskRepository.name);
 
     constructor(
@@ -216,5 +216,11 @@ export class TaskRepository implements TaskRepositoryPort {
             this.logger.error('Failed to find tasks with filters', error);
             return { tasks: [], total: 0 };
         }
+    }
+
+    async count(projectId: ProjectId): Promise<number> {
+        return await this.taskRepository.count({
+            where: { projectId: projectId.getValue() },
+        });
     }
 }

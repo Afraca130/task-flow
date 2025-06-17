@@ -2,7 +2,6 @@ import {
     Controller,
     DefaultValuePipe,
     Get,
-    Inject,
     ParseIntPipe,
     Query,
     UseGuards
@@ -19,9 +18,12 @@ import {
     ApiUnauthorizedResponse
 } from '@nestjs/swagger';
 
+import { GetUser } from '@/decorators/authenticated-user.decorator';
 import { JwtAuthGuard } from '../guards/jwt-auth.guard';
 import { LogLevel, UserActionType } from './entities/user-log.entity';
-import { PaginatedUserLogResult, UserLogFilter, UserLogPaginationOptions, UserLogRepositoryPort, UserLogSummary } from './interfaces/user-log-repository.port';
+import { User } from './entities/user.entity';
+import { PaginatedUserLogResult, UserLogFilter, UserLogPaginationOptions, UserLogSummary } from './interfaces/user-log.interface';
+import { UserLogRepository } from './user-log.repository';
 
 @ApiTags('user-logs')
 @Controller('user-logs')
@@ -29,8 +31,7 @@ import { PaginatedUserLogResult, UserLogFilter, UserLogPaginationOptions, UserLo
 @ApiBearerAuth('JWT-auth')
 export class UserLogController {
     constructor(
-        @Inject('UserLogRepositoryPort')
-        private readonly userLogRepository: UserLogRepositoryPort,
+        private readonly userLogRepository: UserLogRepository,
     ) { }
 
     @Get()
@@ -108,9 +109,9 @@ export class UserLogController {
     @ApiBadRequestResponse({ description: '잘못된 요청 파라미터' })
     @ApiInternalServerErrorResponse({ description: '서버 내부 오류' })
     async getUserLogs(
+        @GetUser() user: User,
         @Query('page', new DefaultValuePipe(1), ParseIntPipe) page: number,
         @Query('limit', new DefaultValuePipe(20), ParseIntPipe) limit: number,
-        @Query('userId') userId?: string,
         @Query('actionType') actionType?: UserActionType,
         @Query('level') level?: LogLevel,
         @Query('resourceType') resourceType?: string,
@@ -120,7 +121,7 @@ export class UserLogController {
         @Query('search') search?: string,
     ): Promise<PaginatedUserLogResult> {
         const filter: UserLogFilter = {
-            userId,
+            userId: user.id,
             actionType,
             level,
             resourceType,
@@ -201,9 +202,9 @@ export class UserLogController {
     })
     async getUserLogSummary(
         @Query('period', new DefaultValuePipe('week')) period: 'day' | 'week' | 'month',
-        @Query('userId') userId?: string,
+        @GetUser() user: User,
     ): Promise<UserLogSummary> {
-        const filter: UserLogFilter = { userId };
+        const filter: UserLogFilter = { userId: user.id };
         return this.userLogRepository.getSummary(filter, period);
     }
 
@@ -255,12 +256,12 @@ export class UserLogController {
     async getErrorLogs(
         @Query('page', new DefaultValuePipe(1), ParseIntPipe) page: number,
         @Query('limit', new DefaultValuePipe(20), ParseIntPipe) limit: number,
-        @Query('userId') userId?: string,
+        @GetUser() user: User,
         @Query('startDate') startDate?: string,
         @Query('endDate') endDate?: string,
     ): Promise<PaginatedUserLogResult> {
         const filter: UserLogFilter = {
-            userId,
+            userId: user.id,
             startDate: startDate ? new Date(startDate) : undefined,
             endDate: endDate ? new Date(endDate) : undefined,
         };
@@ -323,12 +324,12 @@ export class UserLogController {
     async getSecurityLogs(
         @Query('page', new DefaultValuePipe(1), ParseIntPipe) page: number,
         @Query('limit', new DefaultValuePipe(20), ParseIntPipe) limit: number,
-        @Query('userId') userId?: string,
+        @GetUser() user: User,
         @Query('startDate') startDate?: string,
         @Query('endDate') endDate?: string,
     ): Promise<PaginatedUserLogResult> {
         const filter: UserLogFilter = {
-            userId,
+            userId: user.id,
             startDate: startDate ? new Date(startDate) : undefined,
             endDate: endDate ? new Date(endDate) : undefined,
         };
@@ -414,12 +415,12 @@ export class UserLogController {
         },
     })
     async getUserActivityTimeline(
-        @Query('userId') userId: string,
+        @GetUser() user: User,
         @Query('startDate') startDate: string,
         @Query('endDate') endDate: string,
     ) {
         return this.userLogRepository.getUserActivityTimeline(
-            userId,
+            user.id,
             new Date(startDate),
             new Date(endDate),
         );

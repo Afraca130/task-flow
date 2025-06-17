@@ -1,3 +1,5 @@
+import { GetUser } from '@/decorators/authenticated-user.decorator';
+import { User } from '@/users/entities/user.entity';
 import {
     Body,
     Controller,
@@ -12,72 +14,19 @@ import {
     Query,
     UseGuards
 } from '@nestjs/common';
-import { ApiOkResponse, ApiOperation, ApiTags } from '@nestjs/swagger';
+import { ApiBearerAuth, ApiOkResponse, ApiOperation, ApiTags } from '@nestjs/swagger';
 import { PaginatedResponse } from '../common/utils/paginated-response.util';
 import { JwtAuthGuard } from '../guards/jwt-auth.guard';
 import { CreateTaskDto } from './dto/request/create-task.dto';
+import { ReorderTaskDto } from './dto/request/reorder-task.dto';
 import { UpdateTaskDto } from './dto/request/update-task.dto';
 import { TaskResponseDto } from './dto/response/task-response.dto';
+import { TaskStatus } from './entities/task.entity';
 import { TasksService } from './tasks.service';
-
-// Temporary interfaces until we fix the architecture
-interface TaskRepositoryPort {
-    findWithFilters(filters: any): Promise<{ tasks: any[]; total: number }>;
-    findByProjectIdAndStatusOrderedByRank(projectId: string, status: any): Promise<any[]>;
-    findById(id: string): Promise<any>;
-    save(task: any): Promise<any>;
-    delete(id: string): Promise<void>;
-}
-
-interface CreateTaskPort {
-    execute(command: any): Promise<any>;
-}
-
-interface UpdateTaskPort {
-    execute(command: any): Promise<any>;
-}
-
-interface ReorderTaskPort {
-    execute(command: any): Promise<{ task: any; affectedTasks: any[] }>;
-}
-
-interface GetTaskCommentsUseCase {
-    execute(query: any): Promise<any[]>;
-}
-
-interface AuthenticatedUser {
-    id: string;
-    email: string;
-    name: string;
-}
-
-interface ReorderTaskCommand {
-    taskId: string;
-    projectId: string;
-    newStatus: any;
-    newPosition: number;
-    userId: string;
-}
-
-enum TaskStatus {
-    TODO = 'TODO',
-    IN_PROGRESS = 'IN_PROGRESS',
-    COMPLETED = 'COMPLETED'
-}
-
-class CommentResponseDto {
-    static fromEntity(comment: any): CommentResponseDto {
-        return comment; // Simplified implementation
-    }
-}
-
-// Custom decorators
-const User = () => (target: any, propertyKey: string, parameterIndex: number) => {
-    // Implementation would go here
-};
 
 @ApiTags('tasks')
 @UseGuards(JwtAuthGuard)
+@ApiBearerAuth('JWT-auth')
 @Controller('tasks')
 export class TaskController {
     constructor(
@@ -98,40 +47,115 @@ export class TaskController {
         @Query('page', new DefaultValuePipe(1), ParseIntPipe) page?: number,
         @Query('limit', new DefaultValuePipe(10), ParseIntPipe) limit?: number,
     ): Promise<PaginatedResponse<TaskResponseDto>> {
-        // Simplified implementation for now
-        const mockTasks = [];
-        return PaginatedResponse.create(mockTasks, {
+        const result = await this.tasksService.findWithFilters({
+            projectId,
+            assigneeId,
+            status,
+            search,
+            page,
+            limit,
+        });
+
+        const taskResponseDtos = result.tasks.map(task => TaskResponseDto.fromEntity(task));
+        return PaginatedResponse.create(taskResponseDtos, {
             page: page || 1,
             limit: limit || 10,
-            total: 0,
+            total: result.total,
         });
     }
 
     @Get(':id')
     @ApiOperation({ summary: 'Get task by ID' })
-    async getTaskById(@Param('id', ParseUUIDPipe) id: string): Promise<any> {
-        return this.tasksService.findOne(Number(id));
+    async getTaskById(@Param('id', ParseUUIDPipe) id: string): Promise<TaskResponseDto | null> {
+        const task = await this.tasksService.findById(id);
+        return task ? TaskResponseDto.fromEntity(task) : null;
+    }
+
+    @Get('project/:projectId')
+    @ApiOperation({ summary: 'Get tasks by project ID' })
+    async getTasksByProject(@Param('projectId', ParseUUIDPipe) projectId: string): Promise<TaskResponseDto[]> {
+        const tasks = await this.tasksService.findByProjectId(projectId);
+        return tasks.map(task => TaskResponseDto.fromEntity(task));
+    }
+
+    @Get('project/:projectId/status/:status')
+    @ApiOperation({ summary: 'Get tasks by project ID and status' })
+    async getTasksByProjectAndStatus(
+        @Param('projectId', ParseUUIDPipe) projectId: string,
+        @Param('status') status: TaskStatus,
+    ): Promise<TaskResponseDto[]> {
+        const tasks = await this.tasksService.findByProjectIdAndStatus(projectId, status);
+        return tasks.map(task => TaskResponseDto.fromEntity(task));
+    }
+
+    @Get('project/:projectId/stats')
+    @ApiOperation({ summary: 'Get task statistics for a project' })
+    async getTaskStatsByProject(@Param('projectId', ParseUUIDPipe) projectId: string): Promise<{
+        total: number;
+        todo: number;
+        inProgress: number;
+        completed: number;
+    }> {
+        return await this.tasksService.getTaskStatsByProject(projectId);
     }
 
     @Post()
     @ApiOperation({ summary: 'Create a new task' })
-    async createTask(@Body() createTaskDto: CreateTaskDto): Promise<any> {
-        return this.tasksService.create(createTaskDto);
+    async createTask(@Body() createTaskDto: CreateTaskDto): Promise<TaskResponseDto> {
+        const task = await this.tasksService.createTask(createTaskDto);
+        return TaskResponseDto.fromEntity(task);
     }
 
     @Put(':id')
     @ApiOperation({ summary: 'Update a task' })
     async updateTask(
         @Param('id', ParseUUIDPipe) id: string,
-        @Body() updateTaskDto: UpdateTaskDto
-    ): Promise<any> {
-        return this.tasksService.update(Number(id), updateTaskDto);
+        @Body() updateTaskDto: UpdateTaskDto,
+        @GetUser() user: User,
+    ): Promise<TaskResponseDto> {
+        const task = await this.tasksService.updateTask(id, user.id, updateTaskDto);
+        return TaskResponseDto.fromEntity(task);
+    }
+
+    @Put(':id/reorder')
+    @ApiOperation({ summary: 'Reorder a task by position' })
+    async reorderTask(
+        @Param('id', ParseUUIDPipe) id: string,
+        @Body() reorderDto: ReorderTaskDto,
+        @GetUser() user: User,
+    ): Promise<{
+        task: TaskResponseDto;
+        affectedTasks: TaskResponseDto[];
+    }> {
+        const result = await this.tasksService.reorderTask(
+            id,
+            reorderDto.projectId,
+            reorderDto.newPosition,
+            reorderDto.newStatus,
+            user.id
+        );
+
+        return {
+            task: TaskResponseDto.fromEntity(result.task),
+            affectedTasks: result.affectedTasks.map(task => TaskResponseDto.fromEntity(task)),
+        };
+    }
+
+    @Put(':id/reorder-lexo')
+    @ApiOperation({ summary: 'Reorder a task by LexoRank' })
+    async reorderTaskByLexoRank(
+        @Param('id', ParseUUIDPipe) id: string,
+        @Body('lexoRank') lexoRank: string,
+        @GetUser() user: User,
+    ): Promise<TaskResponseDto> {
+        const task = await this.tasksService.reorderTaskByLexoRank(id, lexoRank, user.id);
+        return TaskResponseDto.fromEntity(task);
     }
 
     @Delete(':id')
     @ApiOperation({ summary: 'Delete a task' })
     async deleteTask(@Param('id', ParseUUIDPipe) id: string): Promise<{ message: string }> {
-        this.tasksService.remove(Number(id));
+        await this.tasksService.deleteTask(id);
         return { message: 'Task deleted successfully' };
     }
 }

@@ -1,3 +1,5 @@
+import { IssueComment } from '@/issues/entities/issue-comment.entity';
+import { Issue } from '@/issues/entities/issue.entity';
 import { Column, CreateDateColumn, Entity, OneToMany, PrimaryGeneratedColumn, UpdateDateColumn } from 'typeorm';
 import { ActivityLog } from '../../activity-logs/entities/activity-log.entity';
 import { Comment } from '../../comments/entities/comment.entity';
@@ -66,6 +68,15 @@ export class User {
 
   @OneToMany(() => ProjectInvitation, (invitation) => invitation.invitee)
   receivedInvitations?: ProjectInvitation[];
+
+  @OneToMany(() => Issue, (issue) => issue.author)
+  createdIssues?: Issue[];
+
+  @OneToMany(() => Issue, (issue) => issue.assignee)
+  assignedIssues?: Issue[];
+
+  @OneToMany(() => IssueComment, (comment) => comment.author)
+  issueComments?: IssueComment[];
 
   // Domain methods
   public updateProfile(name: string, profileImage?: string, profileColor?: string): void {

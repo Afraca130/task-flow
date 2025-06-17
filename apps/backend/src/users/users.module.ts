@@ -12,16 +12,12 @@ import { UsersService } from './users.service';
 @Module({
     imports: [TypeOrmModule.forFeature([User, UserLog])],
     controllers: [UsersController, UserLogController],
-    providers: [UsersService, UserLogService,
-        {
-            provide: 'UserRepositoryPort',
-            useClass: UserRepository,
-        },
-        {
-            provide: 'UserLogRepositoryPort',
-            useClass: UserLogRepository,
-        },
+    providers: [
+        UsersService,
+        UserLogService,
+        UserRepository,
+        UserLogRepository,
     ],
-    exports: [UsersService, UserLogService, 'UserRepositoryPort', 'UserLogRepositoryPort'],
+    exports: [UsersService, UserLogService, UserRepository, UserLogRepository],
 })
 export class UsersModule { }

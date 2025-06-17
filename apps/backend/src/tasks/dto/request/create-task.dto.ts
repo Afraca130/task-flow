@@ -43,6 +43,15 @@ export class CreateTaskDto {
     @IsUUID(4, { message: 'Assignee ID must be valid UUID' })
     readonly assigneeId?: string;
 
+    @ApiProperty({
+        description: 'User ID who will be assigned to this task',
+        example: 'uuid-v4-string',
+        format: 'uuid',
+    })
+    @IsNotEmpty({ message: 'Assigner ID is required' })
+    @IsUUID(4, { message: 'Assigner ID must be valid UUID' })
+    readonly assignerId: string;
+
     @ApiPropertyOptional({
         description: 'Task status',
         enum: TaskStatus,

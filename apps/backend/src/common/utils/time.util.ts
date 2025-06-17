@@ -25,6 +25,13 @@ export class TimeUtil {
     }
 
     /**
+     * Format string to Date
+     */
+    static toDate(dateString: string): Date {
+        return dayjs(dateString).toDate();
+    }
+
+    /**
      * Format date to ISO string
      */
     static formatISO(date: Date): string {

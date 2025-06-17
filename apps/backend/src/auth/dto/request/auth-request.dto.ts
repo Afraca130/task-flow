@@ -1,5 +1,5 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import { IsEmail, IsHexColor, IsOptional, IsString, Matches, MaxLength, MinLength } from 'class-validator';
+import { IsEmail, IsHexColor, IsNotEmpty, IsOptional, IsString, Matches, MaxLength, MinLength } from 'class-validator';
 
 /**
  * 회원가입 요청 DTO
@@ -118,4 +118,17 @@ export class ChangePasswordRequestDto {
     message: '비밀번호는 영문, 숫자, 특수문자를 포함해야 합니다.',
   })
   newPassword: string;
+}
+
+/**
+ * 토큰 새로고침 요청 DTO
+ */
+export class RefreshTokenRequestDto {
+  @ApiProperty({
+    description: '리프레시 토큰',
+    example: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...',
+  })
+  @IsNotEmpty({ message: '리프레시 토큰은 필수입니다.' })
+  @IsString({ message: '리프레시 토큰은 문자열이어야 합니다.' })
+  readonly refreshToken: string;
 }

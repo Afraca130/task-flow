@@ -1,182 +1,166 @@
+import { JwtAuthGuard } from '@/guards/jwt-auth.guard';
 import {
+    Body,
     Controller,
+    Delete,
     Get,
     Param,
     ParseUUIDPipe,
-    Patch,
-    Req,
+    Post,
+    Put,
+    Query,
+    Request,
     UseGuards,
 } from '@nestjs/common';
 import {
     ApiBearerAuth,
-    ApiNotFoundResponse,
-    ApiOkResponse,
+    ApiBody,
     ApiOperation,
+    ApiParam,
+    ApiQuery,
+    ApiResponse,
     ApiTags,
-    ApiUnauthorizedResponse,
 } from '@nestjs/swagger';
-import { Request } from 'express';
-import { JwtAuthGuard } from '../guards/jwt-auth.guard';
-
-interface NotificationSummary {
-    unreadCount: number;
-    totalCount: number;
-    lastNotificationAt?: string;
-}
-
-interface NotificationResponse {
-    id: string;
-    title: string;
-    message: string;
-    type: string;
-    isRead: boolean;
-    createdAt: string;
-    readAt?: string;
-}
+import { CreateNotificationDto } from './dto/request/create-notification.dto';
+import { Notification } from './entities/notification.entity';
+import { NotificationsService } from './notifications.service';
 
 @ApiTags('notifications')
-@Controller('notifications')
+@Controller({ path: 'notifications', version: '1' })
 @UseGuards(JwtAuthGuard)
 @ApiBearerAuth('JWT-auth')
-export class NotificationController {
+export class NotificationsController {
     constructor(
-        // TODO: Inject notification use cases when implemented
+        private readonly notificationsService: NotificationsService,
     ) { }
 
-    @Get('unread-count')
+    @Post()
     @ApiOperation({
-        summary: '읽지 않은 알림 개수 조회',
-        description: '현재 사용자의 읽지 않은 알림 개수를 반환합니다.',
+        summary: 'Create a new notification',
+        description: 'Creates a new notification for a user',
     })
-    @ApiOkResponse({
-        description: '읽지 않은 알림 개수 조회 성공',
-        schema: {
-            type: 'object',
-            properties: {
-                unreadCount: {
-                    type: 'integer',
-                    example: 5,
-                    description: '읽지 않은 알림 개수'
-                },
-                totalCount: {
-                    type: 'integer',
-                    example: 25,
-                    description: '전체 알림 개수'
-                },
-                lastNotificationAt: {
-                    type: 'string',
-                    format: 'date-time',
-                    example: '2023-12-01T10:00:00Z',
-                    description: '마지막 알림 시간'
-                }
-            }
-        }
+    @ApiBody({ type: CreateNotificationDto })
+    @ApiResponse({
+        status: 201,
+        description: 'Notification created successfully',
+        type: Notification,
     })
-    @ApiUnauthorizedResponse({
-        description: '인증이 필요합니다',
-    })
-    async getUnreadCount(@Req() req: Request): Promise<NotificationSummary> {
-        const userId = (req as any).user?.id;
-
-        // TODO: Implement actual notification logic
-        // const summary = await this.getNotificationSummaryUseCase.execute(userId);
-        // return summary;
-
-        // Temporary mock response
-        return {
-            unreadCount: 0,
-            totalCount: 0,
-            lastNotificationAt: undefined,
-        };
+    @ApiResponse({ status: 400, description: 'Invalid input data' })
+    @ApiResponse({ status: 401, description: 'Unauthorized' })
+    async createNotification(@Body() createDto: CreateNotificationDto): Promise<Notification> {
+        return await this.notificationsService.createNotification(createDto);
     }
 
     @Get()
     @ApiOperation({
-        summary: '알림 목록 조회',
-        description: '현재 사용자의 알림 목록을 조회합니다.',
+        summary: 'Get user notifications',
+        description: 'Retrieves notifications for the authenticated user',
     })
-    @ApiOkResponse({
-        description: '알림 목록 조회 성공',
-        schema: {
-            type: 'array',
-            items: {
-                type: 'object',
-                properties: {
-                    id: { type: 'string', example: 'uuid' },
-                    title: { type: 'string', example: '새로운 태스크가 할당되었습니다' },
-                    message: { type: 'string', example: '프로젝트 A에서 새로운 태스크가 할당되었습니다.' },
-                    type: { type: 'string', example: 'TASK_ASSIGNED' },
-                    isRead: { type: 'boolean', example: false },
-                    createdAt: { type: 'string', format: 'date-time' },
-                    readAt: { type: 'string', format: 'date-time', nullable: true }
-                }
-            }
-        }
+    @ApiQuery({
+        name: 'unreadOnly',
+        description: 'Get only unread notifications',
+        type: 'boolean',
+        required: false,
     })
-    async getNotifications(@Req() req: Request): Promise<NotificationResponse[]> {
-        const userId = (req as any).user?.id;
-
-        // TODO: Implement actual notification logic
-        // const notifications = await this.getNotificationsUseCase.execute(userId);
-        // return notifications;
-
-        // Temporary mock response
-        return [];
+    @ApiResponse({
+        status: 200,
+        description: 'Notifications retrieved successfully',
+        type: [Notification],
+    })
+    @ApiResponse({ status: 401, description: 'Unauthorized' })
+    async getUserNotifications(
+        @Request() req: any,
+        @Query('unreadOnly') unreadOnly?: boolean,
+    ): Promise<Notification[]> {
+        return await this.notificationsService.getUserNotifications(
+            req.user.id,
+            unreadOnly === true
+        );
     }
 
-    @Patch(':id/read')
+    @Put(':id/read')
     @ApiOperation({
-        summary: '알림 읽음 처리',
-        description: '특정 알림을 읽음으로 표시합니다.',
+        summary: 'Mark notification as read',
+        description: 'Marks a specific notification as read',
     })
-    @ApiOkResponse({
-        description: '알림 읽음 처리 성공',
-        schema: {
-            type: 'object',
-            properties: {
-                message: { type: 'string', example: '알림이 읽음으로 처리되었습니다' }
-            }
-        }
+    @ApiParam({
+        name: 'id',
+        description: 'Notification ID',
+        type: 'string',
+        format: 'uuid',
     })
-    @ApiNotFoundResponse({
-        description: '알림을 찾을 수 없습니다',
+    @ApiResponse({
+        status: 200,
+        description: 'Notification marked as read',
+        type: Notification,
     })
+    @ApiResponse({ status: 401, description: 'Unauthorized' })
+    @ApiResponse({ status: 404, description: 'Notification not found' })
     async markAsRead(
-        @Param('id', ParseUUIDPipe) notificationId: string,
-        @Req() req: Request,
-    ): Promise<{ message: string }> {
-        const userId = (req as any).user?.id;
-
-        // TODO: Implement actual notification logic
-        // await this.markNotificationAsReadUseCase.execute(notificationId, userId);
-
-        return { message: '알림이 읽음으로 처리되었습니다' };
+        @Param('id', ParseUUIDPipe) id: string,
+        @Request() req: any,
+    ): Promise<Notification> {
+        return await this.notificationsService.markAsRead(id, req.user.id);
     }
 
-    @Patch('read-all')
+    @Put('mark-all-read')
     @ApiOperation({
-        summary: '모든 알림 읽음 처리',
-        description: '현재 사용자의 모든 알림을 읽음으로 표시합니다.',
+        summary: 'Mark all notifications as read',
+        description: 'Marks all notifications as read for the authenticated user',
     })
-    @ApiOkResponse({
-        description: '모든 알림 읽음 처리 성공',
+    @ApiResponse({
+        status: 200,
+        description: 'All notifications marked as read',
+    })
+    @ApiResponse({ status: 401, description: 'Unauthorized' })
+    async markAllAsRead(@Request() req: any): Promise<{ message: string }> {
+        await this.notificationsService.markAllAsRead(req.user.id);
+        return { message: 'All notifications marked as read' };
+    }
+
+    @Delete(':id')
+    @ApiOperation({
+        summary: 'Delete a notification',
+        description: 'Deletes a specific notification',
+    })
+    @ApiParam({
+        name: 'id',
+        description: 'Notification ID',
+        type: 'string',
+        format: 'uuid',
+    })
+    @ApiResponse({
+        status: 200,
+        description: 'Notification deleted successfully',
+    })
+    @ApiResponse({ status: 401, description: 'Unauthorized' })
+    @ApiResponse({ status: 404, description: 'Notification not found' })
+    async deleteNotification(
+        @Param('id', ParseUUIDPipe) id: string,
+        @Request() req: any,
+    ): Promise<{ message: string }> {
+        await this.notificationsService.deleteNotification(id, req.user.id);
+        return { message: 'Notification deleted successfully' };
+    }
+
+    @Get('unread-count')
+    @ApiOperation({
+        summary: 'Get unread notifications count',
+        description: 'Retrieves the count of unread notifications for the authenticated user',
+    })
+    @ApiResponse({
+        status: 200,
+        description: 'Unread count retrieved successfully',
         schema: {
             type: 'object',
             properties: {
-                message: { type: 'string', example: '모든 알림이 읽음으로 처리되었습니다' },
                 count: { type: 'integer', example: 5 }
             }
         }
     })
-    async markAllAsRead(@Req() req: Request): Promise<{ message: string; count: number }> {
-        const userId = (req as any).user?.id;
-
-        // TODO: Implement actual notification logic
-        // const count = await this.markAllNotificationsAsReadUseCase.execute(userId);
-
-        return {
-            message: '모든 알림이 읽음으로 처리되었습니다',
-            count: 0
-        };
+    @ApiResponse({ status: 401, description: 'Unauthorized' })
+    async getUnreadCount(@Request() req: any): Promise<{ count: number }> {
+        const count = await this.notificationsService.getUnreadCount(req.user.id);
+        return { count };
     }
 }

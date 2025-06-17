@@ -1,12 +1,11 @@
-import { ActivityLogFilter, ActivityLogPaginationOptions, ActivityLogRepositoryPort, CreateActivityLogRequest, PaginatedActivityLogResult } from './interfaces/activity-log-repository.port';
 import { Injectable, Logger } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { LessThan, Repository } from 'typeorm';
 import { ActivityLog } from './entities/activity-log.entity';
-
+import { ActivityLogFilter, ActivityLogPaginationOptions, CreateActivityLogRequest, PaginatedActivityLogResult } from './interfaces/activity-log.interface';
 
 @Injectable()
-export class ActivityLogRepository implements ActivityLogRepositoryPort {
+export class ActivityLogRepository {
     private readonly logger = new Logger(ActivityLogRepository.name);
 
     constructor(

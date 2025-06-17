@@ -1,7 +1,7 @@
-import { Entity, PrimaryGeneratedColumn, Column, ManyToOne, JoinColumn, CreateDateColumn } from 'typeorm';
-import { User } from '../../users/entities/user.entity';
-import { Project } from '../../projects/entities/project.entity';
+import { Column, CreateDateColumn, Entity, JoinColumn, ManyToOne, PrimaryGeneratedColumn } from 'typeorm';
 import { TimeUtil } from '../../common/utils/time.util';
+import { Project } from '../../projects/entities/project.entity';
+import { User } from '../../users/entities/user.entity';
 
 export enum InvitationStatus {
   PENDING = 'PENDING',
@@ -26,9 +26,6 @@ export class ProjectInvitation {
 
   @Column({ name: 'invitee_id', nullable: true })
   inviteeId?: string;
-
-  @Column({ name: 'invitee_email', nullable: true })
-  inviteeEmail?: string;
 
   @Column({ type: 'varchar', length: 500, unique: true })
   token: string;
@@ -120,7 +117,7 @@ export class ProjectInvitation {
 
   public canResend(): boolean {
     if (this.status !== InvitationStatus.PENDING) return false;
-    
+
     // 마지막 전송 후 1시간이 지났는지 확인
     const oneHourAgo = TimeUtil.subtract(TimeUtil.now(), 1, 'hour');
     return TimeUtil.isBefore(this.createdAt, oneHourAgo);
@@ -130,34 +127,11 @@ export class ProjectInvitation {
     if (this.status !== InvitationStatus.PENDING) {
       throw new Error('Can only extend pending invitations');
     }
-    
+
     this.expiresAt = TimeUtil.add(TimeUtil.now(), days, 'day');
   }
 
   public static create(
-    projectId: string,
-    inviterId: string,
-    inviteeEmail: string,
-    message?: string,
-    expiryDays: number = 7
-  ): ProjectInvitation {
-    const invitation = new ProjectInvitation();
-    invitation.projectId = projectId;
-    invitation.inviterId = inviterId;
-    invitation.inviteeEmail = inviteeEmail;
-    invitation.message = message;
-    invitation.status = InvitationStatus.PENDING;
-    
-    // 만료일 설정 (기본 7일)
-    invitation.expiresAt = TimeUtil.add(TimeUtil.now(), expiryDays, 'day');
-    
-    // 토큰 생성
-    invitation.token = invitation.generateToken();
-    
-    return invitation;
-  }
-
-  public static createForUser(
     projectId: string,
     inviterId: string,
     inviteeId: string,
@@ -170,13 +144,13 @@ export class ProjectInvitation {
     invitation.inviteeId = inviteeId;
     invitation.message = message;
     invitation.status = InvitationStatus.PENDING;
-    
+
     // 만료일 설정 (기본 7일)
     invitation.expiresAt = TimeUtil.add(TimeUtil.now(), expiryDays, 'day');
-    
+
     // 토큰 생성
     invitation.token = invitation.generateToken();
-    
+
     return invitation;
   }
 
@@ -185,4 +159,4 @@ export class ProjectInvitation {
     const random = Math.random().toString(36).substring(2);
     return `${timestamp}-${random}`;
   }
-} 
+}

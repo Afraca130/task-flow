@@ -2,10 +2,9 @@ import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { User } from './entities/user.entity';
-import { UserRepositoryPort } from './interfaces/user-repository.port';
 
 @Injectable()
-export class UserRepository implements UserRepositoryPort {
+export class UserRepository {
     constructor(
         @InjectRepository(User)
         private readonly userRepository: Repository<User>,
@@ -57,5 +56,17 @@ export class UserRepository implements UserRepositoryPort {
 
     async updateLastLoginAt(id: string): Promise<void> {
         await this.userRepository.update(id, { lastLoginAt: new Date() });
+    }
+
+    async searchUsers(query: string, limit: number): Promise<User[]> {
+        return this.userRepository
+            .createQueryBuilder('user')
+            .where('user.isActive = :isActive', { isActive: true })
+            .andWhere('(user.name ILIKE :query OR user.email ILIKE :query)', {
+                query: `%${query}%`,
+            })
+            .limit(limit)
+            .orderBy('user.name', 'ASC')
+            .getMany();
     }
 }

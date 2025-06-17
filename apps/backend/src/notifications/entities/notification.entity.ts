@@ -12,10 +12,14 @@ export enum NotificationType {
   TASK_OVERDUE = 'TASK_OVERDUE',
   COMMENT_ADDED = 'COMMENT_ADDED',
   COMMENT_REPLIED = 'COMMENT_REPLIED',
+  COMMENT_MENTION = 'COMMENT_MENTION',
   PROJECT_INVITED = 'PROJECT_INVITED',
+  PROJECT_INVITATION = 'PROJECT_INVITATION',
   PROJECT_MEMBER_JOINED = 'PROJECT_MEMBER_JOINED',
   PROJECT_MEMBER_LEFT = 'PROJECT_MEMBER_LEFT',
   PROJECT_STATUS_CHANGED = 'PROJECT_STATUS_CHANGED',
+  ISSUE_ASSIGNED = 'ISSUE_ASSIGNED',
+  ISSUE_STATUS_CHANGED = 'ISSUE_STATUS_CHANGED',
 }
 
 @Entity('notifications')
@@ -52,6 +56,12 @@ export class Notification {
 
   @Column({ name: 'read_at', type: 'timestamp', nullable: true })
   readAt?: Date;
+
+  @Column({ name: 'related_entity_type', nullable: true })
+  relatedEntityType?: string;
+
+  @Column({ name: 'related_entity_id', nullable: true })
+  relatedEntityId?: string;
 
   @CreateDateColumn({ name: 'created_at' })
   createdAt: Date;
@@ -172,6 +182,27 @@ export class Notification {
     notification.type = NotificationType.TASK_DUE_SOON;
     notification.title = '업무 마감일이 다가옵니다';
     notification.message = `"${taskTitle}" 업무의 마감일(${dueDate.toLocaleDateString()})이 다가옵니다.`;
+    return notification;
+  }
+
+  public static create(
+    userId: string,
+    type: NotificationType,
+    title: string,
+    message: string,
+    data?: any,
+    relatedEntityType?: string,
+    relatedEntityId?: string
+  ): Notification {
+    const notification = new Notification();
+    notification.userId = userId;
+    notification.type = type;
+    notification.title = title;
+    notification.message = message;
+    notification.data = data;
+    notification.relatedEntityType = relatedEntityType;
+    notification.relatedEntityId = relatedEntityId;
+    notification.isRead = false;
     return notification;
   }
 }

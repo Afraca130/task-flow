@@ -1,3 +1,4 @@
+import { Issue } from '@/issues/entities/issue.entity';
 import { Column, CreateDateColumn, Entity, JoinColumn, ManyToOne, OneToMany, PrimaryGeneratedColumn, UpdateDateColumn } from 'typeorm';
 import { ActivityLog } from '../../activity-logs/entities/activity-log.entity';
 import { ProjectInvitation } from '../../invitations/entities/project-invitation.entity';
@@ -106,6 +107,13 @@ export class Project {
 
   @OneToMany(() => ProjectInvitation, (invitation) => invitation.project, { cascade: true })
   invitations?: ProjectInvitation[];
+
+  @OneToMany(() => Issue, (issue) => issue.project, { cascade: true })
+  issues?: Issue[];
+
+  // Virtual fields for counts (not stored in database)
+  memberCount?: number;
+  taskCount?: number;
 
   // Domain methods
   public updateApprovalType(newType: ApprovalType): void {

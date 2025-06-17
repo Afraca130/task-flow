@@ -1,14 +1,14 @@
-import { ActivityLogRepositoryPort, CreateActivityLogRequest } from './interfaces/activity-log-repository.port';
-import { Inject, Injectable, Logger } from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
+import { ActivityLogRepository } from './activity-log.repository';
 import { ActivityAction, EntityType } from './entities/activity-log.entity';
+import { CreateActivityLogRequest } from './interfaces/activity-log.interface';
 
 @Injectable()
 export class ActivityLogService {
     private readonly logger = new Logger(ActivityLogService.name);
 
     constructor(
-        @Inject('ActivityLogRepositoryPort')
-        private readonly activityLogRepository: ActivityLogRepositoryPort,
+        private readonly activityLogRepository: ActivityLogRepository,
     ) { }
 
     async logTaskCreated(
@@ -25,12 +25,14 @@ export class ActivityLogService {
                 entityType: EntityType.TASK,
                 action: ActivityAction.CREATE,
                 description: `새 업무 "${taskTitle}"를 생성했습니다.`,
+                resourceType: 'task',
                 metadata: { taskTitle },
             };
 
             await this.activityLogRepository.create(request);
+            this.logger.log(`Activity log created for task creation: ${taskId}`);
         } catch (error) {
-            this.logger.error('Failed to log task creation', error);
+            this.logger.error(`Failed to log task creation: ${taskId}`, error);
         }
     }
 
@@ -49,12 +51,14 @@ export class ActivityLogService {
                 entityType: EntityType.TASK,
                 action: ActivityAction.UPDATE,
                 description: `업무 "${taskTitle}"를 수정했습니다.`,
+                resourceType: 'task',
                 metadata: { taskTitle, changes },
             };
 
             await this.activityLogRepository.create(request);
+            this.logger.log(`Activity log created for task update: ${taskId}`);
         } catch (error) {
-            this.logger.error('Failed to log task update', error);
+            this.logger.error(`Failed to log task update: ${taskId}`, error);
         }
     }
 
@@ -74,12 +78,14 @@ export class ActivityLogService {
                 entityType: EntityType.TASK,
                 action: ActivityAction.STATUS_CHANGE,
                 description: `"${taskTitle}" 업무 상태를 ${oldStatus}에서 ${newStatus}로 변경했습니다.`,
+                resourceType: 'task',
                 metadata: { taskTitle, oldStatus, newStatus },
             };
 
             await this.activityLogRepository.create(request);
+            this.logger.log(`Activity log created for task status change: ${taskId}`);
         } catch (error) {
-            this.logger.error('Failed to log task status change', error);
+            this.logger.error(`Failed to log task status change: ${taskId}`, error);
         }
     }
 
@@ -99,10 +105,12 @@ export class ActivityLogService {
                 entityType: EntityType.TASK,
                 action: ActivityAction.ASSIGN,
                 description: `"${taskTitle}" 업무를 ${assigneeName}에게 할당했습니다.`,
+                resourceType: 'task',
                 metadata: { taskTitle, assigneeId, assigneeName },
             };
 
             await this.activityLogRepository.create(request);
+            this.logger.log(`Activity log created for task assignment: ${taskId}`);
         } catch (error) {
             this.logger.error('Failed to log task assignment', error);
         }
@@ -122,6 +130,7 @@ export class ActivityLogService {
                 entityType: EntityType.TASK,
                 action: ActivityAction.DELETE,
                 description: `업무 "${taskTitle}"를 삭제했습니다.`,
+                resourceType: 'task',
                 metadata: { taskTitle },
             };
 
@@ -144,6 +153,7 @@ export class ActivityLogService {
                 entityType: EntityType.PROJECT,
                 action: ActivityAction.CREATE,
                 description: `새 프로젝트 "${projectName}"를 생성했습니다.`,
+                resourceType: 'project',
                 metadata: { projectName },
             };
 
@@ -167,6 +177,7 @@ export class ActivityLogService {
                 entityType: EntityType.PROJECT,
                 action: ActivityAction.UPDATE,
                 description: `프로젝트 "${projectName}"를 수정했습니다.`,
+                resourceType: 'project',
                 metadata: { projectName, changes },
             };
 
@@ -190,6 +201,7 @@ export class ActivityLogService {
                 entityType: EntityType.COMMENT,
                 action: ActivityAction.COMMENT,
                 description: `"${taskTitle}" 업무에 댓글을 작성했습니다.`,
+                resourceType: 'comment',
                 metadata: { taskTitle },
             };
 
@@ -213,6 +225,7 @@ export class ActivityLogService {
                 entityType: EntityType.PROJECT_MEMBER,
                 action: ActivityAction.JOIN,
                 description: `${memberName}이 프로젝트 "${projectName}"에 참여했습니다.`,
+                resourceType: 'project',
                 metadata: { projectName, memberName },
             };
 
@@ -236,6 +249,7 @@ export class ActivityLogService {
                 entityType: EntityType.PROJECT_MEMBER,
                 action: ActivityAction.LEAVE,
                 description: `${memberName}이 프로젝트 "${projectName}"에서 나갔습니다.`,
+                resourceType: 'project',
                 metadata: { projectName, memberName },
             };
 

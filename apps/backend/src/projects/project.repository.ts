@@ -1,9 +1,8 @@
-import { ProjectId } from '../common/value-objects/project-id.vo';
-import { ProjectRepositoryPort } from './interfaces/project-repository.port';
-import { Task } from '../tasks/entities/task.entity';
+import { Task } from '@/tasks/entities/task.entity';
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, SelectQueryBuilder } from 'typeorm';
+import { ProjectId } from '../common/value-objects/project-id.vo';
 import { ProjectMember, ProjectMemberRole } from './entities/project-member.entity';
 import { Project, ProjectStatus } from './entities/project.entity';
 
@@ -13,14 +12,12 @@ import { Project, ProjectStatus } from './entities/project.entity';
  * Handles data persistence for Project aggregate
  */
 @Injectable()
-export class ProjectRepository implements ProjectRepositoryPort {
+export class ProjectRepository {
     constructor(
         @InjectRepository(Project)
         private readonly projectRepository: Repository<Project>,
         @InjectRepository(ProjectMember)
         private readonly projectMemberRepository: Repository<ProjectMember>,
-        @InjectRepository(Task)
-        private readonly taskRepository: Repository<Task>,
     ) { }
 
     async create(project: Project): Promise<Project> {
@@ -147,9 +144,14 @@ export class ProjectRepository implements ProjectRepositoryPort {
     }
 
     async countTasks(projectId: ProjectId): Promise<number> {
-        return await this.taskRepository.count({
-            where: { projectId: projectId.getValue() }
-        });
+        const count = await this.projectRepository
+            .createQueryBuilder('project')
+            .leftJoin(Task, 'task', 'task.projectId = project.id')
+            .where('project.id = :projectId', { projectId: projectId.toString() })
+            .select('COUNT(task.id)', 'taskCount')
+            .getRawOne();
+
+        return parseInt(count.taskCount) || 0;
     }
 
     private createProjectQueryBuilder(userId: string): SelectQueryBuilder<Project> {

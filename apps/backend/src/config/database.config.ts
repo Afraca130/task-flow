@@ -1,3 +1,5 @@
+import { IssueComment } from '@/issues/entities/issue-comment.entity';
+import { Issue } from '@/issues/entities/issue.entity';
 import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { TypeOrmModuleOptions, TypeOrmOptionsFactory } from '@nestjs/typeorm';
@@ -39,6 +41,8 @@ export class DatabaseConfig implements TypeOrmOptionsFactory {
         ActivityLog,
         ProjectInvitation,
         UserLog,
+        Issue,
+        IssueComment,
       ],
       synchronize: !isProduction,
       logging: false,

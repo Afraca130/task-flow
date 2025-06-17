@@ -1,13 +1,14 @@
 import { Body, Controller, Get, Patch, Post, Req, UseGuards } from '@nestjs/common';
-import { ApiBearerAuth, ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagger';
+import { ApiBearerAuth, ApiBody, ApiCreatedResponse, ApiOperation, ApiResponse, ApiTags, ApiUnauthorizedResponse } from '@nestjs/swagger';
 import { Request } from 'express';
 
+import { ErrorResponseDto } from '@/common/dto/response/error-response.dto';
 import { User } from '@/users/entities/user.entity';
 import { Public } from '../decorators/public.decorator';
 import { JwtAuthGuard } from '../guards/jwt-auth.guard';
 import { AuthService } from './auth.service';
 import { LoginResponseDto, RegisterResponseDto, UserDto } from './dto/auth-response.dto';
-import { ChangePasswordRequestDto, LoginRequestDto, RegisterRequestDto, UpdateProfileRequestDto } from './dto/request/auth-request.dto';
+import { ChangePasswordRequestDto, LoginRequestDto, RefreshTokenRequestDto, RegisterRequestDto, UpdateProfileRequestDto } from './dto/request/auth-request.dto';
 
 interface AuthenticatedRequest extends Request {
   user: User;
@@ -116,5 +117,27 @@ export class AuthController {
   ): Promise<{ message: string }> {
     await this.authService.changePassword(req.user.id, changePasswordDto);
     return { message: '비밀번호가 성공적으로 변경되었습니다.' };
+  }
+
+  @Post('refresh')
+  @Public()
+  @ApiOperation({
+    summary: '토큰 새로고침',
+    description: '리프레시 토큰을 사용하여 새로운 액세스 토큰을 발급받습니다',
+  })
+  @ApiBody({
+    type: RefreshTokenRequestDto,
+    description: '리프레시 토큰 정보',
+  })
+  @ApiCreatedResponse({
+    description: '토큰 새로고침 성공',
+    type: LoginResponseDto,
+  })
+  @ApiUnauthorizedResponse({
+    description: '유효하지 않은 리프레시 토큰',
+    type: ErrorResponseDto,
+  })
+  async refreshToken(@Body() refreshTokenDto: RefreshTokenRequestDto): Promise<LoginResponseDto> {
+    return this.authService.refreshToken(refreshTokenDto.refreshToken);
   }
 }

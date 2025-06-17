@@ -25,16 +25,16 @@ export function TaskModal({
 }: TaskModalProps) {
   const { user } = useAuthStore();
   const [formData, setFormData] = useState({
-    title: task?.title || '',
-    description: task?.description || '',
-    status: (task?.status || 'TODO') as 'TODO' | 'IN_PROGRESS' | 'COMPLETED',
-    priority: (task?.priority || 'MEDIUM') as 'LOW' | 'MEDIUM' | 'HIGH' | 'URGENT',
-    projectId: task?.projectId || currentProjectId || projects[0]?.id || '',
-    assigneeId: task?.assigneeId || user?.id || '',
-    dueDate: task?.dueDate ? task.dueDate.split('T')[0] : '',
-    estimatedHours: task?.estimatedHours?.toString() || '',
-    tags: task?.tags?.join(', ') || '',
-    rank: task?.lexoRank || '',
+    title: '',
+    description: '',
+    status: 'TODO' as 'TODO' | 'IN_PROGRESS' | 'COMPLETED',
+    priority: 'MEDIUM' as 'LOW' | 'MEDIUM' | 'HIGH' | 'URGENT',
+    projectId: currentProjectId || projects[0]?.id || '',
+    assigneeId: user?.id || '',
+    dueDate: '',
+    estimatedHours: '',
+    tags: '',
+    // rank 필드 제거 - 백엔드에서 자동으로 맨 위로 설정됨
   });
 
   const [projectMembers, setProjectMembers] = useState<any[]>([]);
@@ -107,10 +107,28 @@ export function TaskModal({
     loadComments();
   }, [task?.id]);
 
+  // Fix initialization to show existing content when editing
+  useEffect(() => {
+    if (task) {
+      setFormData({
+        title: task.title || '',
+        description: task.description || '',
+        status: task.status || ('TODO' as 'TODO' | 'IN_PROGRESS' | 'COMPLETED'),
+        priority: task.priority || ('MEDIUM' as 'LOW' | 'MEDIUM' | 'HIGH' | 'URGENT'),
+        projectId: task.projectId || currentProjectId || projects[0]?.id || '',
+        assigneeId: task.assigneeId || user?.id || '',
+        dueDate: task.dueDate ? task.dueDate.split('T')[0] : '',
+        estimatedHours: task.estimatedHours?.toString() || '',
+        tags: task.tags?.join(', ') || '',
+      });
+    }
+  }, [task, user?.id, currentProjectId, projects]);
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     const taskData = {
       ...formData,
+      assignerId: user?.id,
       assigneeId: formData.assigneeId || undefined,
       estimatedHours: formData.estimatedHours ? parseFloat(formData.estimatedHours) : undefined,
       tags: formData.tags
@@ -120,7 +138,6 @@ export function TaskModal({
             .filter(Boolean)
         : undefined,
       dueDate: formData.dueDate || undefined,
-      lexoRank: formData.rank || undefined,
     };
     onSave(taskData);
   };
@@ -422,20 +439,6 @@ export function TaskModal({
                   value={formData.tags}
                   onChange={e => setFormData({ ...formData, tags: e.target.value })}
                   placeholder='태그를 쉼표로 구분하여 입력하세요 (예: 백엔드, 인증, 보안)'
-                  className='w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500'
-                />
-              </div>
-
-              <div>
-                <label className='block text-sm font-medium text-gray-700 mb-2'>
-                  순서 (Rank)
-                  <span className='text-xs text-gray-500 ml-1'>- 빈 값이면 자동 생성됩니다</span>
-                </label>
-                <input
-                  type='text'
-                  value={formData.rank}
-                  onChange={e => setFormData({ ...formData, rank: e.target.value })}
-                  placeholder='예: A, B, C 또는 1, 2, 3'
                   className='w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500'
                 />
               </div>

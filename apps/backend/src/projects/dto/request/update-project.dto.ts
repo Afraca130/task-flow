@@ -71,4 +71,13 @@ export class UpdateProjectDto {
     @IsOptional()
     @IsBoolean({ message: '활성 상태는 boolean 값이어야 합니다' })
     readonly isActive?: boolean;
+
+    @ApiPropertyOptional({
+        description: '프로젝트 공개 여부',
+        example: false,
+        default: false,
+    })
+    @IsOptional()
+    @IsBoolean({ message: '공개 여부는 boolean 값이어야 합니다' })
+    readonly isPublic?: boolean;
 }

@@ -1,6 +1,6 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { Transform } from 'class-transformer';
-import { IsEmail, IsInt, IsNotEmpty, IsOptional, IsString, IsUUID, Max, Min } from 'class-validator';
+import { IsInt, IsNotEmpty, IsOptional, IsString, IsUUID, Max, Min } from 'class-validator';
 
 export class CreateInvitationDto {
     @ApiProperty({
@@ -11,16 +11,6 @@ export class CreateInvitationDto {
     @IsNotEmpty({ message: '프로젝트 ID는 필수입니다' })
     @IsUUID(4, { message: '프로젝트 ID는 유효한 UUID여야 합니다' })
     readonly projectId: string;
-
-    @ApiPropertyOptional({
-        description: '초대받을 사용자의 이메일 주소 (이메일 또는 사용자 ID 중 하나는 필수)',
-        example: 'user@example.com',
-        format: 'email',
-    })
-    @IsOptional()
-    @IsEmail({}, { message: '유효한 이메일 주소를 입력하세요' })
-    @Transform(({ value }) => value?.toLowerCase().trim())
-    readonly inviteeEmail?: string;
 
     @ApiPropertyOptional({
         description: '초대받을 사용자의 ID (이메일 또는 사용자 ID 중 하나는 필수)',
