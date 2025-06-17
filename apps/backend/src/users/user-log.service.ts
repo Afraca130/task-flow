@@ -1,8 +1,6 @@
 import { Injectable, Logger } from '@nestjs/common';
-import { InjectRepository } from '@nestjs/typeorm';
 import { Request } from 'express';
-import { Repository } from 'typeorm';
-import { LogLevel, UserActionType, UserLog } from './entities/user-log.entity';
+import { LogLevel, UserActionType } from './entities/user-log.entity';
 import { CreateUserLogRequest } from './interfaces/user-log.interface';
 import { UserLogRepository } from './user-log.repository';
 ;
@@ -41,10 +39,7 @@ export class UserLogService {
     private readonly logger = new Logger(UserLogService.name);
 
     constructor(
-        @InjectRepository(UserLogRepository)
         private readonly userLogRepository: UserLogRepository,
-        @InjectRepository(UserLog)
-        private readonly userLogTypeormRepository: Repository<UserLog>,
     ) { }
 
     /**
