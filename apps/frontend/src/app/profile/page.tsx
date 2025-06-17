@@ -8,7 +8,7 @@ import { useEffect, useState } from 'react';
 
 export default function ProfilePage() {
   const router = useRouter();
-  const { user, isAuthenticated } = useAuthStore();
+  const { user, isAuthenticated, setUser } = useAuthStore();
   const [formData, setFormData] = useState({
     name: '',
     email: '',
@@ -58,11 +58,19 @@ export default function ProfilePage() {
   const handleSave = async () => {
     setIsSaving(true);
     try {
-      // TODO: API 호출로 사용자 정보 업데이트
-      console.log('Saving profile data:', formData);
+      // API 호출로 사용자 정보 업데이트
+      const { authApi } = await import('@/lib/api');
+      const updatedUser = await authApi.updateProfile(
+        formData.name,
+        undefined, // profileImage - 현재는 이미지 업로드 기능이 없음
+        formData.profileColor,
+        formData.organization
+      );
 
-      // 임시로 로컬 스토리지 업데이트
-      const updatedUser = { ...user, ...formData };
+      // Auth store 업데이트
+      setUser(updatedUser);
+
+      // 로컬 스토리지도 업데이트
       localStorage.setItem('auth-user', JSON.stringify(updatedUser));
 
       setIsEditing(false);

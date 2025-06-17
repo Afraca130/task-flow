@@ -208,6 +208,7 @@ export interface User {
   email: string;
   name?: string;
   profileColor?: string;
+  organization?: string;
   isActive?: boolean;
   createdAt?: string;
   updatedAt?: string;
@@ -337,6 +338,23 @@ export interface ProjectInvitation {
   invitee?: User;
 }
 
+export interface Issue {
+  id: string;
+  title: string;
+  description?: string;
+  status: 'OPEN' | 'IN_PROGRESS' | 'RESOLVED' | 'CLOSED';
+  priority: 'LOW' | 'MEDIUM' | 'HIGH' | 'URGENT';
+  authorId: string;
+  assigneeId?: string;
+  projectId: string;
+  createdAt: string;
+  updatedAt: string;
+  author?: User;
+  assignee?: User;
+  project?: Project;
+  comments?: Comment[];
+}
+
 // Standard API Response Interface
 export interface StandardApiResponse<T = any> {
   success: boolean;
@@ -395,12 +413,8 @@ export const authApi = {
     return extractData(response);
   },
 
-  updateProfile: async (name: string, profileImage?: string, profileColor?: string): Promise<User> => {
-    const response = await axios.patch<StandardApiResponse<User>>((process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001') + '/api/auth/profile', { name, profileImage, profileColor }, {
-      headers: {
-        Authorization: `Bearer ${localStorage.getItem('auth-token')}`
-      }
-    });
+  updateProfile: async (name: string, profileImage?: string, profileColor?: string, organization?: string): Promise<User> => {
+    const response = await api.patch<StandardApiResponse<User>>('/auth/profile', { name, profileImage, profileColor, organization });
     return extractData(response);
   },
 
@@ -709,6 +723,60 @@ export const usersApi = {
 
   deleteUser: async (id: string): Promise<void> => {
     await api.delete(`/users/${id}`);
+  },
+};
+
+// Issues API
+export const issuesApi = {
+  getIssues: async (params?: {
+    projectId?: string;
+    status?: 'OPEN' | 'IN_PROGRESS' | 'RESOLVED' | 'CLOSED';
+    authorId?: string;
+    assigneeId?: string;
+    page?: number;
+    limit?: number;
+    search?: string;
+  }): Promise<{ data: Issue[]; total: number; page: number; limit: number; totalPages: number }> => {
+    const response = await api.get<StandardApiResponse<{ data: Issue[]; total: number; page: number; limit: number; totalPages: number }>>('/issues', { params });
+    return extractData(response);
+  },
+
+  getIssue: async (issueId: string): Promise<Issue> => {
+    const response = await api.get<StandardApiResponse<Issue>>(`/issues/${issueId}`);
+    return extractData(response);
+  },
+
+  createIssue: async (data: {
+    title: string;
+    description?: string;
+    priority?: 'LOW' | 'MEDIUM' | 'HIGH' | 'URGENT';
+    projectId: string;
+    assigneeId?: string;
+  }): Promise<Issue> => {
+    const response = await api.post<StandardApiResponse<Issue>>('/issues', data);
+    return extractData(response);
+  },
+
+  updateIssue: async (issueId: string, data: Partial<Issue>): Promise<Issue> => {
+    const response = await api.put<StandardApiResponse<Issue>>(`/issues/${issueId}`, data);
+    return extractData(response);
+  },
+
+  deleteIssue: async (issueId: string): Promise<void> => {
+    await api.delete(`/issues/${issueId}`);
+  },
+
+  updateIssueStatus: async (
+    issueId: string,
+    status: 'OPEN' | 'IN_PROGRESS' | 'RESOLVED' | 'CLOSED'
+  ): Promise<Issue> => {
+    const response = await api.patch<StandardApiResponse<Issue>>(`/issues/${issueId}/status`, { status });
+    return extractData(response);
+  },
+
+  assignIssue: async (issueId: string, assigneeId: string): Promise<Issue> => {
+    const response = await api.patch<StandardApiResponse<Issue>>(`/issues/${issueId}/assign`, { assigneeId });
+    return extractData(response);
   },
 };
 

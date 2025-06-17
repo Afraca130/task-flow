@@ -99,6 +99,15 @@ export default function AnalyticsPage() {
 
     const loadProjects = async () => {
       try {
+        // Check if we need to refetch projects from cache
+        const projectsStoreModule = await import('@/store/projects');
+        const projectsStore = projectsStoreModule.default;
+
+        if (!projectsStore.shouldRefetchProjects()) {
+          console.log('Using cached projects');
+          return; // Use cached data from store
+        }
+
         const result = await projectsApi.getProjects({ page: 1, limit: 100 });
         const projectList = Array.isArray(result) ? result : result.projects || [];
         setProjects(projectList);
@@ -121,61 +130,15 @@ export default function AnalyticsPage() {
   const loadData = async () => {
     setLoading(true);
     try {
-      // Load activity logs
-      const logs = await activityLogsApi.getActivityLogs(
-        selectedProjectId !== 'all' ? selectedProjectId : undefined
-      );
+      // Load activity logs and task data in parallel
+      const [logs] = await Promise.all([
+        activityLogsApi.getActivityLogs(
+          selectedProjectId !== 'all' ? selectedProjectId : undefined
+        ),
+        loadTaskDataOnce(), // Load task data once and process for both stats and performance
+      ]);
+
       setActivityLogs(logs);
-
-      // Load user task statistics
-      await loadUserTaskStats();
-
-      // Load member performance data
-      const userPerformanceMap = new Map<string, MemberPerformance>();
-
-      // Get all tasks from all projects
-      const allTasks = await Promise.all(
-        projects.map(async project => {
-          const tasks = await tasksApi.getTasksByProject(project.id);
-          return tasks;
-        })
-      ).then(results => results.flat());
-
-      // Group completed tasks by user
-      const completedTasks = allTasks.filter(task => task.status === 'COMPLETED');
-
-      for (const task of completedTasks) {
-        if (task.assignee) {
-          const userId = task.assignee.id;
-          const userName = task.assignee.name || task.assignee.email || '사용자';
-
-          if (!userPerformanceMap.has(userId)) {
-            userPerformanceMap.set(userId, {
-              userId,
-              userName,
-              userColor: `#${Math.floor(Math.random() * 16777215).toString(16)}`,
-              dailyTasks: [],
-              totalCompleted: 0,
-            });
-          }
-
-          const user = userPerformanceMap.get(userId)!;
-          user.totalCompleted++;
-
-          // Add to daily tasks
-          const date = new Date(task.updatedAt).toLocaleDateString('ko-KR');
-          const existingDay = user.dailyTasks.find(d => d.date === date);
-          if (existingDay) {
-            existingDay.count++;
-          } else {
-            user.dailyTasks.push({ date, count: 1 });
-          }
-        }
-      }
-
-      const performanceData = Array.from(userPerformanceMap.values());
-
-      setMemberPerformanceData(performanceData);
     } catch (error) {
       console.error('Failed to load data:', error);
     } finally {
@@ -183,21 +146,30 @@ export default function AnalyticsPage() {
     }
   };
 
-  const loadUserTaskStats = async () => {
+  // Consolidated function to load tasks once and process for both analytics
+  const loadTaskDataOnce = async () => {
     try {
-      // Get all tasks
-      const allTasks =
-        selectedProjectId === 'all'
-          ? await Promise.all(projects.map(p => tasksApi.getTasksByProject(p.id))).then(results =>
-              results.flat()
-            )
-          : await tasksApi.getTasksByProject(selectedProjectId);
+      // Get tasks once - reuse for both user stats and performance data
+      let allTasks: any[] = [];
 
-      // Group tasks by user
+      if (selectedProjectId === 'all') {
+        // Limit to first 5 projects to reduce API calls
+        const limitedProjects = projects.slice(0, 5);
+        const taskPromises = limitedProjects.map(project => tasksApi.getTasksByProject(project.id));
+        const results = await Promise.all(taskPromises);
+        allTasks = results.flat();
+      } else {
+        // For single project, make one API call
+        allTasks = await tasksApi.getTasksByProject(selectedProjectId);
+      }
+
+      // Process task data for user statistics
       const userTaskMap = new Map<string, { user: any; tasks: any[] }>();
+      const userPerformanceMap = new Map<string, MemberPerformance>();
 
       for (const task of allTasks) {
         if (task.assigneeId && task.assignee) {
+          // For user task statistics
           if (!userTaskMap.has(task.assigneeId)) {
             userTaskMap.set(task.assigneeId, {
               user: task.assignee,
@@ -205,10 +177,38 @@ export default function AnalyticsPage() {
             });
           }
           userTaskMap.get(task.assigneeId)!.tasks.push(task);
+
+          // For member performance data (only completed tasks)
+          if (task.status === 'COMPLETED') {
+            const userId = task.assignee.id;
+            const userName = task.assignee.name || task.assignee.email || '사용자';
+
+            if (!userPerformanceMap.has(userId)) {
+              userPerformanceMap.set(userId, {
+                userId,
+                userName,
+                userColor: `#${Math.floor(Math.random() * 16777215).toString(16)}`,
+                dailyTasks: [],
+                totalCompleted: 0,
+              });
+            }
+
+            const user = userPerformanceMap.get(userId)!;
+            user.totalCompleted++;
+
+            // Add to daily tasks
+            const date = new Date(task.updatedAt).toLocaleDateString('ko-KR');
+            const existingDay = user.dailyTasks.find(d => d.date === date);
+            if (existingDay) {
+              existingDay.count++;
+            } else {
+              user.dailyTasks.push({ date, count: 1 });
+            }
+          }
         }
       }
 
-      // Calculate statistics for each user
+      // Set user task statistics
       const stats: UserTaskStats[] = Array.from(userTaskMap.entries()).map(
         ([userId, { user, tasks }]) => {
           const todoCount = tasks.filter(t => t.status === 'TODO').length;
@@ -232,8 +232,12 @@ export default function AnalyticsPage() {
       );
 
       setUserTaskStats(stats.sort((a, b) => b.totalTasks - a.totalTasks));
+
+      // Set member performance data
+      const performanceData = Array.from(userPerformanceMap.values());
+      setMemberPerformanceData(performanceData);
     } catch (error) {
-      console.error('Failed to load user task stats:', error);
+      console.error('Failed to load task data:', error);
     }
   };
 

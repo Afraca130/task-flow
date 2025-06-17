@@ -21,20 +21,17 @@ import {
   Activity,
   ArrowLeft,
   BarChart3,
-  Calendar,
-  CheckSquare,
   ChevronDown,
   FolderOpen,
   HelpCircle,
   List,
   Mail,
   Menu,
-  Play,
   Plus,
   Search,
   Settings,
   TrendingUp,
-  UserCheck,
+  User,
 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { useEffect, useMemo, useState } from 'react';
@@ -321,6 +318,15 @@ export default function DashboardPage() {
 
     const loadProjects = async () => {
       try {
+        // Check if we need to refetch projects from cache
+        const projectsStoreModule = await import('@/store/projects');
+        const projectsStore = projectsStoreModule.default;
+
+        if (!projectsStore.shouldRefetchProjects()) {
+          console.log('Using cached projects');
+          return; // Use cached data from store
+        }
+
         setLoading(true);
         console.log('Loading projects...');
         const result = await projectsApi.getProjects({ page: 1, limit: 100 });
@@ -537,6 +543,7 @@ export default function DashboardPage() {
   };
 
   const handleTaskClick = (task: Task) => {
+    setSelectedTask(task);
     setIsModalOpen(true);
   };
 
@@ -547,11 +554,7 @@ export default function DashboardPage() {
 
   const handleViewMore = (status: keyof typeof statusColumns) => {
     // 더보기 버튼 클릭 시 tasks 페이지로 이동
-    if (selectedProjectId && selectedProjectId !== 'all') {
-      router.push(`/projects/${selectedProjectId}/tasks?status=${status}`);
-    } else {
-      router.push(`/tasks?status=${status}`);
-    }
+    router.push(`/tasks?status=${status}`);
   };
 
   const openModal = (task?: Task) => {
@@ -747,30 +750,17 @@ export default function DashboardPage() {
                         }}
                         className='flex items-center gap-3 w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-50'
                       >
-                        <UserCheck className='w-4 h-4' />내 정보
-                      </button>
-
-                      <button
-                        onClick={() => {
-                          setIsUserMenuOpen(false);
-                          // 프로필 색상 변경 모달 열기 (추후 구현)
-                          alert('프로필 색상 변경 기능은 곧 출시될 예정입니다!');
-                        }}
-                        className='flex items-center gap-3 w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-50'
-                      >
-                        <div className='w-4 h-4 rounded-full bg-gradient-to-r from-blue-400 to-purple-500'></div>
-                        프로필 색상 변경
+                        <User className='w-4 h-4' />내 정보
                       </button>
 
                       <div className='border-t border-gray-100 my-1'></div>
 
                       <button
-                        onClick={() => {
+                        onClick={async () => {
                           setIsUserMenuOpen(false);
                           // 로그아웃 처리
-                          localStorage.removeItem('auth-token');
-                          localStorage.removeItem('auth-user');
-                          router.push('/login');
+                          const authStore = (await import('@/store/auth')).default;
+                          await authStore.logout();
                         }}
                         className='flex items-center gap-3 w-full px-4 py-2 text-sm text-red-600 hover:bg-red-50'
                       >
@@ -789,102 +779,37 @@ export default function DashboardPage() {
             className={`${isSidebarOpen ? 'translate-x-0' : '-translate-x-full'} lg:translate-x-0 fixed lg:static inset-y-0 left-0 z-30 w-60 bg-white border-r border-gray-200 transition-transform lg:transition-none`}
           >
             <div className='flex flex-col h-full'>
-              <nav className='flex-1 p-4 space-y-6'>
-                <div>
-                  <div className='text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2'>
-                    프로젝트
-                  </div>
-                  <div className='space-y-1'>
-                    <NavItem
-                      icon={<FolderOpen className='w-4 h-4 text-blue-500' />}
-                      label='프로젝트 보기'
-                      onClick={() => handleNavigation('/projects')}
-                    />
-                  </div>
-                </div>
-
-                <div>
-                  <div className='text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2'>
-                    계획
-                  </div>
-                  <div className='space-y-1'>
-                    <NavItem
-                      icon={<Calendar className='w-4 h-4 text-blue-500' />}
-                      label='로드맵'
-                      onClick={() => handleNavigation('roadmap')}
-                    />
-                    <NavItem
-                      icon={<List className='w-4 h-4 text-green-500' />}
-                      label='이슈'
-                      onClick={() => handleNavigation('/issues')}
-                    />
-                    <NavItem
-                      icon={<Play className='w-4 h-4 text-purple-500' />}
-                      label='백로그'
-                      onClick={() => handleNavigation('backlog')}
-                    />
-                  </div>
-                </div>
-
-                <div>
-                  <div className='text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2'>
-                    팀
-                  </div>
-                  <div className='space-y-1'>
-                    <NavItem
-                      icon={<UserCheck className='w-4 h-4 text-green-500' />}
-                      label='프로젝트 설정'
-                      onClick={() => {
-                        if (selectedProjectId) {
-                          handleNavigation(`/projects/${selectedProjectId}/settings`);
-                        } else {
-                          handleNavigation('/projects');
-                        }
-                      }}
-                    />
-                    <NavItem
-                      icon={<Mail className='w-4 h-4 text-blue-500' />}
-                      label='초대'
-                      onClick={() => handleNavigation('/invite')}
-                    />
-                  </div>
-                </div>
-
-                <div>
-                  <div className='text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2'>
-                    분석
-                  </div>
-                  <div className='space-y-1'>
-                    <NavItem
-                      icon={<TrendingUp className='w-4 h-4 text-purple-500' />}
-                      label='분석'
-                      onClick={() => handleNavigation('/analytics')}
-                    />
-                    <NavItem
-                      icon={<Activity className='w-4 h-4 text-indigo-500' />}
-                      label='활동 로그'
-                      onClick={() => handleNavigation('/reports')}
-                    />
-                  </div>
-                </div>
-
-                <div>
-                  <div className='text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2'>
-                    작업
-                  </div>
-                  <div className='space-y-1'>
-                    <NavItem
-                      icon={<BarChart3 className='w-4 h-4 text-blue-500' />}
-                      label='대시보드'
-                      onClick={() => handleNavigation('/dashboard')}
-                    />
-                    <NavItem
-                      icon={<CheckSquare className='w-4 h-4 text-green-500' />}
-                      label='태스크'
-                      onClick={() => handleNavigation('/tasks')}
-                    />
-                  </div>
-                </div>
+              <nav className='flex-1 p-4 space-y-2'>
+                <NavItem
+                  icon={<BarChart3 className='w-4 h-4 text-blue-500' />}
+                  label='대시보드'
+                  onClick={() => handleNavigation('/dashboard')}
+                />
+                <NavItem
+                  icon={<FolderOpen className='w-4 h-4 text-green-500' />}
+                  label='프로젝트'
+                  onClick={() => handleNavigation('/projects')}
+                />
+                <NavItem
+                  icon={<List className='w-4 h-4 text-purple-500' />}
+                  label='이슈'
+                  onClick={() => handleNavigation('/issues')}
+                />
+                <NavItem
+                  icon={<Mail className='w-4 h-4 text-orange-500' />}
+                  label='초대'
+                  onClick={() => handleNavigation('/invite')}
+                />
+                <NavItem
+                  icon={<TrendingUp className='w-4 h-4 text-pink-500' />}
+                  label='분석'
+                  onClick={() => handleNavigation('/analytics')}
+                />
+                <NavItem
+                  icon={<Activity className='w-4 h-4 text-indigo-500' />}
+                  label='활동 로그'
+                  onClick={() => handleNavigation('/reports')}
+                />
               </nav>
             </div>
           </aside>

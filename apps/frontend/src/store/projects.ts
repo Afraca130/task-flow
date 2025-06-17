@@ -9,6 +9,7 @@ interface ProjectsState {
   tasks: Task[];
   isLoading: boolean;
   error: string | null;
+  lastFetch: number | null; // Cache timestamp
 }
 
 class ProjectsStore {
@@ -20,6 +21,7 @@ class ProjectsStore {
     tasks: [],
     isLoading: false,
     error: null,
+    lastFetch: null,
   };
 
   private listeners: Array<() => void> = [];
@@ -46,7 +48,19 @@ class ProjectsStore {
 
   // Project actions
   setProjects = (projects: Project[]) => {
-    this.setState({ projects });
+    this.setState({
+      projects,
+      lastFetch: Date.now()
+    });
+  };
+
+  // Check if projects need to be refetched (5 minute cache)
+  shouldRefetchProjects = (): boolean => {
+    const { lastFetch, projects } = this.state;
+    if (!lastFetch || projects.length === 0) return true;
+
+    const CACHE_DURATION = 5 * 60 * 1000; // 5 minutes
+    return Date.now() - lastFetch > CACHE_DURATION;
   };
 
   addProject = (project: Project) => {
@@ -188,6 +202,7 @@ class ProjectsStore {
       tasks: [],
       isLoading: false,
       error: null,
+      lastFetch: null,
     });
   };
 }

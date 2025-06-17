@@ -109,7 +109,8 @@ export function TaskModal({
 
   // Fix initialization to show existing content when editing
   useEffect(() => {
-    if (task) {
+    if (task?.id) {
+      // Editing existing task
       setFormData({
         title: task.title || '',
         description: task.description || '',
@@ -121,8 +122,28 @@ export function TaskModal({
         estimatedHours: task.estimatedHours?.toString() || '',
         tags: task.tags?.join(', ') || '',
       });
+    } else if (task && task.status && !task.id) {
+      // Creating new task with specific status
+      setFormData(prev => ({
+        ...prev,
+        status: task.status as 'TODO' | 'IN_PROGRESS' | 'COMPLETED',
+        projectId: currentProjectId || projects[0]?.id || '',
+      }));
+    } else {
+      // Reset form for new task
+      setFormData({
+        title: '',
+        description: '',
+        status: 'TODO' as 'TODO' | 'IN_PROGRESS' | 'COMPLETED',
+        priority: 'MEDIUM' as 'LOW' | 'MEDIUM' | 'HIGH' | 'URGENT',
+        projectId: currentProjectId || projects[0]?.id || '',
+        assigneeId: user?.id || '',
+        dueDate: '',
+        estimatedHours: '',
+        tags: '',
+      });
     }
-  }, [task, user?.id, currentProjectId, projects]);
+  }, [task?.id, task?.status, user?.id, currentProjectId, projects]);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -331,7 +352,7 @@ export function TaskModal({
                     <option value=''>담당자를 선택하세요</option>
                     {projectMembers.map(member => (
                       <option key={member.id} value={member.userId}>
-                        {member.user?.name || member.userId} (
+                        {member.user?.name} (
                         {member.role === 'OWNER'
                           ? '소유자'
                           : member.role === 'MANAGER'

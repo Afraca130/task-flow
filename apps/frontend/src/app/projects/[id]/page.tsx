@@ -4,7 +4,7 @@ import { TaskModal } from '@/components/task-modal';
 import { Button } from '@/components/ui/button';
 import { Project, projectsApi, Task, tasksApi } from '@/lib/api';
 import { useAuthStore } from '@/store/auth';
-import { ArrowLeft, Plus } from 'lucide-react';
+import { ArrowLeft, Plus, Settings } from 'lucide-react';
 import { useParams, useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
 
@@ -130,9 +130,20 @@ export default function ProjectPage() {
             </div>
           </div>
 
-          <Button onClick={handleCreateTask} className='flex items-center gap-2'>
-            <Plus className='w-4 h-4' />새 태스크
-          </Button>
+          <div className='flex items-center gap-2'>
+            <Button
+              variant='outline'
+              onClick={() => router.push(`/projects/${projectId}/settings`)}
+              className='flex items-center gap-2'
+            >
+              <Settings className='w-4 h-4' />
+              설정
+            </Button>
+
+            <Button onClick={handleCreateTask} className='flex items-center gap-2'>
+              <Plus className='w-4 h-4' />새 태스크
+            </Button>
+          </div>
         </div>
 
         {/* Tasks Grid */}

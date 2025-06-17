@@ -48,7 +48,12 @@ class AuthStore {
       console.log('🔐 Attempting login for:', email);
 
       // Use direct fetch to backend API
-      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001'}/api/auth/login`, {
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
+      const loginUrl = `${apiUrl}/api/auth/login`;
+
+      console.log('🌐 Login URL:', loginUrl);
+
+      const response = await fetch(loginUrl, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -58,48 +63,100 @@ class AuthStore {
       });
 
       console.log('📡 Login response status:', response.status);
+      console.log('📡 Login response headers:', Object.fromEntries(response.headers.entries()));
 
       if (!response.ok) {
-        const errorData = await response.json().catch(() => ({ message: 'Login failed' }));
-        console.error('❌ Login failed:', errorData);
-        throw new Error(errorData.message || 'Login failed');
+        const errorText = await response.text();
+        console.error('❌ Login failed - raw response:', errorText);
+
+        let errorData;
+        try {
+          errorData = JSON.parse(errorText);
+        } catch {
+          errorData = { message: `HTTP ${response.status}: ${response.statusText}` };
+        }
+
+        console.error('❌ Login failed - parsed error:', errorData);
+        throw new Error(errorData.message || `Login failed with status ${response.status}`);
       }
 
-      const data = await response.json();
-      console.log('✅ Login response data:', {
-        hasAccessToken: !!data.accessToken,
-        hasUser: !!data.user,
-        userEmail: data.user?.email
+      const responseText = await response.text();
+      console.log('✅ Login response - raw text:', responseText);
+
+      let data;
+      try {
+        data = JSON.parse(responseText);
+      } catch (parseError) {
+        console.error('❌ Failed to parse response JSON:', parseError);
+        console.error('❌ Raw response was:', responseText);
+        throw new Error('Invalid JSON response from server');
+      }
+
+      console.log('✅ Login response - parsed data:', data);
+      console.log('🔍 Response structure check:', {
+        hasSuccess: !!data.success,
+        hasData: !!data.data,
+        hasAccessToken: !!data.data?.accessToken,
+        hasUser: !!data.data?.user,
+        userEmail: data.data?.user?.email,
+        allKeys: Object.keys(data),
+        dataKeys: data.data ? Object.keys(data.data) : 'no data field'
       });
 
-      // Validate response data structure
-      if (!data.accessToken || !data.user) {
-        console.error('❌ Invalid response structure:', data);
-        throw new Error('Invalid response from server');
+      // Handle standardized API response structure
+      let authData;
+      if (data.success && data.data) {
+        // Backend uses standard response wrapper
+        authData = data.data;
+        console.log('📦 Using wrapped response data:', authData);
+      } else if (data.accessToken && data.user) {
+        // Direct response structure
+        authData = data;
+        console.log('📦 Using direct response data:', authData);
+      } else {
+        console.error('❌ Invalid response structure:', {
+          receivedData: data,
+          expectedFields: ['accessToken', 'user'],
+          hasStandardWrapper: !!data.success && !!data.data,
+          hasDirectStructure: !!data.accessToken && !!data.user
+        });
+        throw new Error('Invalid response from server - missing required fields');
+      }
+
+      // Validate auth data structure
+      if (!authData.accessToken || !authData.user) {
+        console.error('❌ Invalid auth data structure:', {
+          authData,
+          missingFields: {
+            accessToken: !authData.accessToken,
+            user: !authData.user
+          }
+        });
+        throw new Error('Invalid response from server - missing required authentication fields');
       }
 
       // Store tokens and user data
       if (typeof window !== 'undefined') {
-        localStorage.setItem('auth-token', data.accessToken);
-        if (data.refreshToken) {
-          localStorage.setItem('refresh-token', data.refreshToken);
+        localStorage.setItem('auth-token', authData.accessToken);
+        if (authData.refreshToken) {
+          localStorage.setItem('refresh-token', authData.refreshToken);
         }
-        localStorage.setItem('auth-user', JSON.stringify(data.user));
+        localStorage.setItem('auth-user', JSON.stringify(authData.user));
         console.log('💾 Stored auth data in localStorage');
       }
 
       // Update state BEFORE any navigation
       this.setState({
-        user: data.user,
-        token: data.accessToken,
-        refreshToken: data.refreshToken,
+        user: authData.user,
+        token: authData.accessToken,
+        refreshToken: authData.refreshToken,
         isAuthenticated: true,
         isLoading: false,
       });
 
       console.log('🎉 Login successful - state updated:', {
         isAuthenticated: true,
-        userEmail: data.user.email
+        userEmail: authData.user.email
       });
 
     } catch (error) {
@@ -178,7 +235,33 @@ class AuthStore {
     }
   };
 
-  logout = () => {
+  logout = async () => {
+    try {
+      // 백엔드에 로그아웃 요청 (토큰 무효화)
+      const token = this.state.token;
+      const refreshToken = this.state.refreshToken;
+
+      if (token || refreshToken) {
+        try {
+          const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
+          await fetch(`${apiUrl}/api/auth/logout`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': token ? `Bearer ${token}` : '',
+            },
+            body: JSON.stringify({ refreshToken }),
+            credentials: 'include',
+          });
+        } catch (error) {
+          console.warn('Failed to notify backend of logout:', error);
+          // 백엔드 요청이 실패해도 로컬에서는 로그아웃 진행
+        }
+      }
+    } catch (error) {
+      console.warn('Logout request failed, proceeding with local logout:', error);
+    }
+
     // Clear localStorage first
     if (typeof window !== 'undefined') {
       localStorage.removeItem('auth-token');
