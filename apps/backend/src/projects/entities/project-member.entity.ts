@@ -34,11 +34,11 @@ export class ProjectMember extends BaseEntity {
   isActive: boolean;
 
   // Relations
-  @ManyToOne(() => Project, (project) => project.members, { onDelete: 'CASCADE' })
+  @ManyToOne(() => Project, project => project.members, { onDelete: 'CASCADE' })
   @JoinColumn({ name: 'project_id' })
   project?: Project;
 
-  @ManyToOne(() => User, (user) => user.projectMemberships, { eager: false })
+  @ManyToOne(() => User, user => user.projectMemberships, { eager: false })
   @JoinColumn({ name: 'user_id' })
   user?: User;
 

@@ -1,4 +1,4 @@
-import { TypeOrmModuleOptions } from "@nestjs/typeorm";
+import { TypeOrmModuleOptions } from '@nestjs/typeorm';
 
 export const databaseConfig = (): TypeOrmModuleOptions => {
   const baseConfig = {
@@ -13,7 +13,7 @@ export const databaseConfig = (): TypeOrmModuleOptions => {
       ...baseConfig,
       url: process.env.DATABASE_URL,
       ssl: {
-        rejectUnauthorized: false
+        rejectUnauthorized: false,
       },
     };
   }

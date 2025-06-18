@@ -89,9 +89,7 @@ import { NotificationsModule } from './notifications/notifications.module';
   ],
 })
 export class AppModule {
-  constructor(
-    private readonly configService: ConfigService
-  ) {
+  constructor(private readonly configService: ConfigService) {
     console.log('🌍 Environment:', this.configService.get('NODE_ENV'));
     console.log('🚀 Server Port:', this.configService.get('PORT') || '3000');
     console.log('📊 Database Host:', this.configService.get('DB_HOST'));

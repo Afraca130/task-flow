@@ -48,11 +48,11 @@ export class ProjectInvitation extends BaseEntity {
   @JoinColumn({ name: 'project_id' })
   project?: Project;
 
-  @ManyToOne(() => User, (user) => user.sentInvitations)
+  @ManyToOne(() => User, user => user.sentInvitations)
   @JoinColumn({ name: 'inviter_id' })
   inviter?: User;
 
-  @ManyToOne(() => User, (user) => user.receivedInvitations, { nullable: true })
+  @ManyToOne(() => User, user => user.receivedInvitations, { nullable: true })
   @JoinColumn({ name: 'invitee_id' })
   invitee?: User;
 }

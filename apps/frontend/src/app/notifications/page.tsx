@@ -23,22 +23,21 @@ export default function NotificationsPage() {
   }, [isAuthenticated, router]);
 
   // Load notifications
+  const fetchNotifications = async () => {
+    try {
+      setLoading(true);
+      const data = await notificationsApi.getNotifications();
+      setNotifications(data);
+    } catch (error) {
+      console.error('Failed to load notifications:', error);
+      setNotifications([]);
+    } finally {
+      setLoading(false);
+    }
+  };
+
   useEffect(() => {
     if (!isAuthenticated) return;
-
-    const fetchNotifications = async () => {
-      try {
-        setLoading(true);
-        const data = await notificationsApi.getNotifications();
-        setNotifications(data);
-      } catch (error) {
-        console.error('Failed to load notifications:', error);
-        setNotifications([]);
-      } finally {
-        setLoading(false);
-      }
-    };
-
     fetchNotifications();
   }, [isAuthenticated]);
 
@@ -60,7 +59,6 @@ export default function NotificationsPage() {
   });
 
   const handleNotificationClick = async (notification: Notification) => {
-    // Mark as read if not already read
     if (!notification.isRead) {
       try {
         await notificationsApi.markAsRead(notification.id);
@@ -72,8 +70,33 @@ export default function NotificationsPage() {
       }
     }
 
-    // For now, just mark as read - navigation can be added later based on notification type
-    console.log('Notification clicked:', notification);
+    // Handle navigation based on notification type and data
+    if (notification.data) {
+      const data = notification.data;
+      switch (notification.type) {
+        case 'TASK_ASSIGNED':
+          if (data.taskId) {
+            router.push(`/tasks/${data.taskId}`);
+          }
+          break;
+        case 'PROJECT_INVITATION':
+          if (data.projectId) {
+            router.push(`/projects/${data.projectId}`);
+          }
+          break;
+        case 'COMMENT_MENTION':
+          if (data.taskId) {
+            router.push(`/tasks/${data.taskId}`);
+          }
+          break;
+        case 'ISSUE_ASSIGNED':
+        case 'ISSUE_MENTION':
+          if (data.issueId) {
+            router.push(`/issues/${data.issueId}`);
+          }
+          break;
+      }
+    }
   };
 
   const handleMarkAllAsRead = async () => {
@@ -108,11 +131,15 @@ export default function NotificationsPage() {
       case 'TASK_COMPLETED':
         return '📋';
       case 'COMMENT_ADDED':
+      case 'COMMENT_MENTION':
         return '💬';
       case 'PROJECT_INVITATION':
         return '📧';
       case 'DUE_DATE_APPROACHING':
         return '⏰';
+      case 'ISSUE_ASSIGNED':
+      case 'ISSUE_MENTION':
+        return '🔍';
       default:
         return '🔔';
     }
@@ -205,44 +232,33 @@ export default function NotificationsPage() {
                   ? '읽지 않은 알림이 없습니다'
                   : '읽은 알림이 없습니다'}
             </h3>
-            <p className='text-gray-600'>새로운 알림이 도착하면 여기에 표시됩니다.</p>
+            <p className='text-gray-500'>새로운 알림이 오면 여기에 표시됩니다.</p>
           </div>
         ) : (
-          <div className='space-y-2'>
+          <div className='space-y-4'>
             {filteredNotifications.map(notification => (
               <div
                 key={notification.id}
                 onClick={() => handleNotificationClick(notification)}
-                className={`bg-white border border-gray-200 rounded-lg p-4 cursor-pointer hover:bg-gray-50 transition-colors ${
-                  !notification.isRead ? 'border-l-4 border-l-blue-500' : ''
+                className={`bg-white rounded-lg border p-4 cursor-pointer hover:bg-gray-50 transition-colors ${
+                  notification.isRead ? 'border-gray-200' : 'border-blue-200 bg-blue-50'
                 }`}
               >
-                <div className='flex items-start gap-3'>
+                <div className='flex items-start gap-4'>
                   <div className='text-2xl'>{getNotificationIcon(notification.type)}</div>
-
-                  <div className='flex-1'>
-                    <div className='flex items-start justify-between'>
-                      <h3
-                        className={`font-medium ${!notification.isRead ? 'text-gray-900' : 'text-gray-700'}`}
-                      >
-                        {notification.title}
-                      </h3>
-                      <div className='flex items-center gap-2 ml-4 text-xs text-gray-500'>
-                        <Clock className='w-3 h-3' />
-                        <span title={new Date(notification.createdAt).toLocaleString('ko-KR')}>
+                  <div className='flex-1 min-w-0'>
+                    <div className='flex items-center justify-between gap-4'>
+                      <h3 className='text-sm font-medium text-gray-900'>{notification.title}</h3>
+                      <div className='flex items-center gap-2'>
+                        <Clock className='w-4 h-4 text-gray-400' />
+                        <span className='text-sm text-gray-500 whitespace-nowrap'>
                           {formatDate(notification.createdAt)}
                         </span>
                       </div>
                     </div>
-
-                    <p
-                      className={`mt-1 text-sm ${!notification.isRead ? 'text-gray-700' : 'text-gray-500'}`}
-                    >
-                      {notification.message}
-                    </p>
-
+                    <p className='mt-1 text-sm text-gray-600'>{notification.message}</p>
                     {!notification.isRead && (
-                      <div className='w-2 h-2 bg-blue-500 rounded-full mt-2'></div>
+                      <div className='mt-2 w-2 h-2 bg-blue-500 rounded-full'></div>
                     )}
                   </div>
                 </div>
