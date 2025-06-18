@@ -1,12 +1,12 @@
 'use client';
 
-import { TaskModal } from '@/components/task-modal';
-import { Task, tasksApi } from '@/lib/api';
-import { useAuthStore } from '@/store/auth';
-import { useProjectsStore } from '@/store/projects';
 import { ArrowLeft, Search } from 'lucide-react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useEffect, useState } from 'react';
+import { TaskModal } from '../../components/task-modal';
+import { Task, tasksApi } from '../../lib/api';
+import { useAuthStore } from '../../store/auth';
+import { useProjectsStore } from '../../store/projects';
 
 type TaskStatus = 'TODO' | 'IN_PROGRESS' | 'COMPLETED';
 

@@ -1,5 +1,5 @@
-import { Project, ProjectMember, Task } from '@/lib/api';
 import { useEffect, useState } from 'react';
+import { Project, ProjectMember, Task } from '../lib/api';
 
 interface ProjectsState {
   projects: Project[];

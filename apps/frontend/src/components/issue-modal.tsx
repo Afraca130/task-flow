@@ -1,10 +1,10 @@
 'use client';
 
-import { Issue, issuesApi, projectsApi } from '@/lib/api';
-import { useAuthStore } from '@/store/auth';
-import { useProjectsStore } from '@/store/projects';
 import { X } from 'lucide-react';
 import { useEffect, useState } from 'react';
+import { Issue, issuesApi, projectsApi } from '../lib/api';
+import { useAuthStore } from '../store/auth';
+import { useProjectsStore } from '../store/projects';
 
 interface IssueModalProps {
   issue: Issue | null;

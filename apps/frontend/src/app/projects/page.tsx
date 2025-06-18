@@ -1,12 +1,12 @@
 'use client';
 
-import { Button } from '@/components/ui/button';
-import { Project, projectsApi } from '@/lib/api';
-import { useAuthStore } from '@/store/auth';
-import { useProjectsStore } from '@/store/projects';
 import { Activity, ArrowLeft, Calendar, FolderOpen, Plus, Users, X } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
+import { Button } from '../../components/ui/button';
+import { Project, projectsApi } from '../../lib/api';
+import { useAuthStore } from '../../store/auth';
+import { useProjectsStore } from '../../store/projects';
 
 export default function ProjectsPage() {
   const router = useRouter();

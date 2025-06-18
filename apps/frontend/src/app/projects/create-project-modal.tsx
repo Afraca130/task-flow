@@ -1,8 +1,8 @@
 'use client';
 
-import { Project, projectsApi } from '@/lib/api';
 import { Plus, X } from 'lucide-react';
 import { useState } from 'react';
+import { Project, projectsApi } from '../../lib/api';
 
 interface CreateProjectModalProps {
   isOpen: boolean;

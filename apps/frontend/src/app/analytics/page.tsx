@@ -1,12 +1,12 @@
 'use client';
 
-import { projectsApi, tasksApi } from '@/lib/api';
-import { useAuthStore } from '@/store/auth';
-import { useProjectsStore } from '@/store/projects';
 import { ArrowLeft, TrendingUp, Users } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import { Bar, BarChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
+import { projectsApi, tasksApi } from '../../lib/api';
+import { useAuthStore } from '../../store/auth';
+import { useProjectsStore } from '../../store/projects';
 
 interface UserTaskStats {
   userId: string;

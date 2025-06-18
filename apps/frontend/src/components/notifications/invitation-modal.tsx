@@ -1,7 +1,7 @@
 'use client';
 
-import { Button } from '@/components/ui/button';
 import { Calendar, User, Users, X } from 'lucide-react';
+import { Button } from '../ui/button';
 
 interface InvitationModalProps {
   isOpen: boolean;

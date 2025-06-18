@@ -1,12 +1,12 @@
 'use client';
 
-import { TaskModal } from '@/components/task-modal';
-import { Button } from '@/components/ui/button';
-import { Project, projectsApi, Task, tasksApi } from '@/lib/api';
-import { useAuthStore } from '@/store/auth';
 import { ArrowLeft, Plus, Settings } from 'lucide-react';
 import { useParams, useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
+import { TaskModal } from '../../../components/task-modal';
+import { Button } from '../../../components/ui/button';
+import { Project, projectsApi, Task, tasksApi } from '../../../lib/api';
+import { useAuthStore } from '../../../store/auth';
 
 export default function ProjectPage() {
   const router = useRouter();

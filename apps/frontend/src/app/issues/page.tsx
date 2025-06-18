@@ -1,13 +1,13 @@
 'use client';
 
-import { IssueModal } from '@/components/issue-modal';
-import { Button } from '@/components/ui/button';
-import { Issue, issuesApi } from '@/lib/api';
-import { useAuthStore } from '@/store/auth';
-import { useProjectsStore } from '@/store/projects';
 import { ArrowLeft, Bug, Clock, Plus, User } from 'lucide-react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useEffect, useState } from 'react';
+import { IssueModal } from '../../components/issue-modal';
+import { Button } from '../../components/ui/button';
+import { Issue, issuesApi } from '../../lib/api';
+import { useAuthStore } from '../../store/auth';
+import { useProjectsStore } from '../../store/projects';
 
 export default function IssuesPage() {
   const router = useRouter();

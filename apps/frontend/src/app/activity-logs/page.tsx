@@ -1,8 +1,5 @@
 'use client';
 
-import { ActivityLog, activityLogsApi } from '@/lib/api';
-import { useAuthStore } from '@/store/auth';
-import { useProjectsStore } from '@/store/projects';
 import {
   AlertCircle,
   ArrowLeft,
@@ -17,6 +14,9 @@ import {
 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
+import { ActivityLog, activityLogsApi } from '../../lib/api';
+import { useAuthStore } from '../../store/auth';
+import { useProjectsStore } from '../../store/projects';
 
 const getActionIcon = (action: string, entityType: string) => {
   switch (action) {

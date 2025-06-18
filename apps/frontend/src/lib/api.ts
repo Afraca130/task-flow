@@ -409,8 +409,8 @@ export const authApi = {
     return extractData(response);
   },
 
-  updateProfile: async (name: string, profileImage?: string, profileColor?: string, organization?: string): Promise<User> => {
-    const response = await api.patch<StandardApiResponse<User>>('/auth/profile', { name, profileImage, profileColor, organization });
+  updateProfile: async (name: string, profileColor?: string, organization?: string): Promise<User> => {
+    const response = await api.patch<StandardApiResponse<User>>('/auth/profile', { name, profileColor, organization });
     return extractData(response);
   },
 

@@ -1,10 +1,10 @@
 'use client';
 
-import { Notification, notificationsApi } from '@/lib/api';
-import { useAuthStore } from '@/store/auth';
 import { ArrowLeft, Bell, CheckCheck, Clock, Search } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
+import { Notification, notificationsApi } from '../../lib/api';
+import { useAuthStore } from '../../store/auth';
 
 export default function NotificationsPage() {
   const router = useRouter();

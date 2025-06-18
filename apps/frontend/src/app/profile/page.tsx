@@ -1,10 +1,10 @@
 'use client';
 
-import { Button } from '@/components/ui/button';
-import { useAuthStore } from '@/store/auth';
 import { ArrowLeft, Building, Mail, Save, User } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
+import { Button } from '../../components/ui/button';
+import { useAuthStore } from '../../store/auth';
 
 export default function ProfilePage() {
   const router = useRouter();
@@ -62,7 +62,6 @@ export default function ProfilePage() {
       const { authApi } = await import('@/lib/api');
       const updatedUser = await authApi.updateProfile(
         formData.name,
-        undefined, // profileImage - 현재는 이미지 업로드 기능이 없음
         formData.profileColor,
         formData.organization
       );

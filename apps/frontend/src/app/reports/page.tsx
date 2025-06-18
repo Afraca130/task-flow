@@ -1,8 +1,5 @@
 'use client';
 
-import { ActivityLog, activityLogsApi, projectsApi } from '@/lib/api';
-import { useAuthStore } from '@/store/auth';
-import { useProjectsStore } from '@/store/projects';
 import {
   Activity,
   ArrowLeft,
@@ -15,6 +12,9 @@ import {
 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
+import { ActivityLog, activityLogsApi, projectsApi } from '../../lib/api';
+import { useAuthStore } from '../../store/auth';
+import { useProjectsStore } from '../../store/projects';
 
 export default function ReportsPage() {
   const router = useRouter();

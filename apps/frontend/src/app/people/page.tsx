@@ -1,12 +1,12 @@
 'use client';
 
-import { Button } from '@/components/ui/button';
-import { invitationsApi, Project, ProjectMember, projectsApi, User, usersApi } from '@/lib/api';
-import { useAuthStore } from '@/store/auth';
-import { useProjectsStore } from '@/store/projects';
 import { ArrowLeft, Check, Crown, Mail, Plus, Search, Users, UserX } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
+import { Button } from '../../components/ui/button';
+import { invitationsApi, Project, ProjectMember, projectsApi, User, usersApi } from '../../lib/api';
+import { useAuthStore } from '../../store/auth';
+import { useProjectsStore } from '../../store/projects';
 
 export default function PeoplePage() {
   const router = useRouter();

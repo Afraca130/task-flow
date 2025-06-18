@@ -1,11 +1,11 @@
 'use client';
 
-import { Button } from '@/components/ui/button';
-import { Task, tasksApi } from '@/lib/api';
-import { useAuthStore } from '@/store/auth';
 import { AlertCircle, ArrowLeft, Calendar, Clock, Tag } from 'lucide-react';
 import { useParams, useRouter, useSearchParams } from 'next/navigation';
 import { useEffect, useState } from 'react';
+import { Button } from '../../../../components/ui/button';
+import { Task, tasksApi } from '../../../../lib/api';
+import { useAuthStore } from '../../../../store/auth';
 
 const statusLabels = {
   TODO: '할 일',

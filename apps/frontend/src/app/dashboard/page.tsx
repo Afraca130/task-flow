@@ -1,12 +1,5 @@
 'use client';
 
-import { NotificationBell } from '@/components/notifications/notification-bell';
-import { TaskModal } from '@/components/task-modal';
-import { Button } from '@/components/ui/button';
-import { projectsApi, Task, tasksApi } from '@/lib/api';
-import { calculateNewLexoRank, sortByRank } from '@/lib/lexorank';
-import { useAuthStore } from '@/store/auth';
-import { useProjectsStore } from '@/store/projects';
 import {
   DndContext,
   DragEndEvent,
@@ -36,6 +29,13 @@ import {
 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { useEffect, useMemo, useState } from 'react';
+import { NotificationBell } from '../../components/notifications/notification-bell';
+import { TaskModal } from '../../components/task-modal';
+import { Button } from '../../components/ui/button';
+import { projectsApi, Task, tasksApi } from '../../lib/api';
+import { calculateNewLexoRank, sortByRank } from '../../lib/lexorank';
+import { useAuthStore } from '../../store/auth';
+import { useProjectsStore } from '../../store/projects';
 
 const statusColumns = {
   TODO: {
@@ -826,7 +826,7 @@ export default function DashboardPage() {
                         onClick={async () => {
                           setIsUserMenuOpen(false);
                           // 로그아웃 처리
-                          const authStore = (await import('@/store/auth')).default;
+                          const authStore = (await import('../../store/auth')).default;
                           await authStore.logout();
                         }}
                         className='flex items-center gap-3 w-full px-4 py-2 text-sm text-red-600 hover:bg-red-50'

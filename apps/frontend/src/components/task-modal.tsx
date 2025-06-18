@@ -1,9 +1,9 @@
 'use client';
 
-import { Comment, commentsApi, projectsApi, Task, tasksApi } from '@/lib/api';
-import { useAuthStore } from '@/store/auth';
 import { Trash2, X } from 'lucide-react';
 import { useEffect, useState } from 'react';
+import { Comment, commentsApi, projectsApi, Task, tasksApi } from '../lib/api';
+import { useAuthStore } from '../store/auth';
 
 interface TaskModalProps {
   task: Task | null;

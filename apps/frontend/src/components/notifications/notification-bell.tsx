@@ -1,8 +1,8 @@
 'use client';
 
-import { invitationsApi, notificationsApi } from '@/lib/api';
 import { Bell } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
+import { invitationsApi, notificationsApi } from '../../lib/api';
 import { InvitationModal } from './invitation-modal';
 import { NotificationDropdown } from './notification-dropdown';
 

@@ -1,4 +1,4 @@
-import { User, authApi } from '@/lib/api';
+import { User, authApi } from '../lib/api';
 
 // Simple auth state management without external dependencies
 interface AuthState {
