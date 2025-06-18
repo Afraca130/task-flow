@@ -44,7 +44,7 @@ export default function ProjectsPage() {
         console.log('Loading all projects...');
 
         // Get all projects (public projects or projects user has access to)
-        const allProjectsResult = await projectsApi.getProjects({ page: 1, limit: 1000 });
+        const allProjectsResult = await projectsApi.getAllPublicProjects({ page: 1, limit: 1000 });
         console.log('All projects API response:', allProjectsResult);
 
         // Get user's projects (projects where user is a member)

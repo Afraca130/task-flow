@@ -91,6 +91,43 @@ export function NotificationBell({ className = '' }: NotificationBellProps) {
 
     // 초대 알림인 경우 특별 처리
     if (notification.type === 'PROJECT_INVITATION') {
+      console.log('🎯 Project invitation notification clicked:', notification);
+
+      try {
+        // Get actual invitation data using token
+        const token = notification.data?.invitationToken;
+        console.log('🔑 Using invitation token:', token);
+
+        if (token) {
+          console.log('📞 Fetching invitation details...');
+          const invitationData = await invitationsApi.getInvitation(token);
+          console.log('📧 Invitation data received:', invitationData);
+
+          // Create enhanced notification with actual invitation data
+          const enhancedNotification = {
+            ...notification,
+            invitationData,
+            data: {
+              ...notification.data,
+              projectName: invitationData.project?.name || notification.data?.projectName,
+              inviterName: invitationData.inviter?.name || notification.data?.inviterName,
+              projectId: invitationData.projectId,
+              invitationToken: token,
+            },
+          };
+
+          setCurrentInvitation(enhancedNotification);
+          setShowInvitationModal(true);
+          setIsOpen(false);
+          return;
+        } else {
+          console.warn('⚠️ No invitation token found in notification data');
+        }
+      } catch (error) {
+        console.error('💥 Failed to fetch invitation details:', error);
+        // Fallback to original notification data
+      }
+
       setCurrentInvitation(notification);
       setShowInvitationModal(true);
       setIsOpen(false);

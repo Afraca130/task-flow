@@ -436,6 +436,15 @@ export const projectsApi = {
     return extractData(response);
   },
 
+  getAllPublicProjects: async (params?: {
+    page?: number;
+    limit?: number;
+    search?: string;
+  }): Promise<{ projects: Project[]; total: number; page: number; limit: number; totalPages: number }> => {
+    const response = await api.get<StandardApiResponse<{ projects: Project[]; total: number; page: number; limit: number; totalPages: number }>>('/projects/all/public', { params });
+    return extractData(response);
+  },
+
   getProject: async (id: string): Promise<Project> => {
     const response = await api.get<StandardApiResponse<Project>>(`/projects/${id}`);
     return extractData(response);
@@ -808,11 +817,11 @@ export const invitationsApi = {
   },
 
   acceptInvitation: async (token: string): Promise<void> => {
-    await api.put(`/invitations/${token}/accept`);
+    await api.post(`/invitations/${token}/accept`);
   },
 
   declineInvitation: async (token: string): Promise<void> => {
-    await api.put(`/invitations/${token}/decline`);
+    await api.post(`/invitations/${token}/decline`);
   },
 
   getInvitation: async (token: string): Promise<ProjectInvitation> => {

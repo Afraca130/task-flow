@@ -131,20 +131,22 @@ export function isValidLexoRank(rank: string): boolean {
 export function between(left: string, right: string): string {
     console.log('🔄 LexoRank between:', { left, right });
 
-    // Normalize inputs
-    const leftNorm = left || '0';
+    // Normalize inputs - use proper base characters
+    const leftNorm = left || 'a';
     const rightNorm = right || 'z';
+
+    console.log('🔄 Normalized:', { leftNorm, rightNorm });
 
     // If left >= right, create a new rank after left
     if (leftNorm >= rightNorm) {
         console.warn('⚠️ Left rank >= right rank, creating rank after left');
-        const newRank = leftNorm + 'V';
+        const newRank = leftNorm + 'a';
         console.log('✅ Generated rank:', newRank);
         return newRank;
     }
 
-    // Find the midpoint
-    const result = findMidpoint(leftNorm, rightNorm);
+    // Find the midpoint using character codes
+    const result = findStringMidpoint(leftNorm, rightNorm);
     console.log('✅ Generated between rank:', result);
     return result;
 }
@@ -155,17 +157,10 @@ export function between(left: string, right: string): string {
 export function before(rank: string): string {
     console.log('⬆️ LexoRank before:', rank);
 
-    const normalized = rank || 'U';
+    const normalized = rank || 'm'; // Use middle character as default
 
-    // If rank starts with '0', prepend with a smaller value
-    if (normalized.startsWith('0')) {
-        const result = '0' + normalized;
-        console.log('✅ Generated before rank:', result);
-        return result;
-    }
-
-    // Find a value that comes before
-    const result = findBefore(normalized);
+    // Create a rank that comes before by prepending 'a'
+    const result = 'a' + normalized;
     console.log('✅ Generated before rank:', result);
     return result;
 }
@@ -176,24 +171,26 @@ export function before(rank: string): string {
 export function after(rank: string): string {
     console.log('⬇️ LexoRank after:', rank);
 
-    const normalized = rank || 'U';
-    const result = normalized + 'V';
+    const normalized = rank || 'm'; // Use middle character as default
+    const result = normalized + 'z';
     console.log('✅ Generated after rank:', result);
     return result;
 }
 
 /**
- * Find midpoint between two strings
+ * Find midpoint between two strings using character arithmetic
  */
-function findMidpoint(left: string, right: string): string {
-    const maxLen = Math.max(left.length, right.length);
-    const leftPadded = left.padEnd(maxLen, '0');
-    const rightPadded = right.padEnd(maxLen, '0');
+function findStringMidpoint(left: string, right: string): string {
+    const maxLength = Math.max(left.length, right.length);
+    const leftPadded = left.padEnd(maxLength, 'a');
+    const rightPadded = right.padEnd(maxLength, 'a');
+
+    console.log('🔍 Finding midpoint between:', { leftPadded, rightPadded });
 
     let result = '';
-    let needsIncrement = false;
+    let needsAppend = false;
 
-    for (let i = 0; i < maxLen; i++) {
+    for (let i = 0; i < maxLength; i++) {
         const leftChar = leftPadded[i];
         const rightChar = rightPadded[i];
 
@@ -205,11 +202,9 @@ function findMidpoint(left: string, right: string): string {
         const leftCode = leftChar.charCodeAt(0);
         const rightCode = rightChar.charCodeAt(0);
 
-        // If adjacent characters, we need to go deeper
+        // If characters are adjacent, we need to append
         if (rightCode - leftCode === 1) {
-            result += leftChar;
-            // Add a character between leftChar and rightChar
-            result += String.fromCharCode(leftCode + 0.5 < rightCode ? Math.ceil(leftCode + 0.5) : leftCode + 1);
+            result += leftChar + 'm'; // Add middle character
             break;
         } else {
             // Find middle character
@@ -219,33 +214,13 @@ function findMidpoint(left: string, right: string): string {
         }
     }
 
-    return result || (left + 'V');
-}
-
-/**
- * Find a rank that comes before the given rank
- */
-function findBefore(rank: string): string {
-    if (!rank) return '0';
-
-    // Try to decrement the last character
-    const lastChar = rank.slice(-1);
-    const lastCharCode = lastChar.charCodeAt(0);
-
-    if (lastCharCode > 48) { // Greater than '0'
-        const newLastChar = String.fromCharCode(lastCharCode - 1);
-        return rank.slice(0, -1) + newLastChar + 'z';
+    // If we couldn't find a middle, append a character
+    if (result === left) {
+        result += 'm';
     }
 
-    // If last char is '0', try to work with the prefix
-    if (rank.length > 1) {
-        const prefix = rank.slice(0, -1);
-        const beforePrefix = findBefore(prefix);
-        return beforePrefix + 'z';
-    }
-
-    // Default case
-    return '0' + rank;
+    console.log('🎯 Midpoint result:', result);
+    return result;
 }
 
 /**

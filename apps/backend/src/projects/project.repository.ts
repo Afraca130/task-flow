@@ -117,6 +117,66 @@ export class ProjectRepository {
         };
     }
 
+    async findAllProjects(
+        options: {
+            page?: number;
+            limit?: number;
+            search?: string;
+            isActive?: boolean;
+        } = {}
+    ): Promise<{
+        projects: Project[];
+        total: number;
+        page: number;
+        limit: number;
+        totalPages: number;
+    }> {
+        const { page = 1, limit = 100, search, isActive } = options;
+        const skip = (page - 1) * limit;
+
+        const queryBuilder = this.projectRepository.createQueryBuilder('project');
+
+        // Apply filters
+        if (search) {
+            queryBuilder.andWhere(
+                '(project.name ILIKE :search OR project.description ILIKE :search)',
+                { search: `%${search}%` }
+            );
+        }
+
+        if (isActive !== undefined) {
+            const status = isActive ? ProjectStatus.ACTIVE : [ProjectStatus.COMPLETED, ProjectStatus.ARCHIVED];
+            if (Array.isArray(status)) {
+                queryBuilder.andWhere('project.status IN (:...status)', { status });
+            } else {
+                queryBuilder.andWhere('project.status = :status', { status });
+            }
+        }
+
+        // Get total count
+        const total = await queryBuilder.getCount();
+
+        // Apply pagination and get results with relations
+        const projects = await queryBuilder
+            .leftJoinAndSelect('project.members', 'projectMember')
+            .leftJoinAndSelect('projectMember.user', 'memberUser')
+            .leftJoinAndSelect('project.tasks', 'projectTask')
+            .skip(skip)
+            .take(limit)
+            .orderBy('project.updatedAt', 'DESC')
+            .getMany();
+
+        const totalPages = Math.ceil(total / limit);
+
+        return {
+            projects,
+            total,
+            page,
+            limit,
+            totalPages,
+        };
+    }
+
     async update(project: Project): Promise<Project> {
         return await this.projectRepository.save(project);
     }

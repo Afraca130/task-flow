@@ -52,6 +52,34 @@ export class ProjectsController {
         return await this.projectsService.createProject(command);
     }
 
+    @Get('all/public')
+    @ApiOperation({ summary: 'Get all public projects' })
+    @ApiResponse({
+        status: 200,
+        description: 'All public projects retrieved successfully',
+        type: [Project],
+    })
+    @ApiQuery({ name: 'page', description: 'Page number', required: false })
+    @ApiQuery({ name: 'limit', description: 'Items per page', required: false })
+    @ApiQuery({ name: 'search', description: 'Search term', required: false })
+    async getAllPublicProjects(
+        @Query('page', new DefaultValuePipe(1), ParseIntPipe) page: number,
+        @Query('limit', new DefaultValuePipe(100), ParseIntPipe) limit: number,
+        @Query('search') search?: string,
+    ): Promise<{
+        projects: Project[];
+        total: number;
+        page: number;
+        limit: number;
+        totalPages: number;
+    }> {
+        return await this.projectsService.getAllPublicProjects({
+            page,
+            limit,
+            search,
+        });
+    }
+
     @Get()
     @ApiOperation({ summary: 'Get user projects' })
     @ApiResponse({

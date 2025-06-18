@@ -132,7 +132,37 @@ export class ProjectsService {
         };
     }
 
+    /**
+     * Get all public projects
+     */
+    async getAllPublicProjects(options: {
+        page: number;
+        limit: number;
+        search?: string;
+    }): Promise<{
+        projects: Project[];
+        total: number;
+        page: number;
+        limit: number;
+        totalPages: number;
+    }> {
+        try {
+            this.logger.log(`🌍 Getting all public projects with options:`, options);
 
+            const projects = await this.projectRepository.findAllProjects({
+                page: options.page,
+                limit: options.limit,
+                search: options.search,
+                isActive: true, // Only show active projects
+            });
+
+            this.logger.log(`✅ Found ${projects.projects.length} public projects`);
+            return projects;
+        } catch (error) {
+            this.logger.error(`💥 Failed to get all public projects:`, error.stack || error);
+            throw error;
+        }
+    }
 
     /**
      * Update a project
