@@ -1,7 +1,7 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { Exclude, Expose } from 'class-transformer';
 
-import { Project, ProjectStatus } from '../../entities/project.entity';
+import { Project } from '../../entities/project.entity';
 import { ProjectPriority } from '../request/create-project.dto';
 
 @Exclude()
@@ -35,14 +35,6 @@ export class ProjectResponseDto {
     })
     @Expose()
     readonly color: string;
-
-    @ApiPropertyOptional({
-        description: '프로젝트 아이콘 URL',
-        example: 'https://example.com/icon.png',
-        format: 'uri',
-    })
-    @Expose()
-    readonly iconUrl?: string;
 
     @ApiProperty({
         description: '프로젝트 우선순위',
@@ -117,10 +109,9 @@ export class ProjectResponseDto {
             name: project.name,
             description: project.description,
             color: project.color,
-            iconUrl: project.iconUrl,
             priority: project.priority,
-            dueDate: project.endDate,
-            isActive: project.status === ProjectStatus.ACTIVE,
+            dueDate: project.dueDate,
+            isActive: project.isActive,
             ownerId: project.ownerId,
             createdAt: project.createdAt,
             updatedAt: project.updatedAt,

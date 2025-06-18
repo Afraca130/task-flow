@@ -122,12 +122,6 @@ export default function LoginPage() {
         <h2 className='mt-6 text-center text-3xl font-bold tracking-tight text-gray-900'>
           TaskFlow에 로그인
         </h2>
-        <p className='mt-2 text-center text-sm text-gray-600'>
-          아직 계정이 없으신가요?{' '}
-          <Link href='/signup' className='font-medium text-blue-600 hover:text-blue-500'>
-            회원가입
-          </Link>
-        </p>
       </div>
 
       <div className='mt-8 sm:mx-auto sm:w-full sm:max-w-md'>
@@ -208,30 +202,6 @@ export default function LoginPage() {
               {errors.password && <p className='mt-2 text-sm text-red-600'>{errors.password}</p>}
             </div>
 
-            {/* Remember Me & Forgot Password */}
-            <div className='flex items-center justify-between'>
-              <div className='flex items-center'>
-                <input
-                  id='remember-me'
-                  name='remember-me'
-                  type='checkbox'
-                  className='h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded'
-                />
-                <label htmlFor='remember-me' className='ml-2 block text-sm text-gray-900'>
-                  로그인 상태 유지
-                </label>
-              </div>
-
-              <div className='text-sm'>
-                <Link
-                  href='/forgot-password'
-                  className='font-medium text-blue-600 hover:text-blue-500'
-                >
-                  비밀번호를 잊으셨나요?
-                </Link>
-              </div>
-            </div>
-
             {/* Submit Button */}
             <div>
               <button
@@ -249,7 +219,7 @@ export default function LoginPage() {
               </button>
             </div>
 
-            {/* Demo Account */}
+            {/* Signup Button */}
             <div className='mt-6'>
               <div className='relative'>
                 <div className='absolute inset-0 flex items-center'>
@@ -261,18 +231,12 @@ export default function LoginPage() {
               </div>
 
               <div className='mt-6'>
-                <button
-                  type='button'
-                  onClick={() => {
-                    setFormData({
-                      email: 'demo@taskflow.com',
-                      password: 'demo123',
-                    });
-                  }}
-                  className='w-full inline-flex justify-center py-2 px-4 border border-gray-300 rounded-md shadow-sm bg-white text-sm font-medium text-gray-500 hover:bg-gray-50'
+                <Link
+                  href='/signup'
+                  className='w-full inline-flex justify-center py-2 px-4 border border-gray-300 rounded-md shadow-sm bg-white text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors'
                 >
-                  데모 계정으로 체험하기
-                </button>
+                  회원가입
+                </Link>
               </div>
             </div>
           </form>

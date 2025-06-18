@@ -8,7 +8,7 @@ import { ProjectAlreadyExistsException, ProjectNotFoundException } from '../exce
 import { CreateProjectCommand } from './create-project.command';
 import { UpdateProjectDto } from './dto/request/update-project.dto';
 import { ProjectMember, ProjectMemberRole } from './entities/project-member.entity';
-import { ApprovalType, Project, ProjectPriority, ProjectStatus } from './entities/project.entity';
+import { Project, ProjectPriority } from './entities/project.entity';
 import { GetProjectQuery } from './get-project.query';
 import { ProjectRepository } from './project.repository';
 
@@ -247,20 +247,16 @@ export class ProjectsService {
             project.color = updateData.color;
         }
 
-        if (updateData.iconUrl !== undefined) {
-            project.iconUrl = updateData.iconUrl;
-        }
-
         if (updateData.priority !== undefined) {
             project.priority = this.mapPriorityToDomainEnum(updateData.priority);
         }
 
         if (updateData.dueDate !== undefined) {
-            project.endDate = new Date(updateData.dueDate);
+            project.dueDate = new Date(updateData.dueDate);
         }
 
         if (updateData.isActive !== undefined) {
-            project.status = updateData.isActive ? ProjectStatus.ACTIVE : ProjectStatus.ARCHIVED;
+            project.isActive = updateData.isActive;
         }
 
         if (updateData.isPublic !== undefined) {
@@ -408,7 +404,7 @@ export class ProjectsService {
             userId,
             project.id,
             project.name,
-            { status: { from: project.status, to: 'DELETED' } }
+            { isActive: { from: project.isActive, to: false } }
         );
 
         const projectIdVO = ProjectId.create(projectId);
@@ -474,19 +470,16 @@ export class ProjectsService {
 
         project.description = command.description;
         project.ownerId = command.userId;
-        project.createdBy = command.userId;
-        project.status = ProjectStatus.ACTIVE;
         project.isPublic = false;
-        project.approvalType = ApprovalType.MANUAL;
+        project.isActive = true;
 
         // Set new fields
         project.color = command.color;
-        project.iconUrl = command.iconUrl;
         project.priority = this.mapPriorityToDomainEnum(command.priority);
 
         // Additional properties from DTO
         if (command.dueDate) {
-            project.endDate = command.dueDate;
+            project.dueDate = command.dueDate;
         }
 
         return project;

@@ -208,11 +208,9 @@ export interface User {
   email: string;
   name?: string;
   profileColor?: string;
-  organization?: string;
   isActive?: boolean;
   createdAt?: string;
   updatedAt?: string;
-  lastLoginAt?: string;
 }
 
 export interface Project {
@@ -220,7 +218,6 @@ export interface Project {
   name: string;
   description?: string;
   color: string;
-  iconUrl?: string;
   priority: 'LOW' | 'MEDIUM' | 'HIGH' | 'URGENT';
   dueDate?: string;
   isActive: boolean;
@@ -229,14 +226,7 @@ export interface Project {
   updatedAt: string;
   memberCount?: number;
   taskCount?: number;
-  // Legacy fields for backward compatibility
-  status?: 'ACTIVE' | 'COMPLETED' | 'ARCHIVED';
   isPublic?: boolean;
-  startDate?: string;
-  endDate?: string;
-  createdBy?: string;
-  inviteCode?: string;
-  approvalType?: 'AUTO' | 'MANUAL';
   owner?: User;
   creator?: User;
   members?: ProjectMember[];
@@ -263,8 +253,6 @@ export interface Task {
   assignerId: string;
   projectId: string;
   dueDate?: string;
-  estimatedHours?: number;
-  actualHours?: number;
   tags?: string[];
   lexoRank: string;
   createdAt: string;
@@ -273,9 +261,6 @@ export interface Task {
   assigner?: User;
   project?: Project;
   comments?: Comment[];
-  progressPercentage?: number;
-  isOverdue?: boolean;
-  daysUntilDue?: number;
 }
 
 export interface Comment {
@@ -283,28 +268,20 @@ export interface Comment {
   content: string;
   taskId: string;
   userId: string;
-  parentId?: string;
   isDeleted: boolean;
   createdAt: string;
   updatedAt: string;
   user?: User;
-  parent?: Comment;
-  replies?: Comment[];
 }
 
 export interface Notification {
   id: string;
   userId: string;
-  taskId?: string;
-  projectId?: string;
   type: string;
   title: string;
   message: string;
   isRead: boolean;
-  readAt?: string;
   createdAt: string;
-  task?: Task;
-  project?: Project;
 }
 
 export interface ActivityLog {
@@ -326,11 +303,9 @@ export interface ProjectInvitation {
   projectId: string;
   inviterId: string;
   inviteeId?: string;
-  inviteeEmail?: string;
   token: string;
   status: 'PENDING' | 'ACCEPTED' | 'REJECTED' | 'EXPIRED';
   message?: string;
-  expiryDate: string;
   createdAt: string;
   updatedAt: string;
   project?: Project;
@@ -451,7 +426,6 @@ export const projectsApi = {
     name: string;
     description?: string;
     color?: string;
-    iconUrl?: string;
     priority?: 'LOW' | 'MEDIUM' | 'HIGH' | 'URGENT';
     dueDate?: string;
   }): Promise<Project> => {
@@ -464,7 +438,6 @@ export const projectsApi = {
     description?: string;
     isPublic?: boolean;
     color?: string;
-    iconUrl?: string;
     priority?: 'LOW' | 'MEDIUM' | 'HIGH' | 'URGENT';
     dueDate?: string;
     isActive?: boolean;
@@ -541,7 +514,6 @@ export const tasksApi = {
     assigneeId?: string;
     projectId: string;
     dueDate?: string;
-    estimatedHours?: number;
     tags?: string[];
   }): Promise<Task> => {
     const response = await api.post<StandardApiResponse<Task>>('/tasks', data);
@@ -792,7 +764,6 @@ export const invitationsApi = {
     projectId: string;
     inviteeId: string;
     message?: string;
-    expiryDays?: number;
   }): Promise<ProjectInvitation> => {
     const response = await api.post<StandardApiResponse<ProjectInvitation>>('/invitations', data);
     return extractData(response);

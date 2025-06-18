@@ -1,6 +1,5 @@
 import { Column, Entity, JoinColumn, ManyToOne, OneToMany } from 'typeorm';
 import { BaseEntity } from '../../common/entities/base.entity';
-import { Notification } from '../../notifications/entities/notification.entity';
 import { Project } from '../../projects/entities/project.entity';
 import { User } from '../../users/entities/user.entity';
 import { Comment } from '../comments/entities/comment.entity';
@@ -59,12 +58,6 @@ export class Task extends BaseEntity {
   @Column({ name: 'completed_at', type: 'timestamp', nullable: true })
   completedAt?: Date;
 
-  @Column({ name: 'estimated_hours', type: 'decimal', precision: 5, scale: 2, nullable: true })
-  estimatedHours?: number;
-
-  @Column({ name: 'actual_hours', type: 'decimal', precision: 5, scale: 2, nullable: true })
-  actualHours?: number;
-
   @Column({ type: 'jsonb', nullable: true })
   tags?: string[];
 
@@ -86,7 +79,4 @@ export class Task extends BaseEntity {
 
   @OneToMany(() => Comment, (comment) => comment.task, { cascade: true })
   comments?: Comment[];
-
-  @OneToMany(() => Notification, (notification) => notification.task, { cascade: true })
-  notifications?: Notification[];
 }

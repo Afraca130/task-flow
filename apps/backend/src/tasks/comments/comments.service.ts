@@ -27,7 +27,6 @@ export class CommentsService {
             comment.taskId = createDto.taskId;
             comment.userId = userId;
             comment.content = createDto.content.trim();
-            comment.parentId = createDto.parentId;
             comment.isDeleted = false;
 
             const savedComment = await this.commentsRepository.save(comment);

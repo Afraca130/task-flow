@@ -1,6 +1,6 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { Transform } from 'class-transformer';
-import { IsArray, IsDateString, IsEnum, IsNotEmpty, IsNumber, IsOptional, IsString, IsUUID, Min } from 'class-validator';
+import { IsArray, IsDateString, IsEnum, IsNotEmpty, IsOptional, IsString, IsUUID } from 'class-validator';
 import { TaskPriority, TaskStatus } from '../../entities/task.entity';
 
 
@@ -80,16 +80,6 @@ export class CreateTaskDto {
     @IsOptional()
     @IsDateString({}, { message: 'Due date must be valid ISO date string' })
     readonly dueDate?: string;
-
-    @ApiPropertyOptional({
-        description: 'Estimated hours to complete the task',
-        example: 8,
-        minimum: 0,
-    })
-    @IsOptional()
-    @IsNumber({}, { message: 'Estimated hours must be a number' })
-    @Min(0, { message: 'Estimated hours cannot be negative' })
-    readonly estimatedHours?: number;
 
     @ApiPropertyOptional({
         description: 'Task tags',

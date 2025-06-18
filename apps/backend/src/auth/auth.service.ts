@@ -123,7 +123,7 @@ export class AuthService {
    * 프로필 업데이트
    */
   async updateProfile(userId: string, updateProfileDto: UpdateProfileRequestDto): Promise<UserDto> {
-    const { name, profileColor, organization } = updateProfileDto;
+    const { name, profileColor } = updateProfileDto;
 
     const user = await this.userRepository.findById(userId);
     if (!user) {
@@ -133,9 +133,7 @@ export class AuthService {
     // 프로필 업데이트
     const updatedUser = await this.userRepository.update(userId, {
       name,
-
       profileColor,
-      organization,
     });
 
     return this.toUserDto(updatedUser);
@@ -204,7 +202,6 @@ export class AuthService {
       email: user.email,
       name: user.name,
       profileColor: user.profileColor,
-      organization: user.organization,
       isActive: user.isActive,
       lastLoginAt: user.lastLoginAt ? TimeUtil.formatISO(user.lastLoginAt) : undefined,
       createdAt: TimeUtil.formatISO(user.createdAt),

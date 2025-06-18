@@ -1,4 +1,4 @@
-import { Column, Entity, JoinColumn, ManyToOne, OneToMany } from 'typeorm';
+import { Column, Entity, JoinColumn, ManyToOne } from 'typeorm';
 import { BaseEntity } from '../../../common/entities/base.entity';
 import { User } from '../../../users/entities/user.entity';
 import { Task } from '../../entities/task.entity';
@@ -14,9 +14,6 @@ export class Comment extends BaseEntity {
   @Column({ name: 'user_id' })
   userId: string;
 
-  @Column({ name: 'parent_id', nullable: true })
-  parentId?: string;
-
   @Column({ name: 'is_deleted', type: 'boolean', default: false })
   isDeleted: boolean;
 
@@ -28,11 +25,4 @@ export class Comment extends BaseEntity {
   @ManyToOne(() => User, { eager: false })
   @JoinColumn({ name: 'user_id' })
   user?: User;
-
-  @ManyToOne(() => Comment, (comment) => comment.replies, { nullable: true })
-  @JoinColumn({ name: 'parent_id' })
-  parent?: Comment;
-
-  @OneToMany(() => Comment, (comment) => comment.parent, { cascade: true })
-  replies?: Comment[];
 }

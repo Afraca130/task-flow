@@ -319,13 +319,14 @@ export default function ProjectSettingsPage() {
     );
   }
 
-  if (!canManageProject) {
+  // 모든 멤버가 설정 페이지에 접근할 수 있지만, 현재 사용자가 멤버인지 확인
+  if (!currentMember) {
     return (
       <div className='min-h-screen bg-gray-50 flex items-center justify-center'>
         <div className='text-center'>
           <Shield className='w-16 h-16 text-gray-300 mx-auto mb-4' />
-          <h1 className='text-2xl font-bold text-gray-900 mb-4'>접근 권한이 없습니다</h1>
-          <p className='text-gray-600 mb-6'>프로젝트 설정을 관리할 권한이 없습니다.</p>
+          <h1 className='text-2xl font-bold text-gray-900 mb-4'>프로젝트 멤버가 아닙니다</h1>
+          <p className='text-gray-600 mb-6'>이 프로젝트의 멤버만 설정을 볼 수 있습니다.</p>
           <Button onClick={() => router.push(`/projects/${projectId}`)}>프로젝트로 돌아가기</Button>
         </div>
       </div>
@@ -350,10 +351,13 @@ export default function ProjectSettingsPage() {
             </div>
           </div>
 
-          <Button onClick={handleSaveProject} disabled={saving}>
-            <Save className='mr-2 h-4 w-4' />
-            {saving ? '저장 중...' : '설정 저장'}
-          </Button>
+          {/* Owner만 설정 저장 버튼 표시 */}
+          {isOwner && (
+            <Button onClick={handleSaveProject} disabled={saving}>
+              <Save className='mr-2 h-4 w-4' />
+              {saving ? '저장 중...' : '설정 저장'}
+            </Button>
+          )}
         </div>
 
         {/* Tab Navigation */}
@@ -409,10 +413,18 @@ export default function ProjectSettingsPage() {
                   <input
                     type='text'
                     value={projectName}
-                    onChange={e => setProjectName(e.target.value)}
-                    className='w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent'
+                    onChange={e => isOwner && setProjectName(e.target.value)}
+                    disabled={!isOwner}
+                    className={`w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
+                      !isOwner ? 'bg-gray-50 text-gray-500 cursor-not-allowed' : ''
+                    }`}
                     placeholder='프로젝트 이름을 입력하세요'
                   />
+                  {!isOwner && (
+                    <p className='mt-1 text-xs text-gray-500'>
+                      프로젝트 소유자만 이름을 변경할 수 있습니다.
+                    </p>
+                  )}
                 </div>
 
                 <div>
@@ -422,10 +434,18 @@ export default function ProjectSettingsPage() {
                   <textarea
                     rows={4}
                     value={projectDescription}
-                    onChange={e => setProjectDescription(e.target.value)}
-                    className='w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent'
+                    onChange={e => isOwner && setProjectDescription(e.target.value)}
+                    disabled={!isOwner}
+                    className={`w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
+                      !isOwner ? 'bg-gray-50 text-gray-500 cursor-not-allowed' : ''
+                    }`}
                     placeholder='프로젝트에 대한 설명을 입력하세요'
                   />
+                  {!isOwner && (
+                    <p className='mt-1 text-xs text-gray-500'>
+                      프로젝트 소유자만 설명을 변경할 수 있습니다.
+                    </p>
+                  )}
                 </div>
 
                 <div>
@@ -433,8 +453,11 @@ export default function ProjectSettingsPage() {
                     <input
                       type='checkbox'
                       checked={isPublic}
-                      onChange={e => setIsPublic(e.target.checked)}
-                      className='rounded border-gray-300 text-blue-600 shadow-sm focus:border-blue-300 focus:ring focus:ring-blue-200 focus:ring-opacity-50'
+                      onChange={e => isOwner && setIsPublic(e.target.checked)}
+                      disabled={!isOwner}
+                      className={`rounded border-gray-300 text-blue-600 shadow-sm focus:border-blue-300 focus:ring focus:ring-blue-200 focus:ring-opacity-50 ${
+                        !isOwner ? 'cursor-not-allowed' : ''
+                      }`}
                     />
                     <span className='ml-3 text-sm font-medium text-gray-700'>
                       {isPublic ? (
@@ -455,6 +478,11 @@ export default function ProjectSettingsPage() {
                       ? '모든 사용자가 이 프로젝트를 볼 수 있습니다.'
                       : '프로젝트 멤버만 이 프로젝트를 볼 수 있습니다.'}
                   </p>
+                  {!isOwner && (
+                    <p className='mt-1 text-xs text-gray-500'>
+                      프로젝트 소유자만 공개 설정을 변경할 수 있습니다.
+                    </p>
+                  )}
                 </div>
               </div>
             </div>
@@ -540,111 +568,143 @@ export default function ProjectSettingsPage() {
           <div className='bg-white rounded-lg shadow-sm border border-gray-200 p-6'>
             <div className='flex items-center justify-between mb-6'>
               <h2 className='text-lg font-semibold text-gray-900'>멤버 관리</h2>
-              <div className='flex gap-3'>
-                <Button variant='outline' onClick={() => router.push('/invite')}>
-                  <Plus className='mr-2 h-4 w-4' />
-                  초대 페이지로 이동
-                </Button>
-                <Button onClick={() => setShowInviteModal(true)}>
-                  <Mail className='mr-2 h-4 w-4' />
-                  직접 초대
-                </Button>
-              </div>
+              {/* Owner와 Manager만 멤버 초대 버튼 표시 */}
+              {canManageProject && (
+                <div className='flex gap-3'>
+                  <Button variant='outline' onClick={() => router.push('/invite')}>
+                    <Plus className='mr-2 h-4 w-4' />
+                    초대 페이지로 이동
+                  </Button>
+                  <Button onClick={() => setShowInviteModal(true)}>
+                    <Mail className='mr-2 h-4 w-4' />
+                    직접 초대
+                  </Button>
+                </div>
+              )}
             </div>
 
-            {/* 멤버 통계 */}
-            <div className='grid grid-cols-4 gap-4 mb-6'>
-              <div className='bg-blue-50 p-4 rounded-lg'>
-                <div className='text-2xl font-bold text-blue-600'>{members.length}</div>
-                <div className='text-sm text-blue-600'>총 멤버</div>
+            {/* 권한 안내 */}
+            {!isOwner && (
+              <div className='mb-6 p-4 bg-blue-50 border border-blue-200 rounded-lg'>
+                <p className='text-sm text-blue-800'>
+                  <Shield className='w-4 h-4 inline mr-1' />
+                  {canManageProject
+                    ? '자신의 정보만 확인할 수 있습니다. 멤버 관리는 프로젝트 소유자만 가능합니다.'
+                    : '자신의 정보만 확인할 수 있습니다. 멤버 초대나 관리는 프로젝트 소유자 또는 관리자만 가능합니다.'}
+                </p>
               </div>
-              <div className='bg-yellow-50 p-4 rounded-lg'>
-                <div className='text-2xl font-bold text-yellow-600'>
-                  {members.filter(m => m.role === 'OWNER').length}
+            )}
+
+            {/* 멤버 통계 - Owner만 표시 */}
+            {isOwner && (
+              <div className='grid grid-cols-4 gap-4 mb-6'>
+                <div className='bg-blue-50 p-4 rounded-lg'>
+                  <div className='text-2xl font-bold text-blue-600'>{members.length}</div>
+                  <div className='text-sm text-blue-600'>총 멤버</div>
                 </div>
-                <div className='text-sm text-yellow-600'>소유자</div>
-              </div>
-              <div className='bg-green-50 p-4 rounded-lg'>
-                <div className='text-2xl font-bold text-green-600'>
-                  {members.filter(m => m.role === 'MANAGER').length}
+                <div className='bg-yellow-50 p-4 rounded-lg'>
+                  <div className='text-2xl font-bold text-yellow-600'>
+                    {members.filter(m => m.role === 'OWNER').length}
+                  </div>
+                  <div className='text-sm text-yellow-600'>소유자</div>
                 </div>
-                <div className='text-sm text-green-600'>관리자</div>
-              </div>
-              <div className='bg-gray-50 p-4 rounded-lg'>
-                <div className='text-2xl font-bold text-gray-600'>
-                  {members.filter(m => m.role === 'MEMBER').length}
+                <div className='bg-green-50 p-4 rounded-lg'>
+                  <div className='text-2xl font-bold text-green-600'>
+                    {members.filter(m => m.role === 'MANAGER').length}
+                  </div>
+                  <div className='text-sm text-green-600'>관리자</div>
                 </div>
-                <div className='text-sm text-gray-600'>멤버</div>
+                <div className='bg-gray-50 p-4 rounded-lg'>
+                  <div className='text-2xl font-bold text-gray-600'>
+                    {members.filter(m => m.role === 'MEMBER').length}
+                  </div>
+                  <div className='text-sm text-gray-600'>멤버</div>
+                </div>
               </div>
-            </div>
+            )}
 
             <div className='space-y-4'>
-              {members.map(member => (
-                <div
-                  key={member.id}
-                  className='flex items-center justify-between p-4 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors'
-                >
-                  <div className='flex items-center gap-4'>
-                    <div
-                      className='w-12 h-12 rounded-full flex items-center justify-center text-white font-medium text-lg'
-                      style={getUserColorStyle(member)}
-                    >
-                      {member.user?.name?.charAt(0) || 'U'}
+              {/* 멤버 목록 - Owner만 모든 멤버 확인 가능 */}
+              {isOwner &&
+                members.map(member => (
+                  <div
+                    key={member.id}
+                    className='flex items-center justify-between p-4 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors'
+                  >
+                    <div className='flex items-center gap-4'>
+                      <div
+                        className='w-12 h-12 rounded-full flex items-center justify-center text-white font-medium text-lg'
+                        style={getUserColorStyle(member)}
+                      >
+                        {member.user?.name?.charAt(0) || 'U'}
+                      </div>
+                      <div>
+                        <div className='flex items-center gap-2'>
+                          <h3 className='font-medium text-gray-900'>
+                            {member.user?.name || '알 수 없음'}
+                          </h3>
+                          {member.role === 'OWNER' && <Crown className='w-4 h-4 text-yellow-500' />}
+                          {member.userId === user?.id && (
+                            <span className='px-2 py-1 text-xs bg-blue-100 text-blue-800 rounded-full'>
+                              나
+                            </span>
+                          )}
+                        </div>
+                        <p className='text-sm text-gray-500'>{member.user?.email}</p>
+                        <p className='text-xs text-gray-400'>
+                          참여일:{' '}
+                          {member.joinedAt
+                            ? new Date(member.joinedAt).toLocaleDateString('ko-KR')
+                            : '알 수 없음'}
+                        </p>
+                      </div>
                     </div>
-                    <div>
-                      <div className='flex items-center gap-2'>
-                        <h3 className='font-medium text-gray-900'>
-                          {member.user?.name || '알 수 없음'}
-                        </h3>
-                        {member.role === 'OWNER' && <Crown className='w-4 h-4 text-yellow-500' />}
-                        {member.userId === user?.id && (
-                          <span className='px-2 py-1 text-xs bg-blue-100 text-blue-800 rounded-full'>
-                            나
-                          </span>
+
+                    <div className='flex items-center gap-3'>
+                      <span
+                        className={`px-3 py-1 text-sm font-medium rounded-full ${getRoleColor(member.role)}`}
+                      >
+                        {getRoleText(member.role)}
+                      </span>
+
+                      {/* Owner와 Manager만 역할 변경 가능, 단 Owner 역할은 변경 불가 */}
+                      {canManageProject &&
+                        member.userId !== user?.id &&
+                        member.role !== 'OWNER' && (
+                          <div className='flex items-center gap-2'>
+                            <select
+                              value={member.role}
+                              onChange={e => handleRoleChange(member.id, e.target.value as any)}
+                              className='text-sm border border-gray-300 rounded px-3 py-1 focus:ring-2 focus:ring-blue-500 focus:border-transparent'
+                            >
+                              <option value='MEMBER'>멤버</option>
+                              <option value='MANAGER'>관리자</option>
+                              {/* Owner 옵션은 제거 */}
+                            </select>
+                            <button
+                              onClick={() => handleRemoveMember(member.id)}
+                              className='p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors'
+                              title='멤버 제거'
+                            >
+                              <UserX className='w-4 h-4' />
+                            </button>
+                          </div>
                         )}
-                      </div>
-                      <p className='text-sm text-gray-500'>{member.user?.email}</p>
-                      <p className='text-xs text-gray-400'>
-                        참여일:{' '}
-                        {member.joinedAt
-                          ? new Date(member.joinedAt).toLocaleDateString('ko-KR')
-                          : '알 수 없음'}
-                      </p>
+
+                      {/* Owner 역할인 경우 변경 불가 안내 */}
+                      {canManageProject &&
+                        member.role === 'OWNER' &&
+                        member.userId !== user?.id && (
+                          <div className='text-xs text-gray-500 italic'>
+                            소유자 역할은 변경할 수 없습니다
+                          </div>
+                        )}
                     </div>
                   </div>
+                ))}
 
-                  <div className='flex items-center gap-3'>
-                    <span
-                      className={`px-3 py-1 text-sm font-medium rounded-full ${getRoleColor(member.role)}`}
-                    >
-                      {getRoleText(member.role)}
-                    </span>
-
-                    {isOwner && member.userId !== user?.id && (
-                      <div className='flex items-center gap-2'>
-                        <select
-                          value={member.role}
-                          onChange={e => handleRoleChange(member.id, e.target.value as any)}
-                          className='text-sm border border-gray-300 rounded px-3 py-1 focus:ring-2 focus:ring-blue-500 focus:border-transparent'
-                        >
-                          <option value='MEMBER'>멤버</option>
-                          <option value='MANAGER'>관리자</option>
-                          <option value='OWNER'>소유자</option>
-                        </select>
-                        <button
-                          onClick={() => handleRemoveMember(member.id)}
-                          className='p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors'
-                          title='멤버 제거'
-                        >
-                          <UserX className='w-4 h-4' />
-                        </button>
-                      </div>
-                    )}
-                  </div>
-                </div>
-              ))}
-
-              {members.length === 0 && (
+              {/* Empty state - Owner만 표시 */}
+              {isOwner && members.length === 0 && (
                 <div className='text-center py-12'>
                   <Users className='w-16 h-16 text-gray-300 mx-auto mb-4' />
                   <h3 className='text-lg font-medium text-gray-900 mb-2'>멤버가 없습니다</h3>
@@ -653,6 +713,15 @@ export default function ProjectSettingsPage() {
                     <Plus className='mr-2 h-4 w-4' />
                     멤버 초대하기
                   </Button>
+                </div>
+              )}
+
+              {/* 일반 멤버용 안내 */}
+              {!isOwner && (
+                <div className='text-center py-8'>
+                  <div className='text-sm text-gray-500'>
+                    전체 멤버 목록은 프로젝트 소유자만 확인할 수 있습니다.
+                  </div>
                 </div>
               )}
             </div>

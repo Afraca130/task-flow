@@ -107,7 +107,6 @@ export class TasksService {
             task.status = command.status || TaskStatus.TODO;
             task.priority = (command.priority as TaskPriority) || TaskPriority.MEDIUM;
             task.dueDate = command.dueDate ? TimeUtil.toDate(command.dueDate) : undefined;
-            task.estimatedHours = command.estimatedHours;
             task.tags = command.tags || [];
             task.lexoRank = lexoRank;
 

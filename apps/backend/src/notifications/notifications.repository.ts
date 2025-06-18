@@ -42,13 +42,19 @@ export class NotificationsRepository {
     async markAllAsReadForUser(userId: string): Promise<void> {
         await this.repository.update(
             { userId, isRead: false },
-            { isRead: true, readAt: new Date() }
+            { isRead: true }
         );
     }
 
     async getUnreadCountForUser(userId: string): Promise<number> {
         return await this.repository.count({
             where: { userId, isRead: false }
+        });
+    }
+
+    async getTotalCountForUser(userId: string): Promise<number> {
+        return await this.repository.count({
+            where: { userId }
         });
     }
 

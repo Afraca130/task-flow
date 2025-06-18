@@ -154,13 +154,15 @@ export class NotificationsController {
         schema: {
             type: 'object',
             properties: {
-                count: { type: 'integer', example: 5 }
+                unreadCount: { type: 'integer', example: 5 },
+                totalCount: { type: 'integer', example: 10 }
             }
         }
     })
     @ApiResponse({ status: 401, description: 'Unauthorized' })
-    async getUnreadCount(@Request() req: any): Promise<{ count: number }> {
-        const count = await this.notificationsService.getUnreadCount(req.user.id);
-        return { count };
+    async getUnreadCount(@Request() req: any): Promise<{ unreadCount: number; totalCount: number }> {
+        const unreadCount = await this.notificationsService.getUnreadCount(req.user.id);
+        const totalCount = await this.notificationsService.getTotalCount(req.user.id);
+        return { unreadCount, totalCount };
     }
 }

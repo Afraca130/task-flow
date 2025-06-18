@@ -1,75 +1,44 @@
-import { ValidationPipe, VersioningType } from '@nestjs/common';
+import { ValidationPipe } from '@nestjs/common';
 import { NestFactory } from '@nestjs/core';
-import { ExpressAdapter } from '@nestjs/platform-express';
-import express from 'express';
+import { DocumentBuilder } from '@nestjs/swagger';
 import { AppModule } from '../src/app.module';
-import { HttpExceptionFilter } from '../src/filters/http-exception.filter';
+import { SwaggerConfig } from '../src/config/swagger.config';
 
-const server = express();
-let isAppInitialized = false;
+let app: any;
 
-async function createNestServer() {
-    if (isAppInitialized) {
-        return server;
-    }
+async function createNestApp() {
+    if (!app) {
+        app = await NestFactory.create(AppModule);
 
-    try {
-        const adapter = new ExpressAdapter(server);
-        const app = await NestFactory.create(AppModule, adapter);
-
-        // Global validation pipe
-        app.useGlobalPipes(new ValidationPipe({
-            whitelist: true,
-            forbidNonWhitelisted: true,
-            transform: true,
-            transformOptions: {
-                enableImplicitConversion: true,
-            },
-        }));
-
-        // Global exception filter
-        app.useGlobalFilters(new HttpExceptionFilter());
-
-        // API versioning
-        app.enableVersioning({
-            type: VersioningType.URI,
-            defaultVersion: '1',
-        });
-
-        // CORS configuration - Allow all origins for Vercel
         app.enableCors({
-            origin: true, // Allow all origins
+            origin: true,
             credentials: true,
-            methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
-            allowedHeaders: ['Content-Type', 'Authorization', 'Accept', 'X-Requested-With'],
         });
 
-        // Global prefix
-        app.setGlobalPrefix('api');
+        app.useGlobalPipes(new ValidationPipe());
 
-        // Initialize the app
+        // Swagger 설정
+        const config = new DocumentBuilder()
+            .setTitle('TaskFlow API')
+            .setDescription('TaskFlow API Documentation')
+            .setVersion('1.0')
+            .addBearerAuth()
+            .build();
+
+        SwaggerConfig.setup(app);
+
+        // 글로벌 프리픽스 설정
+        app.setGlobalPrefix('api', {
+            exclude: ['/health', '/'],
+        });
+
         await app.init();
-        isAppInitialized = true;
-
-        console.log('NestJS app initialized successfully for Vercel');
-        return server;
-    } catch (error) {
-        console.error('Error initializing NestJS app:', error);
-        throw error;
     }
+    return app;
 }
 
-export default async (req: any, res: any) => {
-    try {
-        console.log(`${req.method} ${req.url}`);
-        const app = await createNestServer();
-        return app(req, res);
-    } catch (error) {
-        console.error('Error in Vercel handler:', error);
-        res.status(500).json({
-            error: 'Internal Server Error',
-            message: error instanceof Error ? error.message : 'Unknown error',
-            timestamp: new Date().toISOString()
-        });
-    }
-};
+export default async function handler(req: any, res: any) {
+    const app = await createNestApp();
+    const server = app.getHttpAdapter().getInstance();
+    return server(req, res);
+}

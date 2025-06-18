@@ -1,6 +1,6 @@
 'use client';
 
-import { AlertCircle, ArrowLeft, Calendar, Clock, Tag } from 'lucide-react';
+import { AlertCircle, ArrowLeft, Calendar, Tag } from 'lucide-react';
 import { useParams, useRouter, useSearchParams } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import { Button } from '../../../../components/ui/button';
@@ -128,13 +128,6 @@ function TaskCard({ task, onClick }: TaskCardProps) {
             <div className='flex items-center gap-1'>
               <Calendar className='w-3 h-3' />
               <span>{new Date(task.dueDate).toLocaleDateString()}</span>
-            </div>
-          )}
-
-          {task.estimatedHours && (
-            <div className='flex items-center gap-1'>
-              <Clock className='w-3 h-3' />
-              <span>{task.estimatedHours}h</span>
             </div>
           )}
         </div>

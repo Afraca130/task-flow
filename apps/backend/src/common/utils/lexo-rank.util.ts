@@ -59,8 +59,9 @@ export class LexoRank {
             return this.generateAfter(sortedRanks[sortedRanks.length - 1]);
         }
 
-        const beforeRank = position > 0 ? sortedRanks[position - 1] : undefined;
-        const afterRank = position < sortedRanks.length ? sortedRanks[position] : undefined;
+        // position이 기존 아이템들 사이에 위치할 때
+        const beforeRank = sortedRanks[position - 1];
+        const afterRank = sortedRanks[position];
 
         return this.generateBetween(beforeRank, afterRank);
     }
@@ -104,7 +105,7 @@ export class LexoRank {
             return this.generateInitialRank();
         }
 
-        // If rank is a single character, try to increment it
+        // 단일 문자인 경우 다음 문자로 증가 시도
         if (rank.length === 1) {
             const charIndex = this.BASE_36_CHARS.indexOf(rank);
             if (charIndex !== -1 && charIndex < this.BASE_36_CHARS.length - 1) {
@@ -112,8 +113,9 @@ export class LexoRank {
             }
         }
 
-        // Generate a rank after by appending a character
-        return rank + this.BASE_36_CHARS[Math.floor(this.BASE_36_CHARS.length / 2)];
+        // 뒤에 중간값 문자 추가
+        const midChar = this.BASE_36_CHARS[Math.floor(this.BASE_36_CHARS.length / 2)];
+        return rank + midChar;
     }
 
     /**
@@ -124,74 +126,113 @@ export class LexoRank {
             return this.generateInitialRank();
         }
 
-        // If rank is a single character, try to decrement it
+        // 단일 문자인 경우 이전 문자로 감소 시도
         if (rank.length === 1) {
             const charIndex = this.BASE_36_CHARS.indexOf(rank);
             if (charIndex > 0) {
                 return this.BASE_36_CHARS[charIndex - 1];
             }
+            // 첫 번째 문자인경우 앞에 0을 붙여서 더 작은값 생성
+            return this.BASE_36_CHARS[0] + rank;
         }
 
-        // Generate a rank before by creating a smaller value
+        // 첫 번째 문자를 기준으로 이전 값 생성
         const firstChar = rank[0];
         const charIndex = this.BASE_36_CHARS.indexOf(firstChar);
 
         if (charIndex > 0) {
             const prevChar = this.BASE_36_CHARS[charIndex - 1];
+            // 이전 문자 + 최대값으로 해당 범위의 끝부분 생성
             return prevChar + this.BASE_36_CHARS[this.BASE_36_CHARS.length - 1];
         }
 
-        // If we can't decrement, prepend a character
+        // 첫 번째 문자가 '0'인 경우, 앞에 '0'을 추가
         return this.BASE_36_CHARS[0] + rank;
     }
 
     /**
-     * Generate a rank between two ranks
+     * Generate a rank between two ranks (핵심 수정)
      */
     private static generateBetween(before: string, after: string): string {
         if (!before || !after) {
             return this.generateInitialRank();
         }
 
-        // Normalize lengths
+        // 두 랭크가 같으면 after 뒤에 생성
+        if (before === after) {
+            return this.generateAfter(after);
+        }
+
+        // 길이를 맞춤 (짧은 쪽에 '0' 패딩)
         const maxLength = Math.max(before.length, after.length);
-        const paddedBefore = before.padEnd(maxLength, this.BASE_36_CHARS[0]);
-        const paddedAfter = after.padEnd(maxLength, this.BASE_36_CHARS[this.BASE_36_CHARS.length - 1]);
+        const paddedBefore = before.padEnd(maxLength, '0');
+        const paddedAfter = after.padEnd(maxLength, '0');
 
         let result = '';
-        let carry = 0;
 
         for (let i = 0; i < maxLength; i++) {
-            const beforeIndex = this.BASE_36_CHARS.indexOf(paddedBefore[i]);
-            const afterIndex = this.BASE_36_CHARS.indexOf(paddedAfter[i]);
+            const beforeChar = paddedBefore[i];
+            const afterChar = paddedAfter[i];
+
+            const beforeIndex = this.BASE_36_CHARS.indexOf(beforeChar);
+            const afterIndex = this.BASE_36_CHARS.indexOf(afterChar);
 
             if (beforeIndex === afterIndex) {
-                result += this.BASE_36_CHARS[beforeIndex];
+                // 같은 문자면 그대로 추가하고 다음 자리로
+                result += beforeChar;
                 continue;
             }
 
-            const midIndex = Math.floor((beforeIndex + afterIndex) / 2);
-
-            if (midIndex === beforeIndex) {
-                result += this.BASE_36_CHARS[beforeIndex];
-                // Need to continue to next position
-                const nextPos = i + 1;
-                if (nextPos < maxLength) {
-                    const nextBeforeIndex = this.BASE_36_CHARS.indexOf(paddedBefore[nextPos]);
-                    const nextAfterIndex = this.BASE_36_CHARS.indexOf(paddedAfter[nextPos]);
-                    const nextMidIndex = Math.floor((nextBeforeIndex + this.BASE_36_CHARS.length) / 2);
-                    result += this.BASE_36_CHARS[nextMidIndex % this.BASE_36_CHARS.length];
-                } else {
-                    result += this.BASE_36_CHARS[Math.floor(this.BASE_36_CHARS.length / 2)];
-                }
-                break;
-            } else {
+            // 인덱스 차이가 1보다 크면 중간값 계산 가능
+            if (afterIndex - beforeIndex > 1) {
+                const midIndex = Math.floor((beforeIndex + afterIndex) / 2);
                 result += this.BASE_36_CHARS[midIndex];
+                break;
+            }
+
+            // 인덱스 차이가 1인 경우 (연속된 문자)
+            if (afterIndex - beforeIndex === 1) {
+                result += beforeChar;
+
+                // 다음 자리에서 중간값을 찾아야 함
+                if (i + 1 < maxLength) {
+                    const nextBeforeChar = paddedBefore[i + 1];
+                    const nextBeforeIndex = this.BASE_36_CHARS.indexOf(nextBeforeChar);
+
+                    // before의 다음 문자 뒤에 중간값 추가
+                    if (nextBeforeIndex < this.BASE_36_CHARS.length - 1) {
+                        const nextMidIndex = Math.floor((nextBeforeIndex + this.BASE_36_CHARS.length) / 2);
+                        result += this.BASE_36_CHARS[nextMidIndex];
+                        break;
+                    }
+                }
+
+                // 마지막 자리거나 다른 방법이 없으면 중간 문자 추가
+                const midChar = this.BASE_36_CHARS[Math.floor(this.BASE_36_CHARS.length / 2)];
+                result += midChar;
                 break;
             }
         }
 
-        return result || this.generateInitialRank();
+        // 결과가 비어있거나 before보다 작거나 같으면 안전한 값 반환
+        if (!result || result <= before) {
+            return before + this.BASE_36_CHARS[1];
+        }
+
+        // 결과가 after보다 크거나 같으면 안전한 값 반환
+        if (result >= after) {
+            const beforeIndex = this.BASE_36_CHARS.indexOf(before[0] || '0');
+            const afterIndex = this.BASE_36_CHARS.indexOf(after[0] || 'z');
+
+            if (afterIndex - beforeIndex > 1) {
+                const midIndex = Math.floor((beforeIndex + afterIndex) / 2);
+                return this.BASE_36_CHARS[midIndex];
+            }
+
+            return before + '1';
+        }
+
+        return result;
     }
 
     /**

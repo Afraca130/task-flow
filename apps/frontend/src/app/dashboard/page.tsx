@@ -266,8 +266,8 @@ function DroppableColumn({
           </button>
         )}
 
-        {/* 새 작업 추가 버튼 */}
-        {selectedProjectId !== 'all' && (
+        {/* 새 작업 추가 버튼 - 프로젝트가 있을 때만 표시 */}
+        {selectedProjectId !== 'all' && selectedProjectId && (
           <button
             onClick={() => onTaskClick({ status: id } as Task)}
             className='w-full py-3 text-sm text-gray-600 hover:text-gray-700 hover:bg-gray-50 rounded-lg border border-gray-200 hover:border-gray-300 transition-colors flex items-center justify-center gap-2'
@@ -857,6 +857,14 @@ export default function DashboardPage() {
                   label='프로젝트'
                   onClick={() => handleNavigation('/projects')}
                 />
+                {/* 프로젝트가 선택되었을 때만 프로젝트 설정 표시 */}
+                {selectedProjectId && (
+                  <NavItem
+                    icon={<Settings className='w-4 h-4 text-gray-500' />}
+                    label='프로젝트 설정'
+                    onClick={() => handleNavigation(`/projects/${selectedProjectId}/settings`)}
+                  />
+                )}
                 <NavItem
                   icon={<List className='w-4 h-4 text-purple-500' />}
                   label='이슈'
@@ -888,11 +896,14 @@ export default function DashboardPage() {
                 <h1 className='text-2xl font-bold text-gray-900 mb-4'>
                   {selectedProject?.name || ''} 프로젝트
                 </h1>
-                <div className='flex items-center space-x-4'>
-                  <Button onClick={() => handleCreateTask()}>
-                    <Plus className='mr-2 h-4 w-4' />새 태스크
-                  </Button>
-                </div>
+                {/* 프로젝트가 있을 때만 새 태스크 버튼 표시 */}
+                {selectedProjectId && (
+                  <div className='flex items-center space-x-4'>
+                    <Button onClick={() => handleCreateTask()}>
+                      <Plus className='mr-2 h-4 w-4' />새 태스크
+                    </Button>
+                  </div>
+                )}
               </div>
             </div>
 
@@ -1067,14 +1078,33 @@ export default function DashboardPage() {
                 <div className='w-16 h-16 mx-auto mb-4 bg-gray-100 rounded-full flex items-center justify-center'>
                   <List className='w-8 h-8 text-gray-400' />
                 </div>
-                <h3 className='text-lg font-medium text-gray-900 mb-2'>아직 작업이 없습니다</h3>
-                <p className='text-gray-500 mb-4'>첫 번째 작업을 생성하여 프로젝트를 시작하세요.</p>
-                <button
-                  onClick={() => handleCreateTask()}
-                  className='inline-flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors'
-                >
-                  <Plus className='w-4 h-4' />첫 작업 만들기
-                </button>
+                {projects.length === 0 ? (
+                  <>
+                    <h3 className='text-lg font-medium text-gray-900 mb-2'>프로젝트가 없습니다</h3>
+                    <p className='text-gray-500 mb-4'>먼저 프로젝트를 생성하여 시작하세요.</p>
+                    <button
+                      onClick={() => handleNavigation('/projects')}
+                      className='inline-flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors'
+                    >
+                      <Plus className='w-4 h-4' />첫 프로젝트 만들기
+                    </button>
+                  </>
+                ) : (
+                  <>
+                    <h3 className='text-lg font-medium text-gray-900 mb-2'>아직 작업이 없습니다</h3>
+                    <p className='text-gray-500 mb-4'>
+                      첫 번째 작업을 생성하여 프로젝트를 시작하세요.
+                    </p>
+                    {selectedProjectId && (
+                      <button
+                        onClick={() => handleCreateTask()}
+                        className='inline-flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors'
+                      >
+                        <Plus className='w-4 h-4' />첫 작업 만들기
+                      </button>
+                    )}
+                  </>
+                )}
               </div>
             )}
           </main>

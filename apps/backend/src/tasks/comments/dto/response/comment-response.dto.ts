@@ -1,4 +1,4 @@
-import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
+import { ApiProperty } from '@nestjs/swagger';
 import { Exclude, Expose, Type } from 'class-transformer';
 import { UserResponseDto } from '../../../../users/dto/response/user-response.dto';
 import { Comment } from '../../entities/comment.entity';
@@ -37,14 +37,6 @@ export class CommentResponseDto {
     @Expose()
     readonly userId: string;
 
-    @ApiPropertyOptional({
-        description: 'Parent comment ID for replies',
-        example: 'uuid-v4-string',
-        format: 'uuid',
-    })
-    @Expose()
-    readonly parentId?: string;
-
     @ApiProperty({
         description: 'Whether the comment is deleted',
         example: false,
@@ -68,29 +60,13 @@ export class CommentResponseDto {
     @Expose()
     readonly updatedAt: Date;
 
-    @ApiPropertyOptional({
+    @ApiProperty({
         description: 'User who created the comment',
         type: UserResponseDto,
     })
     @Expose()
     @Type(() => UserResponseDto)
     readonly user?: UserResponseDto;
-
-    @ApiPropertyOptional({
-        description: 'Parent comment (for replies)',
-        type: CommentResponseDto,
-    })
-    @Expose()
-    @Type(() => CommentResponseDto)
-    readonly parent?: CommentResponseDto;
-
-    @ApiPropertyOptional({
-        description: 'Replies to this comment',
-        type: [CommentResponseDto],
-    })
-    @Expose()
-    @Type(() => CommentResponseDto)
-    readonly replies?: CommentResponseDto[];
 
     constructor(partial: Partial<CommentResponseDto>) {
         Object.assign(this, partial);
@@ -102,13 +78,10 @@ export class CommentResponseDto {
             content: comment.content,
             taskId: comment.taskId,
             userId: comment.userId,
-            parentId: comment.parentId,
             isDeleted: comment.isDeleted,
             createdAt: comment.createdAt,
             updatedAt: comment.updatedAt,
             user: comment.user ? UserResponseDto.fromDomain(comment.user) : undefined,
-            parent: comment.parent ? CommentResponseDto.fromDomain(comment.parent) : undefined,
-            replies: comment.replies ? comment.replies.map(reply => CommentResponseDto.fromDomain(reply)) : undefined,
         });
     }
 }

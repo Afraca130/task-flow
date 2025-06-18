@@ -72,7 +72,6 @@ export class NotificationsService {
 
             if (!notification.isRead) {
                 notification.isRead = true;
-                notification.readAt = new Date();
             }
             const updatedNotification = await this.notificationsRepository.save(notification);
             this.logger.log(`Notification marked as read: ${notificationId}`);
@@ -127,6 +126,13 @@ export class NotificationsService {
      */
     async getUnreadCount(userId: string): Promise<number> {
         return await this.notificationsRepository.getUnreadCountForUser(userId);
+    }
+
+    /**
+     * Get total count for user
+     */
+    async getTotalCount(userId: string): Promise<number> {
+        return await this.notificationsRepository.getTotalCountForUser(userId);
     }
 
     /**

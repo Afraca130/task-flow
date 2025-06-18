@@ -1,5 +1,5 @@
-import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import { IsNotEmpty, IsOptional, IsString, IsUUID, MaxLength } from 'class-validator';
+import { ApiProperty } from '@nestjs/swagger';
+import { IsNotEmpty, IsString, IsUUID, MaxLength } from 'class-validator';
 
 export class CreateCommentDto {
     @ApiProperty({
@@ -20,13 +20,4 @@ export class CreateCommentDto {
     @IsNotEmpty({ message: 'Content is required' })
     @MaxLength(2000, { message: 'Content must not exceed 2000 characters' })
     readonly content: string;
-
-    @ApiPropertyOptional({
-        description: 'Parent comment ID for replies',
-        example: 'uuid-v4-string',
-        format: 'uuid',
-    })
-    @IsOptional()
-    @IsUUID(4, { message: 'Parent ID must be a valid UUID' })
-    readonly parentId?: string;
 }

@@ -32,7 +32,6 @@ export function TaskModal({
     projectId: currentProjectId || projects[0]?.id || '',
     assigneeId: user?.id || '',
     dueDate: '',
-    estimatedHours: '',
     tags: '',
     // rank 필드 제거 - 백엔드에서 자동으로 맨 위로 설정됨
   });
@@ -119,7 +118,6 @@ export function TaskModal({
         projectId: task.projectId || currentProjectId || projects[0]?.id || '',
         assigneeId: task.assigneeId || user?.id || '',
         dueDate: task.dueDate ? task.dueDate.split('T')[0] : '',
-        estimatedHours: task.estimatedHours?.toString() || '',
         tags: task.tags?.join(', ') || '',
       });
     } else if (task && task.status && !task.id) {
@@ -139,7 +137,6 @@ export function TaskModal({
         projectId: currentProjectId || projects[0]?.id || '',
         assigneeId: user?.id || '',
         dueDate: '',
-        estimatedHours: '',
         tags: '',
       });
     }
@@ -151,14 +148,13 @@ export function TaskModal({
       ...formData,
       assignerId: user?.id,
       assigneeId: formData.assigneeId || undefined,
-      estimatedHours: formData.estimatedHours ? parseFloat(formData.estimatedHours) : undefined,
+      dueDate: formData.dueDate || undefined,
       tags: formData.tags
         ? formData.tags
             .split(',')
             .map(tag => tag.trim())
             .filter(Boolean)
         : undefined,
-      dueDate: formData.dueDate || undefined,
     };
     onSave(taskData);
   };
@@ -196,29 +192,9 @@ export function TaskModal({
   };
 
   const handleAddReply = async (parentId: string) => {
-    if (!replyContent.trim() || !task?.id) return;
-
-    try {
-      const reply = await commentsApi.createComment({
-        taskId: task.id,
-        content: replyContent.trim(),
-        parentId,
-      });
-
-      // Update comments with new reply
-      setComments(prev =>
-        prev.map(comment =>
-          comment.id === parentId
-            ? { ...comment, replies: [...(comment.replies || []), reply] }
-            : comment
-        )
-      );
-
-      setReplyContent('');
-      setReplyingTo(null);
-    } catch (error) {
-      console.error('Failed to add reply:', error);
-    }
+    // Nested comments not supported - remove this functionality
+    setReplyContent('');
+    setReplyingTo(null);
   };
 
   const handleEditComment = async (commentId: string) => {
@@ -226,24 +202,9 @@ export function TaskModal({
 
     try {
       const updatedComment = await commentsApi.updateComment(commentId, editContent.trim());
-
       setComments(prev =>
-        prev.map(comment => {
-          if (comment.id === commentId) {
-            return updatedComment;
-          }
-          if (comment.replies) {
-            return {
-              ...comment,
-              replies: comment.replies.map(reply =>
-                reply.id === commentId ? updatedComment : reply
-              ),
-            };
-          }
-          return comment;
-        })
+        prev.map(comment => (comment.id === commentId ? updatedComment : comment))
       );
-
       setEditingComment(null);
       setEditContent('');
     } catch (error) {
@@ -252,20 +213,11 @@ export function TaskModal({
   };
 
   const handleDeleteComment = async (commentId: string) => {
-    if (!confirm('댓글을 삭제하시겠습니까?')) return;
+    if (!confirm('이 댓글을 삭제하시겠습니까?')) return;
 
     try {
       await commentsApi.deleteComment(commentId);
-
-      setComments(prev =>
-        prev.filter(comment => {
-          if (comment.id === commentId) return false;
-          if (comment.replies) {
-            comment.replies = comment.replies.filter(reply => reply.id !== commentId);
-          }
-          return true;
-        })
-      );
+      setComments(prev => prev.filter(comment => comment.id !== commentId));
     } catch (error) {
       console.error('Failed to delete comment:', error);
     }
@@ -437,20 +389,6 @@ export function TaskModal({
                     className='w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500'
                   />
                 </div>
-
-                <div>
-                  <label className='block text-sm font-medium text-gray-700 mb-2'>
-                    예상 시간 (시간)
-                  </label>
-                  <input
-                    type='number'
-                    step='0.5'
-                    value={formData.estimatedHours}
-                    onChange={e => setFormData({ ...formData, estimatedHours: e.target.value })}
-                    placeholder='8'
-                    className='w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500'
-                  />
-                </div>
               </div>
 
               <div>
@@ -573,119 +511,6 @@ export function TaskModal({
                       </div>
                     ) : (
                       <p className='text-sm text-gray-700 mb-2'>{comment.content}</p>
-                    )}
-
-                    {/* Reply button */}
-                    <button
-                      onClick={() => setReplyingTo(replyingTo === comment.id ? null : comment.id)}
-                      className='text-xs text-blue-600 hover:text-blue-700'
-                    >
-                      답글
-                    </button>
-
-                    {/* Reply form */}
-                    {replyingTo === comment.id && (
-                      <div className='mt-2 ml-4'>
-                        <textarea
-                          value={replyContent}
-                          onChange={e => setReplyContent(e.target.value)}
-                          placeholder='답글을 입력하세요...'
-                          className='w-full px-2 py-1 border border-gray-300 rounded text-sm resize-none'
-                          rows={2}
-                        />
-                        <div className='flex gap-2 mt-1'>
-                          <button
-                            onClick={() => handleAddReply(comment.id)}
-                            disabled={!replyContent.trim()}
-                            className='px-2 py-1 bg-blue-600 text-white text-xs rounded hover:bg-blue-700 disabled:bg-gray-300'
-                          >
-                            답글 작성
-                          </button>
-                          <button
-                            onClick={() => {
-                              setReplyingTo(null);
-                              setReplyContent('');
-                            }}
-                            className='px-2 py-1 bg-gray-300 text-gray-700 text-xs rounded hover:bg-gray-400'
-                          >
-                            취소
-                          </button>
-                        </div>
-                      </div>
-                    )}
-
-                    {/* Replies */}
-                    {comment.replies && comment.replies.length > 0 && (
-                      <div className='ml-4 mt-3 space-y-2'>
-                        {comment.replies.map(reply => (
-                          <div key={reply.id} className='border-l-2 border-gray-200 pl-3'>
-                            <div className='flex items-start justify-between mb-1'>
-                              <div className='flex items-center gap-2'>
-                                <div
-                                  className='w-5 h-5 rounded-full flex items-center justify-center text-xs font-medium text-white'
-                                  style={{ backgroundColor: reply.user?.profileColor || '#3B82F6' }}
-                                >
-                                  {reply.user?.name?.charAt(0)?.toUpperCase() || 'U'}
-                                </div>
-                                <span className='text-xs font-medium'>{reply.user?.name}</span>
-                                <span className='text-xs text-gray-500'>
-                                  {new Date(reply.createdAt).toLocaleDateString()}
-                                </span>
-                              </div>
-
-                              {reply.user?.id === user?.id && (
-                                <div className='flex gap-1'>
-                                  <button
-                                    onClick={() => {
-                                      setEditingComment(reply.id);
-                                      setEditContent(reply.content);
-                                    }}
-                                    className='text-xs text-blue-600 hover:text-blue-700'
-                                  >
-                                    수정
-                                  </button>
-                                  <button
-                                    onClick={() => handleDeleteComment(reply.id)}
-                                    className='text-xs text-red-600 hover:text-red-700'
-                                  >
-                                    삭제
-                                  </button>
-                                </div>
-                              )}
-                            </div>
-
-                            {editingComment === reply.id ? (
-                              <div>
-                                <textarea
-                                  value={editContent}
-                                  onChange={e => setEditContent(e.target.value)}
-                                  className='w-full px-2 py-1 border border-gray-300 rounded text-sm resize-none'
-                                  rows={2}
-                                />
-                                <div className='flex gap-2 mt-2'>
-                                  <button
-                                    onClick={() => handleEditComment(reply.id)}
-                                    className='px-2 py-1 bg-blue-600 text-white text-xs rounded hover:bg-blue-700'
-                                  >
-                                    저장
-                                  </button>
-                                  <button
-                                    onClick={() => {
-                                      setEditingComment(null);
-                                      setEditContent('');
-                                    }}
-                                    className='px-2 py-1 bg-gray-300 text-gray-700 text-xs rounded hover:bg-gray-400'
-                                  >
-                                    취소
-                                  </button>
-                                </div>
-                              </div>
-                            ) : (
-                              <p className='text-xs text-gray-700'>{reply.content}</p>
-                            )}
-                          </div>
-                        ))}
-                      </div>
                     )}
                   </div>
                 ))}

@@ -4,7 +4,7 @@ import { Repository, SelectQueryBuilder } from 'typeorm';
 import { ProjectId } from '../common/value-objects/project-id.vo';
 import { Task } from '../tasks/entities/task.entity';
 import { ProjectMember, ProjectMemberRole } from './entities/project-member.entity';
-import { Project, ProjectStatus } from './entities/project.entity';
+import { Project } from './entities/project.entity';
 
 
 /**
@@ -42,7 +42,7 @@ export class ProjectRepository {
             .leftJoinAndSelect('member.user', 'user')
             .where('project.id = :projectId', { projectId: projectId.getValue() })
             .andWhere(
-                '(project.ownerId = :userId OR project.createdBy = :userId OR member.userId = :userId)',
+                '(project.ownerId = :userId OR member.userId = :userId)',
                 { userId }
             );
 
@@ -85,12 +85,7 @@ export class ProjectRepository {
         }
 
         if (isActive !== undefined) {
-            const status = isActive ? ProjectStatus.ACTIVE : [ProjectStatus.COMPLETED, ProjectStatus.ARCHIVED];
-            if (Array.isArray(status)) {
-                queryBuilder.andWhere('project.status IN (:...status)', { status });
-            } else {
-                queryBuilder.andWhere('project.status = :status', { status });
-            }
+            queryBuilder.andWhere('project.isActive = :isActive', { isActive });
         }
 
         // Get total count
@@ -145,12 +140,7 @@ export class ProjectRepository {
         }
 
         if (isActive !== undefined) {
-            const status = isActive ? ProjectStatus.ACTIVE : [ProjectStatus.COMPLETED, ProjectStatus.ARCHIVED];
-            if (Array.isArray(status)) {
-                queryBuilder.andWhere('project.status IN (:...status)', { status });
-            } else {
-                queryBuilder.andWhere('project.status = :status', { status });
-            }
+            queryBuilder.andWhere('project.isActive = :isActive', { isActive });
         }
 
         // Get total count
@@ -191,7 +181,7 @@ export class ProjectRepository {
             .leftJoin('project.members', 'member')
             .where('project.name = :name', { name })
             .andWhere(
-                '(project.ownerId = :userId OR project.createdBy = :userId OR member.userId = :userId)',
+                '(project.ownerId = :userId OR member.userId = :userId)',
                 { userId }
             )
             .getCount();
@@ -221,7 +211,7 @@ export class ProjectRepository {
             .createQueryBuilder('project')
             .leftJoin('project.members', 'member')
             .where(
-                '(project.ownerId = :userId OR project.createdBy = :userId OR member.userId = :userId)',
+                '(project.ownerId = :userId OR member.userId = :userId)',
                 { userId }
             )
             // .groupBy('project.id');

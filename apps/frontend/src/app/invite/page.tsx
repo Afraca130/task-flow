@@ -33,6 +33,20 @@ export default function InvitePage() {
     }
   }, [isAuthenticated, router]);
 
+  // Check user permissions for current project
+  const currentMember = members.find(m => m.userId === user?.id);
+  const isOwner = currentProject?.ownerId === user?.id;
+  const canManageProject = isOwner || currentMember?.role === 'MANAGER';
+
+  // Redirect if user doesn't have permission to invite
+  useEffect(() => {
+    if (currentProject && members.length > 0 && !canManageProject) {
+      alert('프로젝트 멤버 초대는 프로젝트 소유자 또는 관리자만 가능합니다.');
+      router.push('/dashboard');
+      return;
+    }
+  }, [currentProject, members, canManageProject, router]);
+
   // Load current project and members
   useEffect(() => {
     const loadProjectData = async () => {

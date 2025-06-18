@@ -72,12 +72,8 @@ export default function NotificationsPage() {
       }
     }
 
-    // Navigate based on notification
-    if (notification.taskId) {
-      router.push(`/tasks?taskId=${notification.taskId}`);
-    } else if (notification.projectId) {
-      router.push(`/projects/${notification.projectId}`);
-    }
+    // For now, just mark as read - navigation can be added later based on notification type
+    console.log('Notification clicked:', notification);
   };
 
   const handleMarkAllAsRead = async () => {
@@ -233,7 +229,9 @@ export default function NotificationsPage() {
                       </h3>
                       <div className='flex items-center gap-2 ml-4 text-xs text-gray-500'>
                         <Clock className='w-3 h-3' />
-                        {formatDate(notification.createdAt)}
+                        <span title={new Date(notification.createdAt).toLocaleString('ko-KR')}>
+                          {formatDate(notification.createdAt)}
+                        </span>
                       </div>
                     </div>
 

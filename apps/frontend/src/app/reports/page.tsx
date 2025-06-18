@@ -23,8 +23,6 @@ export default function ReportsPage() {
   const [activityLogs, setActivityLogs] = useState<ActivityLog[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
-  const [selectedProjectId, setSelectedProjectId] = useState('all');
-  const [selectedEntityType, setSelectedEntityType] = useState('all');
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
   const itemsPerPage = 20;
@@ -59,14 +57,12 @@ export default function ReportsPage() {
   useEffect(() => {
     if (!isAuthenticated) return;
     loadActivityLogs();
-  }, [isAuthenticated, selectedProjectId, selectedEntityType, currentPage, searchTerm]);
+  }, [isAuthenticated, currentPage, searchTerm]);
 
   const loadActivityLogs = async () => {
     setLoading(true);
     try {
-      const logs = await activityLogsApi.getActivityLogs(
-        selectedProjectId !== 'all' ? selectedProjectId : undefined
-      );
+      const logs = await activityLogsApi.getActivityLogs();
       setActivityLogs(logs);
       setTotalPages(Math.ceil(logs.length / itemsPerPage));
     } catch (error) {
@@ -75,16 +71,6 @@ export default function ReportsPage() {
     } finally {
       setLoading(false);
     }
-  };
-
-  const handleProjectChange = (projectId: string) => {
-    setSelectedProjectId(projectId);
-    setCurrentPage(1);
-  };
-
-  const handleEntityTypeChange = (entityType: string) => {
-    setSelectedEntityType(entityType);
-    setCurrentPage(1);
   };
 
   const handleSearch = (term: string) => {
@@ -98,10 +84,6 @@ export default function ReportsPage() {
 
   const getFilteredLogs = () => {
     let filtered = activityLogs || [];
-
-    if (selectedEntityType !== 'all') {
-      filtered = filtered.filter(log => log.entityType === selectedEntityType);
-    }
 
     if (searchTerm) {
       const term = searchTerm.toLowerCase();
@@ -219,7 +201,7 @@ export default function ReportsPage() {
 
         {/* Filters */}
         <div className='bg-white rounded-lg shadow-sm border border-gray-200 p-6 mb-6'>
-          <div className='grid grid-cols-1 lg:grid-cols-4 gap-4'>
+          <div className='grid grid-cols-1 lg:grid-cols-2 gap-4'>
             {/* Search */}
             <div className='relative'>
               <Search className='absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400' />
@@ -231,34 +213,6 @@ export default function ReportsPage() {
                 className='pl-10 pr-4 py-2 w-full border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500'
               />
             </div>
-
-            {/* Project Filter */}
-            <select
-              value={selectedProjectId}
-              onChange={e => handleProjectChange(e.target.value)}
-              className='px-4 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500'
-            >
-              <option value='all'>모든 프로젝트</option>
-              {projects.map(project => (
-                <option key={project.id} value={project.id}>
-                  {project.name}
-                </option>
-              ))}
-            </select>
-
-            {/* Entity Type Filter */}
-            <select
-              value={selectedEntityType}
-              onChange={e => handleEntityTypeChange(e.target.value)}
-              className='px-4 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500'
-            >
-              <option value='all'>모든 항목</option>
-              <option value='Task'>작업</option>
-              <option value='Project'>프로젝트</option>
-              <option value='User'>사용자</option>
-              <option value='Comment'>댓글</option>
-              <option value='ProjectMember'>프로젝트 멤버</option>
-            </select>
 
             {/* Page Info */}
             <div className='flex items-center justify-center bg-gray-50 rounded-md px-4 py-2'>

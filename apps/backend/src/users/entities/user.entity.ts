@@ -26,9 +26,6 @@ export class User extends BaseEntity {
   @Column({ name: 'profile_color', type: 'varchar', length: 7, default: '#3B82F6' })
   profileColor: string;
 
-  @Column({ type: 'varchar', length: 255, nullable: true })
-  organization?: string;
-
   @Column({ name: 'is_active', type: 'boolean', default: true })
   isActive: boolean;
 

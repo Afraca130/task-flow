@@ -1,7 +1,5 @@
 import { Column, Entity, JoinColumn, ManyToOne } from 'typeorm';
 import { BaseEntity } from '../../common/entities/base.entity';
-import { Project } from '../../projects/entities/project.entity';
-import { Task } from '../../tasks/entities/task.entity';
 import { User } from '../../users/entities/user.entity';
 
 export enum NotificationType {
@@ -27,12 +25,6 @@ export class Notification extends BaseEntity {
   @Column({ name: 'user_id' })
   userId: string;
 
-  @Column({ name: 'task_id', nullable: true })
-  taskId?: string;
-
-  @Column({ name: 'project_id', nullable: true })
-  projectId?: string;
-
   @Column({
     type: 'enum',
     enum: NotificationType,
@@ -51,9 +43,6 @@ export class Notification extends BaseEntity {
   @Column({ name: 'is_read', type: 'boolean', default: false })
   isRead: boolean;
 
-  @Column({ name: 'read_at', type: 'timestamp', nullable: true })
-  readAt?: Date;
-
   @Column({ name: 'related_entity_type', nullable: true })
   relatedEntityType?: string;
 
@@ -64,12 +53,4 @@ export class Notification extends BaseEntity {
   @ManyToOne(() => User, { eager: false })
   @JoinColumn({ name: 'user_id' })
   user?: User;
-
-  @ManyToOne(() => Task, (task) => task.notifications, { nullable: true, onDelete: 'CASCADE' })
-  @JoinColumn({ name: 'task_id' })
-  task?: Task;
-
-  @ManyToOne(() => Project, { nullable: true, onDelete: 'CASCADE' })
-  @JoinColumn({ name: 'project_id' })
-  project?: Project;
 }

@@ -7,17 +7,6 @@ import { Task } from '../../tasks/entities/task.entity';
 import { User } from '../../users/entities/user.entity';
 import { ProjectMember } from './project-member.entity';
 
-export enum ProjectStatus {
-  ACTIVE = 'ACTIVE',
-  COMPLETED = 'COMPLETED',
-  ARCHIVED = 'ARCHIVED',
-}
-
-export enum ApprovalType {
-  AUTO = 'AUTO',
-  MANUAL = 'MANUAL',
-}
-
 export enum ProjectPriority {
   LOW = 'LOW',
   MEDIUM = 'MEDIUM',
@@ -37,41 +26,11 @@ export class Project extends BaseEntity {
   @Column({ name: 'owner_id' })
   ownerId: string;
 
-  @Column({
-    type: 'enum',
-    enum: ProjectStatus,
-    default: ProjectStatus.ACTIVE,
-  })
-  status: ProjectStatus;
-
   @Column({ name: 'is_public', type: 'boolean', default: false })
   isPublic: boolean;
 
-  @Column({ name: 'start_date', type: 'date', nullable: true })
-  startDate?: Date;
-
-  @Column({ name: 'end_date', type: 'date', nullable: true })
-  endDate?: Date;
-
-  @Column({ name: 'created_by' })
-  createdBy: string;
-
-  @Column({ name: 'invite_code', type: 'varchar', length: 100, nullable: true })
-  inviteCode?: string;
-
-  @Column({
-    name: 'approval_type',
-    type: 'enum',
-    enum: ApprovalType,
-    default: ApprovalType.MANUAL,
-  })
-  approvalType: ApprovalType;
-
   @Column({ type: 'varchar', length: 7, default: '#3B82F6' })
   color: string;
-
-  @Column({ name: 'icon_url', type: 'varchar', length: 500, nullable: true })
-  iconUrl?: string;
 
   @Column({
     type: 'enum',
@@ -80,14 +39,16 @@ export class Project extends BaseEntity {
   })
   priority: ProjectPriority;
 
+  @Column({ name: 'due_date', type: 'date', nullable: true })
+  dueDate?: Date;
+
+  @Column({ name: 'is_active', type: 'boolean', default: true })
+  isActive: boolean;
+
   // Relations
   @ManyToOne(() => User, { eager: false })
   @JoinColumn({ name: 'owner_id' })
   owner?: User;
-
-  @ManyToOne(() => User, { eager: false })
-  @JoinColumn({ name: 'created_by' })
-  creator?: User;
 
   @OneToMany(() => ProjectMember, (member) => member.project, { cascade: true })
   members?: ProjectMember[];

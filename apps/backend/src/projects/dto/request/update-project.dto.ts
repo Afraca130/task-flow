@@ -1,6 +1,6 @@
 import { ApiPropertyOptional } from '@nestjs/swagger';
 import { Transform } from 'class-transformer';
-import { IsBoolean, IsEnum, IsHexColor, IsOptional, IsString, IsUrl, Length } from 'class-validator';
+import { IsBoolean, IsEnum, IsHexColor, IsOptional, IsString, Length } from 'class-validator';
 import { ProjectPriority } from './create-project.dto';
 
 export class UpdateProjectDto {
@@ -35,15 +35,6 @@ export class UpdateProjectDto {
     @IsOptional()
     @IsHexColor({ message: '올바른 HEX 색상 코드를 입력하세요' })
     readonly color?: string;
-
-    @ApiPropertyOptional({
-        description: '프로젝트 아이콘 URL',
-        example: 'https://example.com/new-icon.png',
-        format: 'uri',
-    })
-    @IsOptional()
-    @IsUrl({}, { message: '올바른 URL 형식이어야 합니다' })
-    readonly iconUrl?: string;
 
     @ApiPropertyOptional({
         description: '프로젝트 우선순위',
