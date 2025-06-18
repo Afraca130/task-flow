@@ -1,6 +1,6 @@
 'use client';
 
-import { notificationsApi } from '@/lib/api';
+import { invitationsApi, notificationsApi } from '@/lib/api';
 import { Bell } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 import { InvitationModal } from './invitation-modal';
@@ -90,7 +90,7 @@ export function NotificationBell({ className = '' }: NotificationBellProps) {
     }
 
     // 초대 알림인 경우 특별 처리
-    if (notification.type === 'PROJECT_INVITED') {
+    if (notification.type === 'PROJECT_INVITATION') {
       setCurrentInvitation(notification);
       setShowInvitationModal(true);
       setIsOpen(false);
@@ -121,8 +121,16 @@ export function NotificationBell({ className = '' }: NotificationBellProps) {
     try {
       const invitationId = currentInvitation.metadata?.invitationId;
       if (invitationId) {
-        // 여기서 초대 수락 API 호출
-        // await invitationsApi.acceptInvitation(invitationId);
+        // 실제 초대 수락 API 호출
+        await invitationsApi.acceptInvitation(invitationId);
+
+        // 알림을 읽음 처리
+        await notificationsApi.markAsRead(currentInvitation.id);
+        setNotifications(prev =>
+          prev.map(n => (n.id === currentInvitation.id ? { ...n, isRead: true } : n))
+        );
+        setUnreadCount(prev => Math.max(0, prev - 1));
+
         alert('초대를 수락했습니다! 프로젝트 페이지로 이동합니다.');
 
         // 프로젝트 페이지로 이동
@@ -146,8 +154,16 @@ export function NotificationBell({ className = '' }: NotificationBellProps) {
     try {
       const invitationId = currentInvitation.metadata?.invitationId;
       if (invitationId) {
-        // 여기서 초대 거절 API 호출
-        // await invitationsApi.declineInvitation(invitationId);
+        // 실제 초대 거절 API 호출
+        await invitationsApi.declineInvitation(invitationId);
+
+        // 알림을 읽음 처리
+        await notificationsApi.markAsRead(currentInvitation.id);
+        setNotifications(prev =>
+          prev.map(n => (n.id === currentInvitation.id ? { ...n, isRead: true } : n))
+        );
+        setUnreadCount(prev => Math.max(0, prev - 1));
+
         alert('초대를 거절했습니다.');
       }
     } catch (error) {

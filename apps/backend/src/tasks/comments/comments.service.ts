@@ -112,6 +112,21 @@ export class CommentsService {
      * Get comment by ID
      */
     async getCommentById(commentId: string): Promise<Comment | null> {
-        return await this.commentsRepository.findById(commentId);
+        this.logger.log(`Getting comment by ID: ${commentId}`);
+
+        try {
+            const comment = await this.commentsRepository.findById(commentId);
+
+            if (comment) {
+                this.logger.log(`Comment found: ${commentId}`);
+            } else {
+                this.logger.log(`Comment not found: ${commentId}`);
+            }
+
+            return comment;
+        } catch (error) {
+            this.logger.error(`Failed to get comment by ID: ${commentId}`, error.stack || error);
+            throw error;
+        }
     }
 }

@@ -1,9 +1,10 @@
-import { Column, CreateDateColumn, Entity, JoinColumn, ManyToOne, OneToMany, PrimaryGeneratedColumn, UpdateDateColumn } from 'typeorm';
-import { Comment } from '../../comments/entities/comment.entity';
+import { Column, Entity, JoinColumn, ManyToOne, OneToMany } from 'typeorm';
+import { BaseEntity } from '../../common/entities/base.entity';
 import { TimeUtil } from '../../common/utils/time.util';
 import { Notification } from '../../notifications/entities/notification.entity';
 import { Project } from '../../projects/entities/project.entity';
 import { User } from '../../users/entities/user.entity';
+import { Comment } from '../comments/entities/comment.entity';
 
 export enum TaskStatus {
   TODO = 'TODO',
@@ -22,9 +23,7 @@ export enum TaskPriority {
  * 작업 도메인 엔터티
  */
 @Entity('tasks')
-export class Task {
-  @PrimaryGeneratedColumn('uuid')
-  id: string;
+export class Task extends BaseEntity {
 
   @Column({ name: 'project_id' })
   projectId: string;
@@ -72,12 +71,6 @@ export class Task {
 
   @Column({ name: 'lexo_rank', type: 'varchar', length: 50, default: 'U' })
   lexoRank: string;
-
-  @CreateDateColumn({ name: 'created_at' })
-  createdAt: Date;
-
-  @UpdateDateColumn({ name: 'updated_at' })
-  updatedAt: Date;
 
   // Relations
   @ManyToOne(() => Project, { onDelete: 'CASCADE' })

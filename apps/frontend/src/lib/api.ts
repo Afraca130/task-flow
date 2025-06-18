@@ -316,7 +316,7 @@ export interface ActivityLog {
   action: string;
   description: string;
   metadata?: Record<string, any>;
-  timestamp: string;
+  createdAt: string; // timestamp is now createdAt from BaseEntity
   user?: User;
   project?: Project;
 }
@@ -352,7 +352,6 @@ export interface Issue {
   author?: User;
   assignee?: User;
   project?: Project;
-  comments?: Comment[];
 }
 
 // Standard API Response Interface
@@ -566,7 +565,7 @@ export const tasksApi = {
   },
 
   reorderTask: async (taskId: string, newLexoRank: string): Promise<Task> => {
-    const response = await api.put<StandardApiResponse<Task>>(`/tasks/${taskId}/reorder`, { lexoRank: newLexoRank });
+    const response = await api.put<StandardApiResponse<Task>>(`/tasks/${taskId}/reorder-lexo`, { lexoRank: newLexoRank });
     return extractData(response);
   },
 
@@ -586,7 +585,7 @@ export const tasksApi = {
 // Comments API
 export const commentsApi = {
   getTaskComments: async (taskId: string): Promise<Comment[]> => {
-    const response = await api.get<StandardApiResponse<Comment[]>>(`/tasks/${taskId}/comments`);
+    const response = await api.get<StandardApiResponse<Comment[]>>(`/comments/task/${taskId}`);
     return extractData(response);
   },
 
@@ -754,6 +753,22 @@ export const issuesApi = {
     assigneeId?: string;
   }): Promise<Issue> => {
     const response = await api.post<StandardApiResponse<Issue>>('/issues', data);
+    return extractData(response);
+  },
+
+  createIssueWithMentions: async (data: {
+    title: string;
+    description?: string;
+    priority?: 'LOW' | 'MEDIUM' | 'HIGH' | 'URGENT';
+    projectId: string;
+    assigneeId?: string;
+    mentionedUserIds?: string[];
+  }): Promise<Issue> => {
+    const { mentionedUserIds, ...issueData } = data;
+    const response = await api.post<StandardApiResponse<Issue>>('/issues/with-mentions', {
+      issue: issueData,
+      mentionedUserIds: mentionedUserIds || [],
+    });
     return extractData(response);
   },
 

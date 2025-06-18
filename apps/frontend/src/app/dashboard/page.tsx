@@ -4,6 +4,7 @@ import { NotificationBell } from '@/components/notifications/notification-bell';
 import { TaskModal } from '@/components/task-modal';
 import { Button } from '@/components/ui/button';
 import { projectsApi, Task, tasksApi } from '@/lib/api';
+import { calculateNewLexoRank, sortByRank } from '@/lib/lexorank';
 import { useAuthStore } from '@/store/auth';
 import { useProjectsStore } from '@/store/projects';
 import {
@@ -281,7 +282,7 @@ function DroppableColumn({
 
 export default function DashboardPage() {
   const router = useRouter();
-  const { user, isAuthenticated } = useAuthStore();
+  const { user, isAuthenticated, isLoading: authLoading } = useAuthStore();
   const { projects, setProjects } = useProjectsStore();
   const [tasks, setTasks] = useState<Task[]>([]);
   const [allTaskCounts, setAllTaskCounts] = useState<Record<string, number>>({});
@@ -305,12 +306,15 @@ export default function DashboardPage() {
 
   // Check authentication
   useEffect(() => {
+    // Wait for auth initialization to complete
+    if (authLoading) return;
+
     if (!isAuthenticated) {
       // 인증되지 않은 경우 즉시 로그인 페이지로 리디렉션
       router.replace('/login');
       return;
     }
-  }, [isAuthenticated, router]);
+  }, [isAuthenticated, authLoading, router]);
 
   // Load projects and set initial selection
   useEffect(() => {
@@ -318,15 +322,6 @@ export default function DashboardPage() {
 
     const loadProjects = async () => {
       try {
-        // Check if we need to refetch projects from cache
-        const projectsStoreModule = await import('@/store/projects');
-        const projectsStore = projectsStoreModule.default;
-
-        if (!projectsStore.shouldRefetchProjects()) {
-          console.log('Using cached projects');
-          return; // Use cached data from store
-        }
-
         setLoading(true);
         console.log('Loading projects...');
         const result = await projectsApi.getProjects({ page: 1, limit: 100 });
@@ -373,6 +368,9 @@ export default function DashboardPage() {
           const newUrl = new URL(window.location.href);
           newUrl.searchParams.set('projectId', selectedId);
           window.history.replaceState({}, '', newUrl.toString());
+        } else if (projectList.length === 0) {
+          // 프로젝트가 없어도 dashboard에 머물러서 빈 상태 표시
+          console.log('No projects found, showing empty state');
         }
       } catch (error) {
         console.error('Failed to load projects:', error);
@@ -482,58 +480,81 @@ export default function DashboardPage() {
     const activeId = active.id as string;
     const overId = over.id as string;
 
-    // 같은 컬럼 내에서의 이동도 허용
+    // Find the dragged task
     const task = tasks.find(t => t.id === activeId);
     if (!task) return;
 
-    const newStatus = overId as keyof typeof statusColumns;
-    if (!statusColumns[newStatus]) return;
-
     try {
-      // 같은 상태 내에서의 순서 변경
+      // Determine if over is a column or a task
+      const isOverColumn = statusColumns[overId as keyof typeof statusColumns];
+      const isOverTask = tasks.find(t => t.id === overId);
+
+      let newStatus: keyof typeof statusColumns;
+      let newIndex = 0;
+
+      if (isOverColumn) {
+        // Dropped on column - add to end
+        newStatus = overId as keyof typeof statusColumns;
+        const tasksInStatus = getTasksByStatus(newStatus);
+        newIndex = tasksInStatus.length;
+      } else if (isOverTask) {
+        // Dropped on task - insert before that task
+        newStatus = isOverTask.status as keyof typeof statusColumns;
+        const tasksInStatus = sortByRank(getTasksByStatus(newStatus));
+        newIndex = tasksInStatus.findIndex(t => t.id === overId);
+        if (newIndex === -1) newIndex = tasksInStatus.length;
+      } else {
+        return; // Invalid drop target
+      }
+
+      // Same status reorder
       if (task.status === newStatus) {
         const tasksInStatus = getTasksByStatus(newStatus);
         const oldIndex = tasksInStatus.findIndex(t => t.id === activeId);
-        const newIndex = tasksInStatus.findIndex(t => t.id === overId);
 
-        // 낙관적 업데이트
+        if (oldIndex === newIndex) return; // No change needed
+
+        // Calculate new LexoRank
+        const newLexoRank = calculateNewLexoRank(tasksInStatus, activeId, newIndex);
+
+        // Optimistic update
         const optimisticUpdate = (prevTasks: Task[]) => {
-          const tasksInStatus = prevTasks.filter(t => t.status === newStatus);
-          const [movedTask] = tasksInStatus.splice(oldIndex, 1);
-          tasksInStatus.splice(newIndex, 0, movedTask);
-          return prevTasks.map(t =>
-            t.status === newStatus ? tasksInStatus.find(ts => ts.id === t.id) || t : t
-          );
+          return prevTasks.map(t => (t.id === activeId ? { ...t, lexoRank: newLexoRank } : t));
         };
 
         setTasks(optimisticUpdate);
 
-        // 서버 업데이트 (LexoRank 기반)
-        const targetTasks = getTasksByStatus(newStatus);
-        const targetTask = targetTasks[newIndex];
-        if (targetTask) {
-          await tasksApi.reorderTask(activeId, targetTask.lexoRank);
-        }
+        // Server update
+        await tasksApi.reorderTask(activeId, newLexoRank);
 
-        // 성공 후 전체 데이터 다시 로드
+        // Reload to ensure consistency
         await loadTasks();
         return;
       }
 
-      // 상태가 변경되는 경우
+      // Status change
+      const targetTasks = getTasksByStatus(newStatus);
+      const newLexoRank = calculateNewLexoRank(targetTasks, '', newIndex);
+
+      // Optimistic update
       const optimisticUpdate = (prevTasks: Task[]) =>
-        prevTasks.map(task => (task.id === activeId ? { ...task, status: newStatus } : task));
+        prevTasks.map(task =>
+          task.id === activeId ? { ...task, status: newStatus, lexoRank: newLexoRank } : task
+        );
 
       setTasks(optimisticUpdate);
 
-      // 서버 업데이트
-      await tasksApi.updateTask(activeId, { status: newStatus });
+      // Server update
+      await tasksApi.updateTask(activeId, {
+        status: newStatus,
+        lexoRank: newLexoRank,
+      });
 
-      // 성공 후 전체 데이터 다시 로드
+      // Reload to ensure consistency
       await loadTasks();
     } catch (error) {
       console.error('Failed to update task:', error);
-      // 에러 발생 시 원래 상태로 되돌리기
+      // Revert on error
       await loadTasks();
     }
   };
@@ -651,6 +672,18 @@ export default function DashboardPage() {
       document.removeEventListener('mousedown', handleClickOutside);
     };
   }, [isUserMenuOpen]);
+
+  // Show loading screen while auth is initializing
+  if (authLoading) {
+    return (
+      <div className='min-h-screen bg-gray-50 flex items-center justify-center'>
+        <div className='text-center'>
+          <div className='animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-4'></div>
+          <p className='text-gray-500'>인증 정보를 확인하는 중...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className='min-h-screen bg-gray-50'>

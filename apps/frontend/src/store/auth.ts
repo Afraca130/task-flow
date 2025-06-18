@@ -159,6 +159,14 @@ class AuthStore {
         userEmail: authData.user.email
       });
 
+      // Redirect to projects page after successful login
+      if (typeof window !== 'undefined') {
+        // Use setTimeout to ensure state is fully updated before navigation
+        setTimeout(() => {
+          window.location.href = '/projects';
+        }, 100);
+      }
+
     } catch (error) {
       console.error('💥 Login error:', error);
 
@@ -291,7 +299,7 @@ class AuthStore {
       const refreshToken = localStorage.getItem('refresh-token');
       const userStr = localStorage.getItem('auth-user');
 
-      if (token && refreshToken && userStr) {
+      if (token && userStr) {
         try {
           const user = JSON.parse(userStr);
 
@@ -300,8 +308,21 @@ class AuthStore {
           const isExpired = tokenPayload && tokenPayload.exp && Date.now() >= tokenPayload.exp * 1000;
 
           if (isExpired) {
-            console.warn('Token expired, will try refresh');
-            // Don't logout immediately, let the interceptor handle refresh
+            console.warn('Token expired, clearing auth state');
+            // Token is expired, clear auth state
+            this.setState({
+              user: null,
+              token: null,
+              refreshToken: null,
+              isAuthenticated: false,
+              isLoading: false,
+            });
+            if (typeof window !== 'undefined') {
+              localStorage.removeItem('auth-token');
+              localStorage.removeItem('refresh-token');
+              localStorage.removeItem('auth-user');
+            }
+            return;
           }
 
           this.setState({
@@ -309,11 +330,28 @@ class AuthStore {
             token,
             refreshToken,
             isAuthenticated: true,
+            isLoading: false,
           });
         } catch (error) {
           console.error('Failed to parse user from localStorage:', error);
-          this.logout();
+          this.setState({
+            user: null,
+            token: null,
+            refreshToken: null,
+            isAuthenticated: false,
+            isLoading: false,
+          });
+          if (typeof window !== 'undefined') {
+            localStorage.removeItem('auth-token');
+            localStorage.removeItem('refresh-token');
+            localStorage.removeItem('auth-user');
+          }
         }
+      } else {
+        // No token found, mark as not loading
+        this.setState({
+          isLoading: false,
+        });
       }
     }
   };

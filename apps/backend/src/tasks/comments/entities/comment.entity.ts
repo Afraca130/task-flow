@@ -1,12 +1,10 @@
-import { Column, CreateDateColumn, Entity, JoinColumn, ManyToOne, OneToMany, PrimaryGeneratedColumn, UpdateDateColumn } from 'typeorm';
-import { Task } from '../../tasks/entities/task.entity';
-import { User } from '../../users/entities/user.entity';
+import { Column, Entity, JoinColumn, ManyToOne, OneToMany } from 'typeorm';
+import { BaseEntity } from '../../../common/entities/base.entity';
+import { User } from '../../../users/entities/user.entity';
+import { Task } from '../../entities/task.entity';
 
 @Entity('comments')
-export class Comment {
-  @PrimaryGeneratedColumn('uuid')
-  id: string;
-
+export class Comment extends BaseEntity {
   @Column({ type: 'text' })
   content: string;
 
@@ -21,12 +19,6 @@ export class Comment {
 
   @Column({ name: 'is_deleted', type: 'boolean', default: false })
   isDeleted: boolean;
-
-  @CreateDateColumn({ name: 'created_at' })
-  createdAt: Date;
-
-  @UpdateDateColumn({ name: 'updated_at' })
-  updatedAt: Date;
 
   // Relations
   @ManyToOne(() => Task, (task) => task.comments, { onDelete: 'CASCADE' })

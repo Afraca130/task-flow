@@ -17,14 +17,14 @@ export class IssuesRepository {
     async findById(id: string): Promise<Issue | null> {
         return await this.repository.findOne({
             where: { id },
-            relations: ['reporter', 'assignee', 'project', 'comments']
+            relations: ['author', 'assignee', 'project']
         });
     }
 
     async findByProjectId(projectId: string): Promise<Issue[]> {
         return await this.repository.find({
             where: { projectId },
-            relations: ['reporter', 'assignee'],
+            relations: ['author', 'assignee'],
             order: { createdAt: 'DESC' }
         });
     }
@@ -32,15 +32,15 @@ export class IssuesRepository {
     async findByAssigneeId(assigneeId: string): Promise<Issue[]> {
         return await this.repository.find({
             where: { assigneeId },
-            relations: ['reporter', 'project'],
+            relations: ['author', 'project'],
             order: { createdAt: 'DESC' }
         });
     }
 
-    async findByReporterId(authorId: string): Promise<Issue[]> {
+    async findByAuthorId(authorId: string): Promise<Issue[]> {
         return await this.repository.find({
             where: { authorId: authorId },
-            relations: ['assignee', 'project'],
+            relations: ['author', 'assignee', 'project'],
             order: { createdAt: 'DESC' }
         });
     }
@@ -53,7 +53,7 @@ export class IssuesRepository {
         const queryBuilder = this.repository.createQueryBuilder('issue');
 
         queryBuilder
-            .leftJoinAndSelect('issue.reporter', 'reporter')
+            .leftJoinAndSelect('issue.author', 'author')
             .leftJoinAndSelect('issue.assignee', 'assignee')
             .leftJoinAndSelect('issue.project', 'project')
             .where('(issue.title ILIKE :query OR issue.description ILIKE :query)', { query: `%${query}%` });
@@ -67,19 +67,26 @@ export class IssuesRepository {
             .getMany();
     }
 
+    async findAll(): Promise<Issue[]> {
+        return await this.repository.find({
+            relations: ['author', 'assignee', 'project'],
+            order: { createdAt: 'DESC' }
+        });
+    }
+
     async findWithFilters(filters: {
         projectId?: string;
         status?: IssueStatus;
         priority?: IssuePriority;
         type?: IssueType;
         assigneeId?: string;
-        reporterId?: string;
+        authorId?: string;
         labels?: string[];
     }): Promise<Issue[]> {
         const queryBuilder = this.repository.createQueryBuilder('issue');
 
         queryBuilder
-            .leftJoinAndSelect('issue.reporter', 'reporter')
+            .leftJoinAndSelect('issue.author', 'author')
             .leftJoinAndSelect('issue.assignee', 'assignee')
             .leftJoinAndSelect('issue.project', 'project');
 
@@ -103,8 +110,8 @@ export class IssuesRepository {
             queryBuilder.andWhere('issue.assigneeId = :assigneeId', { assigneeId: filters.assigneeId });
         }
 
-        if (filters.reporterId) {
-            queryBuilder.andWhere('issue.reporterId = :reporterId', { reporterId: filters.reporterId });
+        if (filters.authorId) {
+            queryBuilder.andWhere('issue.authorId = :authorId', { authorId: filters.authorId });
         }
 
         if (filters.labels && filters.labels.length > 0) {

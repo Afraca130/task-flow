@@ -22,11 +22,41 @@ export class CommentsRepository {
     }
 
     async findByTaskId(taskId: string): Promise<Comment[]> {
-        return await this.repository.find({
+        // Get all comments for the task with user relation
+        const allComments = await this.repository.find({
             where: { taskId },
             relations: ['user'],
             order: { createdAt: 'ASC' }
         });
+
+        // Organize comments into parent-child structure
+        const commentMap = new Map<string, Comment>();
+        const rootComments: Comment[] = [];
+
+        // First pass: create map and identify root comments
+        for (const comment of allComments) {
+            commentMap.set(comment.id, comment);
+            comment.replies = [];
+
+            if (!comment.parentId) {
+                rootComments.push(comment);
+            }
+        }
+
+        // Second pass: attach replies to their parents
+        for (const comment of allComments) {
+            if (comment.parentId) {
+                const parent = commentMap.get(comment.parentId);
+                if (parent) {
+                    if (!parent.replies) {
+                        parent.replies = [];
+                    }
+                    parent.replies.push(comment);
+                }
+            }
+        }
+
+        return rootComments;
     }
 
     async delete(id: string): Promise<void> {

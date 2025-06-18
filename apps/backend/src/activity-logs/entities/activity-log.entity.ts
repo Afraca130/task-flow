@@ -1,4 +1,5 @@
-import { Column, CreateDateColumn, Entity, JoinColumn, ManyToOne, PrimaryGeneratedColumn } from 'typeorm';
+import { Column, Entity, JoinColumn, ManyToOne } from 'typeorm';
+import { BaseEntity } from '../../common/entities/base.entity';
 import { Project } from '../../projects/entities/project.entity';
 import { User } from '../../users/entities/user.entity';
 
@@ -26,10 +27,7 @@ export enum EntityType {
 }
 
 @Entity('activity_logs')
-export class ActivityLog {
-  @PrimaryGeneratedColumn('uuid')
-  id: string;
-
+export class ActivityLog extends BaseEntity {
   @Column({ name: 'user_id' })
   userId: string;
 
@@ -58,8 +56,7 @@ export class ActivityLog {
   @Column({ type: 'jsonb', nullable: true })
   metadata?: Record<string, any>;
 
-  @CreateDateColumn({ name: 'timestamp' })
-  timestamp: Date;
+  // timestamp is replaced by createdAt from BaseEntity
 
   // Relations
   @ManyToOne(() => User, { eager: false })
@@ -74,24 +71,24 @@ export class ActivityLog {
   public isRecent(): boolean {
     const oneHourAgo = new Date();
     oneHourAgo.setHours(oneHourAgo.getHours() - 1);
-    return this.timestamp > oneHourAgo;
+    return this.createdAt > oneHourAgo;
   }
 
   public getAgeInMinutes(): number {
     const now = new Date();
-    const diffInMs = now.getTime() - this.timestamp.getTime();
+    const diffInMs = now.getTime() - this.createdAt.getTime();
     return Math.floor(diffInMs / (1000 * 60));
   }
 
   public getAgeInHours(): number {
     const now = new Date();
-    const diffInMs = now.getTime() - this.timestamp.getTime();
+    const diffInMs = now.getTime() - this.createdAt.getTime();
     return Math.floor(diffInMs / (1000 * 60 * 60));
   }
 
   public getAgeInDays(): number {
     const now = new Date();
-    const diffInMs = now.getTime() - this.timestamp.getTime();
+    const diffInMs = now.getTime() - this.createdAt.getTime();
     return Math.floor(diffInMs / (1000 * 60 * 60 * 24));
   }
 

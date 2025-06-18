@@ -39,6 +39,7 @@ export class ProjectRepository {
         const queryBuilder = this.projectRepository
             .createQueryBuilder('project')
             .leftJoinAndSelect('project.members', 'member')
+            .leftJoinAndSelect('member.user', 'user')
             .where('project.id = :projectId', { projectId: projectId.getValue() })
             .andWhere(
                 '(project.ownerId = :userId OR project.createdBy = :userId OR member.userId = :userId)',
@@ -51,7 +52,7 @@ export class ProjectRepository {
     async findById(projectId: ProjectId): Promise<Project | null> {
         return await this.projectRepository.findOne({
             where: { id: projectId.getValue() },
-            relations: ['members', 'tasks'],
+            relations: ['members', 'members.user', 'tasks'],
         });
     }
 
@@ -98,6 +99,7 @@ export class ProjectRepository {
         // Apply pagination and get results with relations
         const projects = await queryBuilder
             .leftJoinAndSelect('project.members', 'projectMember')
+            .leftJoinAndSelect('projectMember.user', 'memberUser')
             .leftJoinAndSelect('project.tasks', 'projectTask')
             .skip(skip)
             .take(limit)

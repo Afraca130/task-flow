@@ -5,10 +5,10 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 
 // Feature Modules
 import { AuthModule } from './auth/auth.module';
-import { CommentsModule } from './comments/comments.module';
 import { InvitationsModule } from './invitations/invitations.module';
 import { IssueModule } from './issues/issues.module';
 import { ProjectsModule } from './projects/projects.module';
+import { CommentsModule } from './tasks/comments/comments.module';
 import { TasksModule } from './tasks/tasks.module';
 import { UsersModule } from './users/users.module';
 

@@ -42,7 +42,16 @@ export class NotificationsService {
      * Get user notifications
      */
     async getUserNotifications(userId: string, unreadOnly: boolean = false): Promise<Notification[]> {
-        return await this.notificationsRepository.findByUserId(userId, unreadOnly);
+        this.logger.log(`Getting notifications for user: ${userId}, unreadOnly: ${unreadOnly}`);
+
+        try {
+            const notifications = await this.notificationsRepository.findByUserId(userId, unreadOnly);
+            this.logger.log(`Found ${notifications.length} notifications for user: ${userId}`);
+            return notifications;
+        } catch (error) {
+            this.logger.error(`Failed to get notifications for user: ${userId}`, error.stack || error);
+            throw error;
+        }
     }
 
     /**
@@ -51,17 +60,24 @@ export class NotificationsService {
     async markAsRead(notificationId: string, userId: string): Promise<Notification> {
         this.logger.log(`Marking notification as read: ${notificationId}`);
 
-        const notification = await this.notificationsRepository.findById(notificationId);
-        if (!notification) {
-            throw new Error('Notification not found');
-        }
+        try {
+            const notification = await this.notificationsRepository.findById(notificationId);
+            if (!notification) {
+                throw new Error('Notification not found');
+            }
 
-        if (notification.userId !== userId) {
-            throw new Error('Unauthorized to mark this notification as read');
-        }
+            if (notification.userId !== userId) {
+                throw new Error('Unauthorized to mark this notification as read');
+            }
 
-        notification.markAsRead();
-        return await this.notificationsRepository.save(notification);
+            notification.markAsRead();
+            const updatedNotification = await this.notificationsRepository.save(notification);
+            this.logger.log(`Notification marked as read: ${notificationId}`);
+            return updatedNotification;
+        } catch (error) {
+            this.logger.error(`Failed to mark notification as read: ${notificationId}`, error.stack || error);
+            throw error;
+        }
     }
 
     /**
@@ -69,7 +85,14 @@ export class NotificationsService {
      */
     async markAllAsRead(userId: string): Promise<void> {
         this.logger.log(`Marking all notifications as read for user: ${userId}`);
-        await this.notificationsRepository.markAllAsReadForUser(userId);
+
+        try {
+            await this.notificationsRepository.markAllAsReadForUser(userId);
+            this.logger.log(`All notifications marked as read for user: ${userId}`);
+        } catch (error) {
+            this.logger.error(`Failed to mark all notifications as read for user: ${userId}`, error.stack || error);
+            throw error;
+        }
     }
 
     /**
@@ -78,16 +101,22 @@ export class NotificationsService {
     async deleteNotification(notificationId: string, userId: string): Promise<void> {
         this.logger.log(`Deleting notification: ${notificationId}`);
 
-        const notification = await this.notificationsRepository.findById(notificationId);
-        if (!notification) {
-            throw new Error('Notification not found');
-        }
+        try {
+            const notification = await this.notificationsRepository.findById(notificationId);
+            if (!notification) {
+                throw new Error('Notification not found');
+            }
 
-        if (notification.userId !== userId) {
-            throw new Error('Unauthorized to delete this notification');
-        }
+            if (notification.userId !== userId) {
+                throw new Error('Unauthorized to delete this notification');
+            }
 
-        await this.notificationsRepository.delete(notificationId);
+            await this.notificationsRepository.delete(notificationId);
+            this.logger.log(`Notification deleted: ${notificationId}`);
+        } catch (error) {
+            this.logger.error(`Failed to delete notification: ${notificationId}`, error.stack || error);
+            throw error;
+        }
     }
 
     /**
@@ -193,5 +222,57 @@ export class NotificationsService {
             relatedEntityType: 'issue',
             relatedEntityId: issueId,
         });
+    }
+
+    /**
+     * Create issue mention notification
+     */
+    async createIssueMentionNotification(
+        mentionedUserId: string,
+        mentionerName: string,
+        issueTitle: string,
+        issueId: string
+    ): Promise<Notification> {
+        return await this.createNotification({
+            userId: mentionedUserId,
+            type: NotificationType.ISSUE_MENTION,
+            title: '이슈 멘션',
+            message: `${mentionerName}님이 "${issueTitle}" 이슈에서 회원님을 언급했습니다.`,
+            data: {
+                mentionerName,
+                issueTitle,
+                issueId,
+            },
+            relatedEntityType: 'issue',
+            relatedEntityId: issueId,
+        });
+    }
+
+    /**
+     * Create multiple issue mention notifications
+     */
+    async createIssueMentionNotifications(
+        mentionedUserIds: string[],
+        mentionerName: string,
+        issueTitle: string,
+        issueId: string
+    ): Promise<Notification[]> {
+        const notifications: Notification[] = [];
+
+        for (const userId of mentionedUserIds) {
+            try {
+                const notification = await this.createIssueMentionNotification(
+                    userId,
+                    mentionerName,
+                    issueTitle,
+                    issueId
+                );
+                notifications.push(notification);
+            } catch (error) {
+                this.logger.error(`Failed to create mention notification for user ${userId}:`, error);
+            }
+        }
+
+        return notifications;
     }
 }

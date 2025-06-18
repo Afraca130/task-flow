@@ -1,5 +1,7 @@
 import { BadRequestException, Injectable, Logger, NotFoundException } from '@nestjs/common';
 import * as crypto from 'crypto';
+import { NotificationsService } from '../notifications/notifications.service';
+import { UsersService } from '../users/users.service';
 import { CreateInvitationDto } from './dto/request/create-invitation.dto';
 import { InvitationStatus, ProjectInvitation } from './entities/project-invitation.entity';
 import { ProjectInvitationRepository } from './project-invitation.repository';
@@ -10,9 +12,11 @@ export class InvitationsService {
 
     constructor(
         private readonly invitationRepository: ProjectInvitationRepository,
+        private readonly notificationsService: NotificationsService,
+        private readonly usersService: UsersService,
     ) { }
 
-    async createInvitation(createDto: CreateInvitationDto): Promise<ProjectInvitation> {
+    async createInvitation(createDto: CreateInvitationDto, inviterId?: string): Promise<ProjectInvitation> {
         this.logger.log(`Creating invitation for project: ${createDto.projectId}`);
 
         try {
@@ -23,6 +27,10 @@ export class InvitationsService {
 
             if (!createDto.inviteeId) {
                 throw new BadRequestException('Invitee ID is required');
+            }
+
+            if (!inviterId) {
+                throw new BadRequestException('Inviter ID is required');
             }
 
             // Generate invitation token
@@ -36,19 +44,41 @@ export class InvitationsService {
             // Create invitation using factory method
             const invitation = ProjectInvitation.create(
                 createDto.projectId,
-                'current-user-id', // This should come from auth context
+                inviterId,
                 createDto.inviteeId,
                 createDto.message
             );
 
             const savedInvitation = await this.invitationRepository.create({
                 projectId: createDto.projectId,
-                inviterId: 'current-user-id', // This should come from auth context
+                inviterId: inviterId,
                 inviteeId: createDto.inviteeId,
                 message: createDto.message
             });
 
             this.logger.log(`Invitation created successfully: ${savedInvitation.id}`);
+
+            // Create notification for the invitee
+            try {
+                const inviter = await this.usersService.findById(inviterId);
+                const inviterName = inviter?.name || 'Someone';
+
+                // Get project name if available
+                const projectName = savedInvitation.project?.name || 'Project';
+
+                await this.notificationsService.createProjectInvitationNotification(
+                    createDto.inviteeId,
+                    inviterName,
+                    projectName,
+                    savedInvitation.id
+                );
+
+                this.logger.log(`Invitation notification sent to user: ${createDto.inviteeId}`);
+            } catch (error) {
+                this.logger.error(`Failed to send invitation notification:`, error.stack || error);
+                // Don't fail the invitation creation if notification fails
+            }
+
             return savedInvitation;
 
         } catch (error) {

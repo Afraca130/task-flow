@@ -1,5 +1,7 @@
 import { Inject, Injectable, Logger, NotFoundException } from '@nestjs/common';
 import { ActivityLogService } from '../activity-logs/activity-log.service';
+import { NotificationsService } from '../notifications/notifications.service';
+import { UsersService } from '../users/users.service';
 import { CreateIssueDto } from './dto/request/create-issue.dto';
 import { UpdateIssueDto } from './dto/request/update-issue.dto';
 import { Issue, IssuePriority, IssueStatus, IssueType } from './entities/issue.entity';
@@ -15,6 +17,8 @@ export class IssuesService implements IssueServiceInterface {
         @Inject(IssuesRepository)
         private readonly issuesRepository: IssuesRepository,
         private readonly activityLogService: ActivityLogService,
+        private readonly notificationsService: NotificationsService,
+        private readonly usersService: UsersService,
     ) { }
 
     /**
@@ -48,11 +52,56 @@ export class IssuesService implements IssueServiceInterface {
                 savedIssue.priority
             );
 
+            // Send assignment notification
+            if (createDto.assigneeId && createDto.assigneeId !== userId) {
+                try {
+                    const creator = await this.usersService.findById(userId);
+                    await this.notificationsService.createIssueAssignmentNotification(
+                        createDto.assigneeId,
+                        creator?.name || 'Someone',
+                        savedIssue.title,
+                        savedIssue.id
+                    );
+                } catch (error) {
+                    this.logger.error('Failed to send assignment notification:', error);
+                }
+            }
+
             return savedIssue;
         } catch (error) {
-            this.logger.error(`Failed to create issue: ${createDto.title}`, error);
+            this.logger.error(`Failed to create issue: ${createDto.title}`, error.stack || error);
             throw error;
         }
+    }
+
+    /**
+     * Create issue with mentions
+     */
+    async createIssueWithMentions(
+        userId: string,
+        createDto: CreateIssueDto,
+        mentionedUserIds: string[] = []
+    ): Promise<Issue> {
+        const issue = await this.createIssue(userId, createDto);
+
+        // Send mention notifications
+        if (mentionedUserIds.length > 0) {
+            try {
+                const creator = await this.usersService.findById(userId);
+                const creatorName = creator?.name || 'Someone';
+
+                await this.notificationsService.createIssueMentionNotifications(
+                    mentionedUserIds.filter(id => id !== userId), // Don't notify the creator
+                    creatorName,
+                    issue.title,
+                    issue.id
+                );
+            } catch (error) {
+                this.logger.error(`Failed to send mention notifications:`, error.stack || error);
+            }
+        }
+
+        return issue;
     }
 
     /**
@@ -132,7 +181,7 @@ export class IssuesService implements IssueServiceInterface {
 
             return updatedIssue;
         } catch (error) {
-            this.logger.error(`Failed to update issue: ${issueId}`, error);
+            this.logger.error(`Failed to update issue: ${issueId}`, error.stack || error);
             throw error;
         }
     }
@@ -187,10 +236,17 @@ export class IssuesService implements IssueServiceInterface {
     }
 
     /**
-     * Get issues by reporter
+     * Get issues by author (previously called reporter)
      */
-    async getIssuesByReporter(reporterId: string): Promise<Issue[]> {
-        return await this.issuesRepository.findByReporterId(reporterId);
+    async getIssuesByAuthor(authorId: string): Promise<Issue[]> {
+        return await this.issuesRepository.findByAuthorId(authorId);
+    }
+
+    /**
+     * Get all issues
+     */
+    async getAllIssues(): Promise<Issue[]> {
+        return await this.issuesRepository.findAll();
     }
 
     /**
@@ -209,7 +265,7 @@ export class IssuesService implements IssueServiceInterface {
         priority?: IssuePriority;
         type?: IssueType;
         assigneeId?: string;
-        reporterId?: string;
+        authorId?: string;
         labels?: string[];
     }): Promise<Issue[]> {
         return await this.issuesRepository.findWithFilters(filters);

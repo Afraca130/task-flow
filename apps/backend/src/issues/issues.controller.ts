@@ -34,6 +34,60 @@ export class IssuesController {
         private readonly issuesService: IssuesService,
     ) { }
 
+    @Get()
+    @ApiOperation({
+        summary: 'Get all issues',
+        description: 'Retrieves all issues with pagination support',
+    })
+    @ApiQuery({
+        name: 'page',
+        description: 'Page number',
+        type: 'number',
+        required: false,
+        example: 1,
+    })
+    @ApiQuery({
+        name: 'limit',
+        description: 'Items per page',
+        type: 'number',
+        required: false,
+        example: 10,
+    })
+    @ApiResponse({
+        status: 200,
+        description: 'Issues retrieved successfully',
+        schema: {
+            type: 'object',
+            properties: {
+                data: {
+                    type: 'array',
+                    items: { $ref: '#/components/schemas/Issue' },
+                },
+                total: { type: 'number' },
+                page: { type: 'number' },
+                limit: { type: 'number' },
+            },
+        },
+    })
+    @ApiResponse({ status: 401, description: 'Unauthorized' })
+    async getIssues(
+        @Query('page') page?: number,
+        @Query('limit') limit?: number,
+    ): Promise<{ data: Issue[]; total: number; page: number; limit: number }> {
+        const issues = await this.issuesService.getAllIssues();
+        const actualPage = page || 1;
+        const actualLimit = limit || 50;
+        const startIndex = (actualPage - 1) * actualLimit;
+        const endIndex = startIndex + actualLimit;
+
+        return {
+            data: issues.slice(startIndex, endIndex),
+            total: issues.length,
+            page: actualPage,
+            limit: actualLimit,
+        };
+    }
+
     @Post()
     @ApiOperation({
         summary: 'Create a new issue',
@@ -53,6 +107,44 @@ export class IssuesController {
         @Request() req: any,
     ): Promise<Issue> {
         return await this.issuesService.createIssue(req.user.id, createIssueDto);
+    }
+
+    @Post('with-mentions')
+    @ApiOperation({
+        summary: 'Create a new issue with mentions',
+        description: 'Creates a new issue in a project and sends mention notifications',
+    })
+    @ApiBody({
+        schema: {
+            type: 'object',
+            properties: {
+                issue: { $ref: '#/components/schemas/CreateIssueDto' },
+                mentionedUserIds: {
+                    type: 'array',
+                    items: { type: 'string' },
+                    description: 'Array of user IDs to mention and notify'
+                }
+            },
+            required: ['issue']
+        }
+    })
+    @ApiResponse({
+        status: 201,
+        description: 'Issue created successfully with mentions',
+        type: Issue,
+    })
+    @ApiResponse({ status: 400, description: 'Invalid input data' })
+    @ApiResponse({ status: 401, description: 'Unauthorized' })
+    @ApiResponse({ status: 404, description: 'Project not found' })
+    async createIssueWithMentions(
+        @Body() body: { issue: CreateIssueDto; mentionedUserIds?: string[] },
+        @Request() req: any,
+    ): Promise<Issue> {
+        return await this.issuesService.createIssueWithMentions(
+            req.user.id,
+            body.issue,
+            body.mentionedUserIds || []
+        );
     }
 
     @Get(':id')
@@ -192,10 +284,10 @@ export class IssuesController {
         description: 'Issues retrieved successfully',
         type: [Issue],
     })
-    async getIssuesByReporter(
+    async getIssuesByAuthor(
         @Param('userId', ParseUUIDPipe) userId: string,
     ): Promise<Issue[]> {
-        return await this.issuesService.getIssuesByReporter(userId);
+        return await this.issuesService.getIssuesByAuthor(userId);
     }
 
     @Get('search')
@@ -249,7 +341,7 @@ export class IssuesController {
         @Query('priority') priority?: IssuePriority,
         @Query('type') type?: IssueType,
         @Query('assigneeId') assigneeId?: string,
-        @Query('authorId') reporterId?: string,
+        @Query('authorId') authorId?: string,
     ): Promise<Issue[]> {
         return await this.issuesService.getIssuesWithFilters({
             projectId,
@@ -257,7 +349,7 @@ export class IssuesController {
             priority,
             type,
             assigneeId,
-            reporterId,
+            authorId,
         });
     }
 }

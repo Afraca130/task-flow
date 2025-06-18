@@ -1,4 +1,5 @@
-import { Column, CreateDateColumn, Entity, JoinColumn, ManyToOne, PrimaryGeneratedColumn } from 'typeorm';
+import { Column, Entity, JoinColumn, ManyToOne } from 'typeorm';
+import { BaseEntity } from '../../common/entities/base.entity';
 import { TimeUtil } from '../../common/utils/time.util';
 import { Project } from '../../projects/entities/project.entity';
 import { User } from '../../users/entities/user.entity';
@@ -14,10 +15,7 @@ export enum InvitationStatus {
  * 프로젝트 초대 도메인 엔터티
  */
 @Entity('project_invitations')
-export class ProjectInvitation {
-  @PrimaryGeneratedColumn('uuid')
-  id: string;
-
+export class ProjectInvitation extends BaseEntity {
   @Column({ name: 'project_id' })
   projectId: string;
 
@@ -45,9 +43,6 @@ export class ProjectInvitation {
 
   @Column({ type: 'text', nullable: true })
   message?: string;
-
-  @CreateDateColumn({ name: 'created_at' })
-  createdAt: Date;
 
   // Relations
   @ManyToOne(() => Project, { onDelete: 'CASCADE' })

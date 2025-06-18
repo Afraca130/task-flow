@@ -1,4 +1,5 @@
-import { Column, CreateDateColumn, Entity, JoinColumn, ManyToOne, PrimaryGeneratedColumn } from 'typeorm';
+import { Column, Entity, JoinColumn, ManyToOne } from 'typeorm';
+import { BaseEntity } from '../../common/entities/base.entity';
 import { TimeUtil } from '../../common/utils/time.util';
 import { Project } from '../../projects/entities/project.entity';
 import { Task } from '../../tasks/entities/task.entity';
@@ -13,20 +14,17 @@ export enum NotificationType {
   COMMENT_ADDED = 'COMMENT_ADDED',
   COMMENT_REPLIED = 'COMMENT_REPLIED',
   COMMENT_MENTION = 'COMMENT_MENTION',
-  PROJECT_INVITED = 'PROJECT_INVITED',
   PROJECT_INVITATION = 'PROJECT_INVITATION',
   PROJECT_MEMBER_JOINED = 'PROJECT_MEMBER_JOINED',
   PROJECT_MEMBER_LEFT = 'PROJECT_MEMBER_LEFT',
   PROJECT_STATUS_CHANGED = 'PROJECT_STATUS_CHANGED',
   ISSUE_ASSIGNED = 'ISSUE_ASSIGNED',
   ISSUE_STATUS_CHANGED = 'ISSUE_STATUS_CHANGED',
+  ISSUE_MENTION = 'ISSUE_MENTION',
 }
 
 @Entity('notifications')
-export class Notification {
-  @PrimaryGeneratedColumn('uuid')
-  id: string;
-
+export class Notification extends BaseEntity {
   @Column({ name: 'user_id' })
   userId: string;
 
@@ -62,9 +60,6 @@ export class Notification {
 
   @Column({ name: 'related_entity_id', nullable: true })
   relatedEntityId?: string;
-
-  @CreateDateColumn({ name: 'created_at' })
-  createdAt: Date;
 
   // Relations
   @ManyToOne(() => User, { eager: false })
@@ -164,7 +159,7 @@ export class Notification {
     const notification = new Notification();
     notification.userId = userId;
     notification.projectId = projectId;
-    notification.type = NotificationType.PROJECT_INVITED;
+    notification.type = NotificationType.PROJECT_INVITATION;
     notification.title = '프로젝트에 초대되었습니다';
     notification.message = `${inviterName}님이 "${projectName}" 프로젝트에 초대했습니다.`;
     return notification;

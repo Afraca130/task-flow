@@ -8,7 +8,8 @@ export interface IssueServiceInterface {
     getIssueById(issueId: string): Promise<Issue | null>;
     getIssuesByProject(projectId: string): Promise<Issue[]>;
     getIssuesByAssignee(assigneeId: string): Promise<Issue[]>;
-    getIssuesByReporter(reporterId: string): Promise<Issue[]>;
+    getIssuesByAuthor(authorId: string): Promise<Issue[]>;
+    getAllIssues(): Promise<Issue[]>;
     searchIssues(query: string, projectId?: string): Promise<Issue[]>;
     getIssuesWithFilters(filters: {
         projectId?: string;
@@ -16,7 +17,7 @@ export interface IssueServiceInterface {
         priority?: IssuePriority;
         type?: IssueType;
         assigneeId?: string;
-        reporterId?: string;
+        authorId?: string;
         labels?: string[];
     }): Promise<Issue[]>;
 }

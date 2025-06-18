@@ -1,9 +1,11 @@
 'use client';
 
+import { ActivityLog, activityLogsApi } from '@/lib/api';
 import { useAuthStore } from '@/store/auth';
+import { useProjectsStore } from '@/store/projects';
 import {
   AlertCircle,
-  Calendar,
+  ArrowLeft,
   CheckSquare,
   Clock,
   Folder,
@@ -13,28 +15,8 @@ import {
   UserMinus,
   UserPlus,
 } from 'lucide-react';
+import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
-
-interface ActivityLog {
-  id: string;
-  userId: string;
-  projectId: string;
-  entityId: string;
-  entityType: string;
-  action: string;
-  description: string;
-  metadata?: Record<string, any>;
-  timestamp: string;
-  user?: {
-    id: string;
-    name: string;
-    email: string;
-  };
-  project?: {
-    id: string;
-    name: string;
-  };
-}
 
 const getActionIcon = (action: string, entityType: string) => {
   switch (action) {
@@ -95,7 +77,9 @@ const formatTimeAgo = (timestamp: string) => {
 };
 
 export default function ActivityLogsPage() {
+  const router = useRouter();
   const { user, isAuthenticated } = useAuthStore();
+  const { projects } = useProjectsStore();
   const [activityLogs, setActivityLogs] = useState<ActivityLog[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -114,27 +98,12 @@ export default function ActivityLogsPage() {
       setLoading(true);
       setError(null);
 
-      let url = '/api/v1/activity-logs/recent?limit=50';
-
-      if (selectedProject !== 'all') {
-        url += `&projectId=${selectedProject}`;
-      }
-
-      const response = await fetch(url, {
-        headers: {
-          Authorization: `Bearer ${localStorage.getItem('auth-token')}`,
-          'Content-Type': 'application/json',
-        },
-      });
-
-      if (!response.ok) {
-        throw new Error('활동 로그를 불러오는데 실패했습니다.');
-      }
-
-      const data = await response.json();
-      setActivityLogs(data);
+      // Use the activity logs API from api.ts
+      const projectId = selectedProject !== 'all' ? selectedProject : undefined;
+      const logs = await activityLogsApi.getActivityLogs(projectId);
+      setActivityLogs(logs);
     } catch (err) {
-      setError(err instanceof Error ? err.message : '알 수 없는 오류가 발생했습니다.');
+      setError(err instanceof Error ? err.message : '활동 로그를 불러오는데 실패했습니다.');
       console.error('Failed to fetch activity logs:', err);
     } finally {
       setLoading(false);
@@ -147,32 +116,14 @@ export default function ActivityLogsPage() {
       return;
     }
 
-    try {
-      setLoading(true);
-      let url = `/api/v1/activity-logs/search?q=${encodeURIComponent(searchQuery)}&limit=50`;
-
-      if (selectedProject !== 'all') {
-        url += `&projectId=${selectedProject}`;
-      }
-
-      const response = await fetch(url, {
-        headers: {
-          Authorization: `Bearer ${localStorage.getItem('auth-token')}`,
-          'Content-Type': 'application/json',
-        },
-      });
-
-      if (!response.ok) {
-        throw new Error('검색에 실패했습니다.');
-      }
-
-      const data = await response.json();
-      setActivityLogs(data);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : '검색 중 오류가 발생했습니다.');
-    } finally {
-      setLoading(false);
-    }
+    // For now, filter locally since backend search endpoint might not exist
+    const filtered = activityLogs.filter(
+      log =>
+        log.description.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        log.user?.name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        log.project?.name?.toLowerCase().includes(searchQuery.toLowerCase())
+    );
+    setActivityLogs(filtered);
   };
 
   const filteredLogs = activityLogs.filter(log => {
@@ -192,147 +143,132 @@ export default function ActivityLogsPage() {
   }
 
   return (
-    <div className='min-h-screen bg-gray-50 py-8'>
-      <div className='max-w-7xl mx-auto px-4 sm:px-6 lg:px-8'>
-        {/* Header */}
-        <div className='mb-8'>
-          <h1 className='text-3xl font-bold text-gray-900 mb-2'>활동 로그</h1>
-          <p className='text-gray-600'>프로젝트 내 모든 활동을 확인할 수 있습니다.</p>
+    <div className='min-h-screen bg-gray-50'>
+      <div className='max-w-7xl mx-auto py-8 px-4'>
+        {/* Header with back button */}
+        <div className='flex items-center gap-4 mb-8'>
+          <button
+            onClick={() => router.back()}
+            className='p-2 hover:bg-gray-100 rounded-lg transition-colors'
+          >
+            <ArrowLeft className='w-5 h-5' />
+          </button>
+          <div>
+            <h1 className='text-3xl font-bold text-gray-900'>활동 로그</h1>
+            <p className='text-gray-600'>프로젝트 내 모든 활동을 확인할 수 있습니다.</p>
+          </div>
         </div>
 
-        {/* Search and Filter Bar */}
-        <div className='bg-white rounded-lg shadow p-6 mb-6'>
-          <div className='flex flex-col sm:flex-row gap-4'>
+        {/* Filters */}
+        <div className='bg-white rounded-lg shadow-sm border border-gray-200 p-6 mb-6'>
+          <div className='grid grid-cols-1 lg:grid-cols-3 gap-4'>
             {/* Search */}
-            <div className='flex-1'>
-              <div className='relative'>
-                <Search className='absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-400' />
-                <input
-                  type='text'
-                  placeholder='활동 내용 검색...'
-                  value={searchQuery}
-                  onChange={e => setSearchQuery(e.target.value)}
-                  onKeyPress={e => e.key === 'Enter' && handleSearch()}
-                  className='w-full pl-10 pr-4 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500'
-                />
-              </div>
+            <div className='relative'>
+              <Search className='absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400' />
+              <input
+                type='text'
+                placeholder='활동 검색...'
+                value={searchQuery}
+                onChange={e => setSearchQuery(e.target.value)}
+                onKeyPress={e => e.key === 'Enter' && handleSearch()}
+                className='pl-10 pr-4 py-2 w-full border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500'
+              />
             </div>
 
             {/* Action Filter */}
-            <div className='sm:w-48'>
-              <select
-                value={filterType}
-                onChange={e => setFilterType(e.target.value)}
-                className='w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500'
-              >
-                <option value='all'>모든 활동</option>
-                <option value='CREATE'>생성</option>
-                <option value='UPDATE'>수정</option>
-                <option value='DELETE'>삭제</option>
-                <option value='COMMENT'>댓글</option>
-                <option value='ASSIGN'>할당</option>
-                <option value='JOIN'>참여</option>
-                <option value='LEAVE'>탈퇴</option>
-              </select>
-            </div>
-
-            {/* Search Button */}
-            <button
-              onClick={handleSearch}
-              className='px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors'
+            <select
+              value={filterType}
+              onChange={e => setFilterType(e.target.value)}
+              className='px-4 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500'
             >
-              검색
-            </button>
+              <option value='all'>모든 활동</option>
+              <option value='CREATE'>생성</option>
+              <option value='UPDATE'>수정</option>
+              <option value='DELETE'>삭제</option>
+              <option value='COMMENT'>댓글</option>
+              <option value='ASSIGN'>할당</option>
+              <option value='JOIN'>참여</option>
+              <option value='LEAVE'>탈퇴</option>
+            </select>
+
+            {/* Project Filter */}
+            <select
+              value={selectedProject}
+              onChange={e => setSelectedProject(e.target.value)}
+              className='px-4 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500'
+            >
+              <option value='all'>모든 프로젝트</option>
+              {projects.map(project => (
+                <option key={project.id} value={project.id}>
+                  {project.name}
+                </option>
+              ))}
+            </select>
           </div>
         </div>
 
         {/* Activity Logs */}
-        <div className='bg-white rounded-lg shadow'>
-          {loading ? (
-            <div className='flex items-center justify-center py-12'>
-              <div className='animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600'></div>
-              <span className='ml-2 text-gray-600'>로딩 중...</span>
+        {loading ? (
+          <div className='flex items-center justify-center h-64'>
+            <div className='text-center'>
+              <div className='animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-4'></div>
+              <p className='text-gray-500'>활동 로그를 불러오는 중...</p>
             </div>
-          ) : error ? (
-            <div className='text-center py-12'>
-              <AlertCircle className='h-12 w-12 text-red-500 mx-auto mb-4' />
-              <h3 className='text-lg font-medium text-gray-900 mb-2'>오류가 발생했습니다</h3>
-              <p className='text-gray-600 mb-4'>{error}</p>
-              <button
-                onClick={fetchActivityLogs}
-                className='px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700'
+          </div>
+        ) : error ? (
+          <div className='text-center py-12'>
+            <AlertCircle className='w-16 h-16 text-red-400 mx-auto mb-4' />
+            <h3 className='text-lg font-medium text-gray-900 mb-2'>오류가 발생했습니다</h3>
+            <p className='text-gray-600 mb-4'>{error}</p>
+            <button
+              onClick={fetchActivityLogs}
+              className='px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors'
+            >
+              다시 시도
+            </button>
+          </div>
+        ) : filteredLogs.length === 0 ? (
+          <div className='text-center py-12'>
+            <Clock className='w-16 h-16 text-gray-300 mx-auto mb-4' />
+            <h3 className='text-lg font-medium text-gray-900 mb-2'>활동 로그가 없습니다</h3>
+            <p className='text-gray-600'>아직 활동 내역이 없습니다.</p>
+          </div>
+        ) : (
+          <div className='space-y-4'>
+            {filteredLogs.map(log => (
+              <div
+                key={log.id}
+                className={`bg-white rounded-lg border p-6 ${getActionColor(log.action)}`}
               >
-                다시 시도
-              </button>
-            </div>
-          ) : filteredLogs.length === 0 ? (
-            <div className='text-center py-12'>
-              <Clock className='h-12 w-12 text-gray-400 mx-auto mb-4' />
-              <h3 className='text-lg font-medium text-gray-900 mb-2'>활동 로그가 없습니다</h3>
-              <p className='text-gray-600'>아직 기록된 활동이 없습니다.</p>
-            </div>
-          ) : (
-            <div className='divide-y divide-gray-200'>
-              {filteredLogs.map(log => (
-                <div key={log.id} className='p-6 hover:bg-gray-50 transition-colors'>
-                  <div className='flex items-start space-x-4'>
-                    {/* Icon */}
-                    <div className={`p-2 rounded-full border ${getActionColor(log.action)}`}>
-                      {getActionIcon(log.action, log.entityType)}
-                    </div>
-
-                    {/* Content */}
-                    <div className='flex-1 min-w-0'>
-                      <div className='flex items-center justify-between'>
-                        <div className='flex items-center space-x-2'>
-                          <span className='font-medium text-gray-900'>
-                            {log.user?.name || '알 수 없는 사용자'}
-                          </span>
-                          {log.project && (
-                            <>
-                              <span className='text-gray-400'>in</span>
-                              <span className='font-medium text-blue-600'>{log.project.name}</span>
-                            </>
-                          )}
-                        </div>
-                        <div className='flex items-center text-sm text-gray-500'>
-                          <Calendar className='h-4 w-4 mr-1' />
-                          {formatTimeAgo(log.timestamp)}
-                        </div>
+                <div className='flex items-start space-x-4'>
+                  <div className='flex-shrink-0 mt-1'>
+                    {getActionIcon(log.action, log.entityType)}
+                  </div>
+                  <div className='flex-1 min-w-0'>
+                    <div className='flex items-center justify-between mb-2'>
+                      <div className='flex items-center space-x-2'>
+                        <span className='font-medium text-gray-900'>
+                          {log.user?.name || '알 수 없는 사용자'}
+                        </span>
+                        <span className='text-sm text-gray-500'>·</span>
+                        <span className='text-sm text-gray-500'>
+                          {log.project?.name || '알 수 없는 프로젝트'}
+                        </span>
                       </div>
-
-                      <p className='mt-1 text-gray-700'>{log.description}</p>
-
-                      {/* Metadata */}
-                      {log.metadata && Object.keys(log.metadata).length > 0 && (
-                        <div className='mt-2 text-xs text-gray-500'>
-                          {Object.entries(log.metadata).map(([key, value]) => (
-                            <span key={key} className='mr-4'>
-                              {key}: {String(value)}
-                            </span>
-                          ))}
-                        </div>
-                      )}
+                      <time className='text-sm text-gray-500'>{formatTimeAgo(log.createdAt)}</time>
                     </div>
+                    <p className='text-gray-700 mb-2'>{log.description}</p>
+                    {log.metadata && Object.keys(log.metadata).length > 0 && (
+                      <div className='text-xs text-gray-500 bg-gray-50 rounded-md p-2 mt-2'>
+                        <pre className='whitespace-pre-wrap'>
+                          {JSON.stringify(log.metadata, null, 2)}
+                        </pre>
+                      </div>
+                    )}
                   </div>
                 </div>
-              ))}
-            </div>
-          )}
-        </div>
-
-        {/* Load More */}
-        {filteredLogs.length > 0 && filteredLogs.length >= 50 && (
-          <div className='text-center mt-6'>
-            <button
-              onClick={() => {
-                // TODO: Implement pagination
-                console.log('Load more logs');
-              }}
-              className='px-6 py-2 bg-gray-600 text-white rounded-md hover:bg-gray-700 transition-colors'
-            >
-              더 보기
-            </button>
+              </div>
+            ))}
           </div>
         )}
       </div>

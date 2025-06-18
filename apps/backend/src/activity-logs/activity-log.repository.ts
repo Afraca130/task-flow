@@ -82,11 +82,11 @@ export class ActivityLogRepository {
         }
 
         if (startDate) {
-            queryBuilder.andWhere('activityLog.timestamp >= :startDate', { startDate });
+            queryBuilder.andWhere('activityLog.createdAt >= :startDate', { startDate });
         }
 
         if (endDate) {
-            queryBuilder.andWhere('activityLog.timestamp <= :endDate', { endDate });
+            queryBuilder.andWhere('activityLog.createdAt <= :endDate', { endDate });
         }
 
         // Add joins
@@ -95,7 +95,7 @@ export class ActivityLogRepository {
             .leftJoinAndSelect('activityLog.project', 'project');
 
         // Add ordering
-        queryBuilder.orderBy('activityLog.timestamp', 'DESC');
+        queryBuilder.orderBy('activityLog.createdAt', 'DESC');
 
         // Add pagination
         const skip = (page - 1) * limit;
@@ -138,7 +138,7 @@ export class ActivityLogRepository {
             }
 
             queryBuilder
-                .orderBy('activityLog.timestamp', 'DESC')
+                .orderBy('activityLog.createdAt', 'DESC')
                 .take(limit);
 
             return await queryBuilder.getMany();
@@ -154,7 +154,7 @@ export class ActivityLogRepository {
             cutoffDate.setDate(cutoffDate.getDate() - olderThanDays);
 
             const result = await this.repository.delete({
-                timestamp: LessThan(cutoffDate),
+                createdAt: LessThan(cutoffDate),
             });
 
             return result.affected || 0;
@@ -188,7 +188,7 @@ export class ActivityLogRepository {
         queryBuilder
             .leftJoinAndSelect('activityLog.user', 'user')
             .leftJoinAndSelect('activityLog.project', 'project')
-            .orderBy('activityLog.timestamp', 'DESC')
+            .orderBy('activityLog.createdAt', 'DESC')
             .take(filters.limit || 50)
             .skip(filters.offset || 0);
 
@@ -218,7 +218,7 @@ export class ActivityLogRepository {
         queryBuilder
             .leftJoinAndSelect('activityLog.user', 'user')
             .leftJoinAndSelect('activityLog.project', 'project')
-            .orderBy('activityLog.timestamp', 'DESC')
+            .orderBy('activityLog.createdAt', 'DESC')
             .take(filters.limit || 50);
 
         return await queryBuilder.getMany();

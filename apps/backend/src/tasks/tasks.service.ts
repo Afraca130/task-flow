@@ -2,6 +2,8 @@ import { TimeUtil } from '@/common/utils/time.util';
 import { BadRequestException, Injectable, Logger, NotFoundException } from '@nestjs/common';
 import { ActivityLogService } from '../activity-logs/activity-log.service';
 import { LexoRank } from '../common/utils/lexo-rank.util';
+import { NotificationsService } from '../notifications/notifications.service';
+import { UsersService } from '../users/users.service';
 // UserLog imports removed - using ActivityLogService instead
 import { CreateTaskDto, UpdateTaskDto } from './dto/request';
 import { Task, TaskStatus } from './entities/task.entity';
@@ -28,6 +30,8 @@ export class TasksService {
     constructor(
         private readonly taskRepository: TaskRepository,
         private readonly activityLogService: ActivityLogService,
+        private readonly notificationsService: NotificationsService,
+        private readonly usersService: UsersService,
     ) { }
 
     /**
@@ -147,6 +151,26 @@ export class TasksService {
                     command.assigneeId,
                     'Assignee' // TODO: Get actual user name
                 );
+            }
+
+            // Notify assignee
+            if (command.assigneeId) {
+                try {
+                    const assigner = await this.usersService.findById(command.assignerId);
+                    const assignerName = assigner?.name || 'Someone';
+
+                    await this.notificationsService.createTaskAssignmentNotification(
+                        command.assigneeId,
+                        assignerName,
+                        command.title,
+                        savedTask.id
+                    );
+
+                    this.logger.log(`Task assignment notification sent to user: ${command.assigneeId}`);
+                } catch (error) {
+                    this.logger.error(`Failed to send task assignment notification:`, error.stack || error);
+                    // Don't fail the task creation if notification fails
+                }
             }
 
             this.logger.log(`Task created successfully: ${savedTask.id}`);
@@ -435,14 +459,29 @@ export class TasksService {
         inProgress: number;
         completed: number;
     }> {
-        const tasks = await this.findByProjectId(projectId);
+        this.logger.log(`Getting task statistics for project: ${projectId}`);
 
-        return {
-            total: tasks.length,
-            todo: tasks.filter(task => task.status === TaskStatus.TODO).length,
-            inProgress: tasks.filter(task => task.status === TaskStatus.IN_PROGRESS).length,
-            completed: tasks.filter(task => task.status === TaskStatus.COMPLETED).length,
-        };
+        try {
+            if (!projectId) {
+                throw new BadRequestException('Project ID is required');
+            }
+
+            const tasks = await this.findByProjectId(projectId);
+
+            const stats = {
+                total: tasks.length,
+                todo: tasks.filter(task => task.status === TaskStatus.TODO).length,
+                inProgress: tasks.filter(task => task.status === TaskStatus.IN_PROGRESS).length,
+                completed: tasks.filter(task => task.status === TaskStatus.COMPLETED).length,
+            };
+
+            this.logger.log(`Task statistics retrieved for project ${projectId}: ${JSON.stringify(stats)}`);
+            return stats;
+
+        } catch (error) {
+            this.logger.error(`Failed to get task statistics for project: ${projectId}`, error.stack || error);
+            throw error;
+        }
     }
 
     /**

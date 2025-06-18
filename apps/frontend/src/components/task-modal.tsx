@@ -352,7 +352,7 @@ export function TaskModal({
                     <option value=''>담당자를 선택하세요</option>
                     {projectMembers.map(member => (
                       <option key={member.id} value={member.userId}>
-                        {member.user?.name} (
+                        {member.user?.name || member.user?.email} (
                         {member.role === 'OWNER'
                           ? '소유자'
                           : member.role === 'MANAGER'

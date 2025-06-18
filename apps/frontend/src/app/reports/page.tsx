@@ -1,59 +1,38 @@
 'use client';
 
-import { NotificationBell } from '@/components/notifications/notification-bell';
-import { activityLogsApi, projectsApi } from '@/lib/api';
+import { ActivityLog, activityLogsApi, projectsApi } from '@/lib/api';
 import { useAuthStore } from '@/store/auth';
 import { useProjectsStore } from '@/store/projects';
 import {
   Activity,
-  BarChart3,
-  ChevronLeft,
-  ChevronRight,
+  ArrowLeft,
   FolderOpen,
   List,
   Mail,
-  Menu,
   Search,
-  Settings,
   UserCheck,
   Users,
-  X,
 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
 
-interface ActivityLogItem {
-  id: string;
-  userId: string;
-  projectId: string;
-  entityId: string;
-  entityType: string;
-  action: string;
-  description: string;
-  timestamp: string;
-  user?: any;
-  project?: any;
-}
-
 export default function ReportsPage() {
   const router = useRouter();
-  const { user, isAuthenticated } = useAuthStore();
+  const { isAuthenticated } = useAuthStore();
   const { projects, setProjects } = useProjectsStore();
-  const [activityLogs, setActivityLogs] = useState<ActivityLogItem[]>([]);
+  const [activityLogs, setActivityLogs] = useState<ActivityLog[]>([]);
   const [loading, setLoading] = useState(true);
-  const [selectedProjectId, setSelectedProjectId] = useState<string>('all');
-  const [selectedEntityType, setSelectedEntityType] = useState<string>('all');
-  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+  const [searchTerm, setSearchTerm] = useState('');
+  const [selectedProjectId, setSelectedProjectId] = useState('all');
+  const [selectedEntityType, setSelectedEntityType] = useState('all');
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
-  const [searchTerm, setSearchTerm] = useState('');
-
   const itemsPerPage = 20;
 
   // Check authentication
   useEffect(() => {
     if (!isAuthenticated) {
-      router.push('/login');
+      router.replace('/login');
       return;
     }
   }, [isAuthenticated, router]);
@@ -192,8 +171,8 @@ export default function ReportsPage() {
     }
   };
 
-  const formatTimestamp = (timestamp: string) => {
-    const date = new Date(timestamp);
+  const formatTimestamp = (createdAt: string) => {
+    const date = new Date(createdAt);
     const now = new Date();
     const diffInMs = now.getTime() - date.getTime();
     const diffInMins = Math.floor(diffInMs / (1000 * 60));
@@ -217,290 +196,171 @@ export default function ReportsPage() {
     }
   };
 
-  function NavItem({
-    icon,
-    label,
-    onClick,
-  }: {
-    icon: React.ReactNode;
-    label: string;
-    onClick: () => void;
-  }) {
-    return (
-      <button
-        onClick={onClick}
-        className='flex items-center gap-3 w-full px-3 py-2 text-sm text-gray-700 hover:bg-gray-100 rounded-lg transition-colors'
-      >
-        {icon}
-        <span>{label}</span>
-      </button>
-    );
+  if (!isAuthenticated) {
+    return null;
   }
-
-  const selectedProject = projects.find(p => p.id === selectedProjectId);
 
   return (
     <div className='min-h-screen bg-gray-50'>
-      {/* Mobile Sidebar */}
-      <div
-        className={`fixed inset-y-0 left-0 z-30 w-64 bg-white border-r border-gray-200 transform transition-transform duration-200 ease-in-out lg:hidden ${
-          isSidebarOpen ? 'translate-x-0' : '-translate-x-full'
-        }`}
-      >
-        <div className='flex flex-col h-full'>
-          <div className='flex items-center justify-between p-4 border-b border-gray-200'>
-            <h1 className='text-lg font-semibold text-gray-900'>TaskFlow</h1>
-            <button
-              onClick={() => setIsSidebarOpen(false)}
-              className='p-2 text-gray-500 hover:text-gray-700 lg:hidden'
-            >
-              <X className='w-5 h-5' />
-            </button>
+      <div className='max-w-7xl mx-auto py-8 px-4'>
+        {/* Header with back button */}
+        <div className='flex items-center gap-4 mb-8'>
+          <button
+            onClick={() => router.back()}
+            className='p-2 hover:bg-gray-100 rounded-lg transition-colors'
+          >
+            <ArrowLeft className='w-5 h-5' />
+          </button>
+          <div>
+            <h1 className='text-3xl font-bold text-gray-900'>활동 리포트</h1>
+            <p className='text-gray-600'>프로젝트 활동을 자세히 분석하세요</p>
           </div>
-
-          <nav className='flex-1 p-4 space-y-1'>
-            <NavItem
-              icon={<BarChart3 className='w-5 h-5' />}
-              label='대시보드'
-              onClick={() => router.push('/dashboard')}
-            />
-            <NavItem
-              icon={<List className='w-5 h-5' />}
-              label='작업'
-              onClick={() => router.push('/tasks')}
-            />
-            <NavItem
-              icon={<FolderOpen className='w-5 h-5' />}
-              label='프로젝트'
-              onClick={() => router.push('/projects')}
-            />
-            <NavItem
-              icon={<Activity className='w-5 h-5' />}
-              label='활동 로그'
-              onClick={() => router.push('/reports')}
-            />
-            <NavItem
-              icon={<Settings className='w-5 h-5' />}
-              label='설정'
-              onClick={() => router.push('/settings')}
-            />
-          </nav>
         </div>
-      </div>
 
-      {/* Main Layout */}
-      <div className='flex h-screen'>
-        {/* Desktop Sidebar */}
-        <aside className='hidden lg:flex lg:flex-col lg:w-64 lg:fixed lg:inset-y-0 lg:border-r lg:border-gray-200 lg:bg-white'>
-          <div className='flex flex-col flex-1'>
-            <div className='flex items-center justify-between p-4 border-b border-gray-200'>
-              <h1 className='text-lg font-semibold text-gray-900'>TaskFlow</h1>
+        {/* Filters */}
+        <div className='bg-white rounded-lg shadow-sm border border-gray-200 p-6 mb-6'>
+          <div className='grid grid-cols-1 lg:grid-cols-4 gap-4'>
+            {/* Search */}
+            <div className='relative'>
+              <Search className='absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400' />
+              <input
+                type='text'
+                placeholder='활동 검색...'
+                value={searchTerm}
+                onChange={e => handleSearch(e.target.value)}
+                className='pl-10 pr-4 py-2 w-full border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500'
+              />
             </div>
 
-            <nav className='flex-1 p-4 space-y-1'>
-              <NavItem
-                icon={<BarChart3 className='w-5 h-5' />}
-                label='대시보드'
-                onClick={() => router.push('/dashboard')}
-              />
-              <NavItem
-                icon={<List className='w-5 h-5' />}
-                label='작업'
-                onClick={() => router.push('/tasks')}
-              />
-              <NavItem
-                icon={<FolderOpen className='w-5 h-5' />}
-                label='프로젝트'
-                onClick={() => router.push('/projects')}
-              />
-              <NavItem
-                icon={<Activity className='w-5 h-5' />}
-                label='활동 로그'
-                onClick={() => router.push('/reports')}
-              />
-              <NavItem
-                icon={<Settings className='w-5 h-5' />}
-                label='설정'
-                onClick={() => router.push('/settings')}
-              />
-            </nav>
-          </div>
-        </aside>
+            {/* Project Filter */}
+            <select
+              value={selectedProjectId}
+              onChange={e => handleProjectChange(e.target.value)}
+              className='px-4 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500'
+            >
+              <option value='all'>모든 프로젝트</option>
+              {projects.map(project => (
+                <option key={project.id} value={project.id}>
+                  {project.name}
+                </option>
+              ))}
+            </select>
 
-        {/* Main Content */}
-        <main className='flex-1 lg:pl-64'>
-          {/* Top Navigation */}
-          <div className='sticky top-0 z-10 flex items-center justify-between h-16 px-4 bg-white border-b border-gray-200'>
-            <div className='flex items-center'>
-              <button
-                onClick={() => setIsSidebarOpen(true)}
-                className='p-2 text-gray-500 hover:text-gray-700 lg:hidden'
+            {/* Entity Type Filter */}
+            <select
+              value={selectedEntityType}
+              onChange={e => handleEntityTypeChange(e.target.value)}
+              className='px-4 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500'
+            >
+              <option value='all'>모든 항목</option>
+              <option value='Task'>작업</option>
+              <option value='Project'>프로젝트</option>
+              <option value='User'>사용자</option>
+              <option value='Comment'>댓글</option>
+              <option value='ProjectMember'>프로젝트 멤버</option>
+            </select>
+
+            {/* Page Info */}
+            <div className='flex items-center justify-center bg-gray-50 rounded-md px-4 py-2'>
+              <span className='text-sm text-gray-600'>
+                {currentPage} / {totalPages} 페이지
+              </span>
+            </div>
+          </div>
+        </div>
+
+        {/* Activity Logs */}
+        {loading ? (
+          <div className='flex items-center justify-center h-64'>
+            <div className='text-center'>
+              <div className='animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-4'></div>
+              <p className='text-gray-500'>활동 로그를 불러오는 중...</p>
+            </div>
+          </div>
+        ) : getPaginatedLogs().length === 0 ? (
+          <div className='text-center py-12'>
+            <Activity className='w-16 h-16 text-gray-300 mx-auto mb-4' />
+            <h3 className='text-lg font-medium text-gray-900 mb-2'>활동 로그가 없습니다</h3>
+            <p className='text-gray-600'>조건에 맞는 활동 내역이 없습니다.</p>
+          </div>
+        ) : (
+          <div className='space-y-4'>
+            {getPaginatedLogs().map(log => (
+              <div
+                key={log.id}
+                className='bg-white rounded-lg border border-gray-200 p-6 hover:shadow-md transition-shadow'
               >
-                <Menu className='w-5 h-5' />
-              </button>
-              <h1 className='ml-4 text-lg font-semibold text-gray-900'>활동 로그</h1>
-            </div>
-
-            <div className='flex items-center gap-4'>
-              <NotificationBell />
-              <div className='flex items-center gap-2'>
-                <div className='w-8 h-8 rounded-full bg-blue-500 flex items-center justify-center text-white font-medium'>
-                  {user?.name?.charAt(0) || 'U'}
-                </div>
-                <span className='text-sm font-medium text-gray-700'>{user?.name || 'User'}</span>
-              </div>
-            </div>
-          </div>
-
-          {/* Content */}
-          <div className='p-6'>
-            {/* Filters */}
-            <div className='mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between'>
-              <div className='flex flex-col gap-4 sm:flex-row sm:items-center'>
-                <select
-                  value={selectedProjectId}
-                  onChange={e => handleProjectChange(e.target.value)}
-                  className='px-3 py-2 bg-white border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500'
-                >
-                  <option value='all'>전체 프로젝트</option>
-                  {projects.map(project => (
-                    <option key={project.id} value={project.id}>
-                      {project.name}
-                    </option>
-                  ))}
-                </select>
-
-                <select
-                  value={selectedEntityType}
-                  onChange={e => handleEntityTypeChange(e.target.value)}
-                  className='px-3 py-2 bg-white border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500'
-                >
-                  <option value='all'>전체 활동</option>
-                  <option value='Task'>작업</option>
-                  <option value='Project'>프로젝트</option>
-                  <option value='User'>사용자</option>
-                  <option value='Comment'>댓글</option>
-                  <option value='ProjectMember'>프로젝트 멤버</option>
-                </select>
-              </div>
-
-              <div className='relative'>
-                <input
-                  type='text'
-                  placeholder='활동 검색...'
-                  value={searchTerm}
-                  onChange={e => handleSearch(e.target.value)}
-                  className='w-full sm:w-64 px-3 py-2 pl-10 bg-white border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500'
-                />
-                <Search className='absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400' />
-              </div>
-            </div>
-
-            {/* Activity Logs */}
-            {loading ? (
-              <div className='flex items-center justify-center h-64'>
-                <div className='text-center'>
-                  <div className='animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-4'></div>
-                  <p className='text-gray-500'>활동 로그를 불러오는 중...</p>
+                <div className='flex items-start space-x-4'>
+                  <div className='flex-shrink-0 mt-1'>{getEntityTypeIcon(log.entityType)}</div>
+                  <div className='flex-1 min-w-0'>
+                    <div className='flex items-center justify-between mb-2'>
+                      <div className='flex items-center space-x-2'>
+                        <span className='font-medium text-gray-900'>
+                          {log.user?.name || '알 수 없는 사용자'}
+                        </span>
+                        <span className='text-sm text-gray-500'>·</span>
+                        <span className='text-sm text-gray-500'>
+                          {log.project?.name || '알 수 없는 프로젝트'}
+                        </span>
+                        <span className='text-sm text-gray-500'>·</span>
+                        <span className={`text-sm font-medium ${getActionColor(log.action)}`}>
+                          {log.action}
+                        </span>
+                      </div>
+                      <time className='text-sm text-gray-500'>
+                        {formatTimestamp(log.createdAt)}
+                      </time>
+                    </div>
+                    <p className='text-gray-700 mb-2'>{log.description}</p>
+                    {log.metadata && Object.keys(log.metadata).length > 0 && (
+                      <div className='text-xs text-gray-500 bg-gray-50 rounded-md p-2 mt-2'>
+                        <pre className='whitespace-pre-wrap'>
+                          {JSON.stringify(log.metadata, null, 2)}
+                        </pre>
+                      </div>
+                    )}
+                  </div>
                 </div>
               </div>
-            ) : (
-              <div className='space-y-4'>
-                {getPaginatedLogs().map(log => (
-                  <div
-                    key={log.id}
-                    className='bg-white border border-gray-200 rounded-lg p-4 hover:shadow-md transition-shadow'
-                  >
-                    <div className='flex items-start gap-4'>
-                      <div className='flex-shrink-0'>
-                        <div className='w-10 h-10 rounded-full bg-gray-100 flex items-center justify-center'>
-                          {getEntityTypeIcon(log.entityType)}
-                        </div>
-                      </div>
+            ))}
 
-                      <div className='flex-1 min-w-0'>
-                        <div className='flex items-center justify-between'>
-                          <div className='flex items-center gap-2'>
-                            <span className='text-sm font-medium text-gray-900'>
-                              {log.user?.name || 'Unknown User'}
-                            </span>
-                            <span className={`text-sm ${getActionColor(log.action)}`}>
-                              {log.description}
-                            </span>
-                          </div>
-                          <span className='text-xs text-gray-500'>
-                            {formatTimestamp(log.timestamp)}
-                          </span>
-                        </div>
-
-                        {log.project && (
-                          <div className='mt-1 flex items-center gap-1'>
-                            <FolderOpen className='w-3 h-3 text-gray-400' />
-                            <span className='text-xs text-gray-500'>{log.project.name}</span>
-                          </div>
-                        )}
-                      </div>
-                    </div>
-                  </div>
-                ))}
-
-                {/* Pagination */}
-                {totalPages > 1 && (
-                  <div className='flex items-center justify-between mt-6'>
+            {/* Pagination */}
+            {totalPages > 1 && (
+              <div className='flex items-center justify-center space-x-2 mt-8'>
+                <button
+                  onClick={() => handlePageChange(Math.max(1, currentPage - 1))}
+                  disabled={currentPage === 1}
+                  className='px-3 py-2 text-sm font-medium text-gray-500 bg-white border border-gray-300 rounded-md hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed'
+                >
+                  이전
+                </button>
+                {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
+                  const pageNumber = i + 1;
+                  return (
                     <button
-                      onClick={() => handlePageChange(currentPage - 1)}
-                      disabled={currentPage === 1}
-                      className='flex items-center gap-1 px-3 py-2 text-sm text-gray-700 bg-white border border-gray-200 rounded-lg hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed'
+                      key={pageNumber}
+                      onClick={() => handlePageChange(pageNumber)}
+                      className={`px-3 py-2 text-sm font-medium rounded-md ${
+                        currentPage === pageNumber
+                          ? 'bg-blue-600 text-white'
+                          : 'text-gray-500 bg-white border border-gray-300 hover:bg-gray-50'
+                      }`}
                     >
-                      <ChevronLeft className='w-4 h-4' />
-                      이전
+                      {pageNumber}
                     </button>
-
-                    <div className='flex items-center gap-2'>
-                      {Array.from({ length: totalPages }, (_, i) => i + 1).map(page => (
-                        <button
-                          key={page}
-                          onClick={() => handlePageChange(page)}
-                          className={`w-8 h-8 text-sm rounded-lg ${
-                            currentPage === page
-                              ? 'bg-blue-600 text-white'
-                              : 'bg-white text-gray-700 hover:bg-gray-50'
-                          }`}
-                        >
-                          {page}
-                        </button>
-                      ))}
-                    </div>
-
-                    <button
-                      onClick={() => handlePageChange(currentPage + 1)}
-                      disabled={currentPage === totalPages}
-                      className='flex items-center gap-1 px-3 py-2 text-sm text-gray-700 bg-white border border-gray-200 rounded-lg hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed'
-                    >
-                      다음
-                      <ChevronRight className='w-4 h-4' />
-                    </button>
-                  </div>
-                )}
-
-                {/* Empty State */}
-                {getFilteredLogs().length === 0 && (
-                  <div className='text-center py-12'>
-                    <div className='w-16 h-16 mx-auto mb-4 bg-gray-100 rounded-full flex items-center justify-center'>
-                      <Activity className='w-8 h-8 text-gray-400' />
-                    </div>
-                    <h3 className='text-lg font-medium text-gray-900 mb-2'>활동 로그가 없습니다</h3>
-                    <p className='text-gray-500'>
-                      {searchTerm
-                        ? '검색 결과가 없습니다. 다른 검색어를 시도해보세요.'
-                        : '아직 프로젝트 활동이 없습니다.'}
-                    </p>
-                  </div>
-                )}
+                  );
+                })}
+                <button
+                  onClick={() => handlePageChange(Math.min(totalPages, currentPage + 1))}
+                  disabled={currentPage === totalPages}
+                  className='px-3 py-2 text-sm font-medium text-gray-500 bg-white border border-gray-300 rounded-md hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed'
+                >
+                  다음
+                </button>
               </div>
             )}
           </div>
-        </main>
+        )}
       </div>
     </div>
   );

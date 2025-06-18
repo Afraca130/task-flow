@@ -119,6 +119,47 @@ export class ActivityLogsController {
         });
     }
 
+    @Get()
+    @ApiOperation({
+        summary: 'Get activity logs',
+        description: 'Retrieves activity logs with optional filtering',
+    })
+    @ApiQuery({
+        name: 'limit',
+        description: 'Number of logs to retrieve',
+        type: 'integer',
+        required: false,
+        example: 20,
+    })
+    @ApiQuery({
+        name: 'projectId',
+        description: 'Filter by project ID',
+        type: 'string',
+        required: false,
+    })
+    @ApiResponse({
+        status: 200,
+        description: 'Activity logs retrieved successfully',
+        type: [ActivityLog],
+    })
+    @ApiResponse({ status: 401, description: 'Unauthorized' })
+    async getActivityLogs(
+        @Request() req: any,
+        @Query('limit') limit: number = 20,
+        @Query('projectId') projectId?: string,
+    ): Promise<ActivityLog[]> {
+        const filters: any = {
+            limit: Math.min(limit, 50), // Cap at 50 for recent logs
+            offset: 0,
+        };
+
+        if (projectId) {
+            filters.projectId = projectId;
+        }
+
+        return await this.activityLogRepository.getActivityLogs(filters);
+    }
+
     @Get('recent')
     @ApiOperation({
         summary: 'Get recent activity logs',

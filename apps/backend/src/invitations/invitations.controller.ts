@@ -47,7 +47,7 @@ export class InvitationsController {
             message: createInvitationDto.message,
         };
 
-        return this.invitationsService.createInvitation(createInvitationDto);
+        return this.invitationsService.createInvitation(createInvitationDto, command.inviterId);
     }
 
     @Post(':token/accept')

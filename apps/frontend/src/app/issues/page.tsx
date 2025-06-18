@@ -1,26 +1,27 @@
 'use client';
 
+import { IssueModal } from '@/components/issue-modal';
 import { Button } from '@/components/ui/button';
 import { Issue, issuesApi } from '@/lib/api';
 import { useAuthStore } from '@/store/auth';
 import { useProjectsStore } from '@/store/projects';
 import { AlertCircle, ArrowLeft, Bug, Clock, Plus, User } from 'lucide-react';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { useEffect, useState } from 'react';
 
 export default function IssuesPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const { isAuthenticated, user } = useAuthStore();
   const { projects } = useProjectsStore();
   const [issues, setIssues] = useState<Issue[]>([]);
   const [loading, setLoading] = useState(true);
-  const [showCreateModal, setShowCreateModal] = useState(false);
-  const [createForm, setCreateForm] = useState({
-    title: '',
-    description: '',
-    priority: 'MEDIUM' as 'LOW' | 'MEDIUM' | 'HIGH' | 'URGENT',
-    projectId: '',
-  });
+  const [selectedIssue, setSelectedIssue] = useState<Issue | null>(null);
+  const [isModalOpen, setIsModalOpen] = useState(false);
+
+  // Get fixed project from URL parameter
+  const fixedProjectId = searchParams.get('projectId') || undefined;
+  const selectedProject = fixedProjectId ? projects.find(p => p.id === fixedProjectId) : undefined;
 
   // Check authentication
   useEffect(() => {
@@ -38,7 +39,14 @@ export default function IssuesPage() {
       try {
         setLoading(true);
         const result = await issuesApi.getIssues({ page: 1, limit: 100 });
-        setIssues(result.data || []);
+        let loadedIssues = result.data || [];
+
+        // Filter by project if specified
+        if (fixedProjectId) {
+          loadedIssues = loadedIssues.filter(issue => issue.projectId === fixedProjectId);
+        }
+
+        setIssues(loadedIssues);
       } catch (error) {
         console.error('Failed to load issues:', error);
         setIssues([]);
@@ -48,32 +56,31 @@ export default function IssuesPage() {
     };
 
     loadIssues();
-  }, [isAuthenticated]);
+  }, [isAuthenticated, fixedProjectId]);
 
-  const handleCreateIssue = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!createForm.title.trim() || !createForm.projectId) return;
+  const handleIssueClick = (issue: Issue) => {
+    setSelectedIssue(issue);
+    setIsModalOpen(true);
+  };
 
-    try {
-      const newIssue = await issuesApi.createIssue({
-        title: createForm.title.trim(),
-        description: createForm.description.trim() || undefined,
-        priority: createForm.priority,
-        projectId: createForm.projectId,
-      });
+  const handleCreateIssue = () => {
+    setSelectedIssue(null);
+    setIsModalOpen(true);
+  };
 
-      setIssues(prev => [newIssue, ...prev]);
-      setShowCreateModal(false);
-      setCreateForm({
-        title: '',
-        description: '',
-        priority: 'MEDIUM',
-        projectId: '',
-      });
-    } catch (error) {
-      console.error('Failed to create issue:', error);
-      alert('이슈 생성에 실패했습니다.');
+  const handleModalSave = (savedIssue: Issue) => {
+    if (selectedIssue?.id) {
+      // Update existing issue
+      setIssues(prev => prev.map(issue => (issue.id === savedIssue.id ? savedIssue : issue)));
+    } else {
+      // Add new issue
+      setIssues(prev => [savedIssue, ...prev]);
     }
+  };
+
+  const handleModalClose = () => {
+    setIsModalOpen(false);
+    setSelectedIssue(null);
   };
 
   const getStatusColor = (status: string) => {
@@ -126,11 +133,17 @@ export default function IssuesPage() {
               <ArrowLeft className='w-5 h-5' />
             </button>
             <div>
-              <h1 className='text-2xl font-bold text-gray-900'>이슈 게시판</h1>
-              <p className='text-gray-600'>프로젝트 이슈를 관리하세요</p>
+              <h1 className='text-2xl font-bold text-gray-900'>
+                {selectedProject ? `${selectedProject.name} ` : ''}이슈 게시판
+              </h1>
+              <p className='text-gray-600'>
+                {selectedProject
+                  ? `${selectedProject.name} 프로젝트의 이슈를 관리하세요`
+                  : '프로젝트 이슈를 관리하세요'}
+              </p>
             </div>
           </div>
-          <Button onClick={() => setShowCreateModal(true)}>
+          <Button onClick={handleCreateIssue}>
             <Plus className='mr-2 h-4 w-4' />새 이슈 작성
           </Button>
         </div>
@@ -153,7 +166,8 @@ export default function IssuesPage() {
             {issues.map(issue => (
               <div
                 key={issue.id}
-                className='bg-white p-6 rounded-lg border border-gray-200 shadow-sm hover:shadow-md transition-shadow'
+                onClick={() => handleIssueClick(issue)}
+                className='bg-white p-6 rounded-lg border border-gray-200 shadow-sm hover:shadow-md transition-shadow cursor-pointer'
               >
                 <div className='flex items-start justify-between mb-4'>
                   <div className='flex-1'>
@@ -205,108 +219,25 @@ export default function IssuesPage() {
                       <span>{formatDate(issue.createdAt)}</span>
                     </div>
                   </div>
-                  <div className='text-xs text-gray-400'>{issue.project?.name || '프로젝트'}</div>
+                  {!selectedProject && (
+                    <div className='text-xs text-gray-400'>{issue.project?.name || '프로젝트'}</div>
+                  )}
                 </div>
               </div>
             ))}
           </div>
         )}
-
-        {showCreateModal && (
-          <div className='fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50'>
-            <div className='bg-white rounded-lg max-w-2xl w-full p-6'>
-              <h3 className='text-lg font-semibold mb-4'>새 이슈 작성</h3>
-              <form onSubmit={handleCreateIssue} className='space-y-4'>
-                <div>
-                  <label className='block text-sm font-medium text-gray-700 mb-1'>제목</label>
-                  <input
-                    type='text'
-                    value={createForm.title}
-                    onChange={e => setCreateForm(prev => ({ ...prev, title: e.target.value }))}
-                    placeholder='이슈 제목을 입력하세요'
-                    className='w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500'
-                    required
-                  />
-                </div>
-
-                <div>
-                  <label className='block text-sm font-medium text-gray-700 mb-1'>설명</label>
-                  <textarea
-                    rows={4}
-                    value={createForm.description}
-                    onChange={e =>
-                      setCreateForm(prev => ({ ...prev, description: e.target.value }))
-                    }
-                    placeholder='이슈 내용을 입력하세요'
-                    className='w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500'
-                  />
-                </div>
-
-                <div className='grid grid-cols-2 gap-4'>
-                  <div>
-                    <label className='block text-sm font-medium text-gray-700 mb-1'>우선순위</label>
-                    <select
-                      value={createForm.priority}
-                      onChange={e =>
-                        setCreateForm(prev => ({ ...prev, priority: e.target.value as any }))
-                      }
-                      className='w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500'
-                    >
-                      <option value='LOW'>낮음</option>
-                      <option value='MEDIUM'>보통</option>
-                      <option value='HIGH'>높음</option>
-                      <option value='URGENT'>긴급</option>
-                    </select>
-                  </div>
-
-                  <div>
-                    <label className='block text-sm font-medium text-gray-700 mb-1'>프로젝트</label>
-                    <select
-                      value={createForm.projectId}
-                      onChange={e =>
-                        setCreateForm(prev => ({ ...prev, projectId: e.target.value }))
-                      }
-                      className='w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500'
-                      required
-                    >
-                      <option value=''>프로젝트 선택</option>
-                      {projects.map(project => (
-                        <option key={project.id} value={project.id}>
-                          {project.name}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-                </div>
-
-                <div className='flex justify-end gap-3 pt-4'>
-                  <Button
-                    type='button'
-                    variant='outline'
-                    onClick={() => {
-                      setShowCreateModal(false);
-                      setCreateForm({
-                        title: '',
-                        description: '',
-                        priority: 'MEDIUM',
-                        projectId: '',
-                      });
-                    }}
-                  >
-                    취소
-                  </Button>
-                  <Button
-                    type='submit'
-                    disabled={!createForm.title.trim() || !createForm.projectId}
-                  >
-                    등록
-                  </Button>
-                </div>
-              </form>
-            </div>
-          </div>
-        )}
       </div>
+
+      {/* Issue Modal */}
+      {isModalOpen && (
+        <IssueModal
+          issue={selectedIssue}
+          onClose={handleModalClose}
+          onSave={handleModalSave}
+          fixedProjectId={fixedProjectId}
+        />
+      )}
     </div>
   );
 }

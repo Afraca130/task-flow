@@ -39,23 +39,32 @@ export class ProjectsService {
      * Consolidated from CreateProjectUseCase
      */
     async createProject(command: CreateProjectCommand): Promise<Project> {
-        // Validate business rules
-        await this.validateProjectCreation(command);
+        this.logger.log(`Creating project: ${command.name} for user: ${command.userId}`);
 
-        // Create domain entity
-        const project = this.createProjectEntity(command);
+        try {
+            // Validate business rules
+            await this.validateProjectCreation(command);
 
-        // Persist the project
-        const savedProject = await this.projectRepository.create(project);
+            // Create domain entity
+            const project = this.createProjectEntity(command);
 
-        // Log project creation activity
-        await this.activityLogService.logProjectCreated(
-            command.userId,
-            savedProject.id,
-            savedProject.name
-        );
+            // Persist the project
+            const savedProject = await this.projectRepository.create(project);
 
-        return savedProject;
+            // Log project creation activity
+            await this.activityLogService.logProjectCreated(
+                command.userId,
+                savedProject.id,
+                savedProject.name
+            );
+
+            this.logger.log(`Project created successfully: ${savedProject.id} - ${savedProject.name}`);
+            return savedProject;
+
+        } catch (error) {
+            this.logger.error(`Failed to create project: ${command.name} for user: ${command.userId}`, error.stack || error);
+            throw error;
+        }
     }
 
     /**
@@ -63,19 +72,28 @@ export class ProjectsService {
      * Consolidated from GetProjectUseCase
      */
     async getProjectById(query: GetProjectQuery): Promise<Project> {
-        const projectId = ProjectId.create(query.projectId);
+        this.logger.log(`Getting project by ID: ${query.projectId} for user: ${query.userId}`);
 
-        // Find project with access validation
-        const project = await this.projectRepository.findByIdWithAccess(
-            projectId,
-            query.userId
-        );
+        try {
+            const projectId = ProjectId.create(query.projectId);
 
-        if (!project) {
-            throw new ProjectNotFoundException(query.projectId);
+            // Find project with access validation
+            const project = await this.projectRepository.findByIdWithAccess(
+                projectId,
+                query.userId
+            );
+
+            if (!project) {
+                throw new ProjectNotFoundException(query.projectId);
+            }
+
+            this.logger.log(`Project retrieved successfully: ${project.id} - ${project.name}`);
+            return project;
+
+        } catch (error) {
+            this.logger.error(`Failed to get project by ID: ${query.projectId} for user: ${query.userId}`, error.stack || error);
+            throw error;
         }
-
-        return project;
     }
 
     /**

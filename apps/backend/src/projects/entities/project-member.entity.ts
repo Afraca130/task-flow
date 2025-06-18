@@ -1,7 +1,8 @@
-import { Entity, PrimaryGeneratedColumn, Column, ManyToOne, JoinColumn, CreateDateColumn } from 'typeorm';
-import { User } from '../../users/entities/user.entity';
-import { Project } from '../../projects/entities/project.entity';
+import { Column, Entity, JoinColumn, ManyToOne } from 'typeorm';
+import { BaseEntity } from '../../common/entities/base.entity';
 import { TimeUtil } from '../../common/utils/time.util';
+import { Project } from '../../projects/entities/project.entity';
+import { User } from '../../users/entities/user.entity';
 
 export enum ProjectMemberRole {
   OWNER = 'OWNER',
@@ -10,10 +11,7 @@ export enum ProjectMemberRole {
 }
 
 @Entity('project_members')
-export class ProjectMember {
-  @PrimaryGeneratedColumn('uuid')
-  id: string;
-
+export class ProjectMember extends BaseEntity {
   @Column({ name: 'project_id' })
   projectId: string;
 
@@ -35,9 +33,6 @@ export class ProjectMember {
 
   @Column({ name: 'is_active', type: 'boolean', default: true })
   isActive: boolean;
-
-  @CreateDateColumn({ name: 'created_at' })
-  createdAt: Date;
 
   // Relations
   @ManyToOne(() => Project, (project) => project.members, { onDelete: 'CASCADE' })
@@ -119,4 +114,4 @@ export class ProjectMember {
     member.invitedBy = invitedBy;
     return member;
   }
-} 
+}

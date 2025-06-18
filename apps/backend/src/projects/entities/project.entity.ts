@@ -1,6 +1,7 @@
 import { Issue } from '@/issues/entities/issue.entity';
-import { Column, CreateDateColumn, Entity, JoinColumn, ManyToOne, OneToMany, PrimaryGeneratedColumn, UpdateDateColumn } from 'typeorm';
+import { Column, Entity, JoinColumn, ManyToOne, OneToMany } from 'typeorm';
 import { ActivityLog } from '../../activity-logs/entities/activity-log.entity';
+import { BaseEntity } from '../../common/entities/base.entity';
 import { ProjectInvitation } from '../../invitations/entities/project-invitation.entity';
 import { Task } from '../../tasks/entities/task.entity';
 import { User } from '../../users/entities/user.entity';
@@ -25,9 +26,7 @@ export enum ProjectPriority {
 }
 
 @Entity('projects')
-export class Project {
-  @PrimaryGeneratedColumn('uuid')
-  id: string;
+export class Project extends BaseEntity {
 
   @Column({ type: 'varchar', length: 255 })
   name: string;
@@ -80,12 +79,6 @@ export class Project {
     default: ProjectPriority.MEDIUM,
   })
   priority: ProjectPriority;
-
-  @CreateDateColumn({ name: 'created_at' })
-  createdAt: Date;
-
-  @UpdateDateColumn({ name: 'updated_at' })
-  updatedAt: Date;
 
   // Relations
   @ManyToOne(() => User, { eager: false })

@@ -54,13 +54,14 @@ class ProjectsStore {
     });
   };
 
-  // Check if projects need to be refetched (5 minute cache)
-  shouldRefetchProjects = (): boolean => {
-    const { lastFetch, projects } = this.state;
-    if (!lastFetch || projects.length === 0) return true;
+  // Get projects from state (for props-based usage)
+  getProjects = (): Project[] => {
+    return this.state.projects;
+  };
 
-    const CACHE_DURATION = 5 * 60 * 1000; // 5 minutes
-    return Date.now() - lastFetch > CACHE_DURATION;
+  // Check if projects are loaded
+  hasProjects = (): boolean => {
+    return this.state.projects.length > 0;
   };
 
   addProject = (project: Project) => {

@@ -1,21 +1,19 @@
-import { IssueComment } from '@/issues/entities/issue-comment.entity';
-import { Issue } from '@/issues/entities/issue.entity';
-import { Column, CreateDateColumn, Entity, OneToMany, PrimaryGeneratedColumn, UpdateDateColumn } from 'typeorm';
+import { Column, Entity, OneToMany } from 'typeorm';
 import { ActivityLog } from '../../activity-logs/entities/activity-log.entity';
-import { Comment } from '../../comments/entities/comment.entity';
+import { BaseEntity } from '../../common/entities/base.entity';
 import { TimeUtil } from '../../common/utils/time.util';
 import { ProjectInvitation } from '../../invitations/entities/project-invitation.entity';
+import { Issue } from '../../issues/entities/issue.entity';
 import { Notification } from '../../notifications/entities/notification.entity';
 import { ProjectMember } from '../../projects/entities/project-member.entity';
+import { Comment } from '../../tasks/comments/entities/comment.entity';
 import { Task } from '../../tasks/entities/task.entity';
 
 /**
  * 사용자 도메인 엔터티
  */
 @Entity('users')
-export class User {
-  @PrimaryGeneratedColumn('uuid')
-  id: string;
+export class User extends BaseEntity {
 
   @Column({ type: 'varchar', length: 255, unique: true })
   email: string;
@@ -40,12 +38,6 @@ export class User {
 
   @Column({ name: 'last_login_at', type: 'timestamp', nullable: true })
   lastLoginAt?: Date;
-
-  @CreateDateColumn({ name: 'created_at' })
-  createdAt: Date;
-
-  @UpdateDateColumn({ name: 'updated_at' })
-  updatedAt: Date;
 
   // Relations
   @OneToMany(() => ProjectMember, (member) => member.user, { cascade: true })
@@ -77,9 +69,6 @@ export class User {
 
   @OneToMany(() => Issue, (issue) => issue.assignee)
   assignedIssues?: Issue[];
-
-  @OneToMany(() => IssueComment, (comment) => comment.author)
-  issueComments?: IssueComment[];
 
   // Domain methods
   public updateProfile(name: string, profileImage?: string, profileColor?: string, organization?: string): void {

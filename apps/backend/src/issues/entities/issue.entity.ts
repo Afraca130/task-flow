@@ -1,7 +1,7 @@
-import { Column, CreateDateColumn, Entity, JoinColumn, ManyToOne, OneToMany, PrimaryGeneratedColumn, UpdateDateColumn } from 'typeorm';
+import { Column, Entity, JoinColumn, ManyToOne } from 'typeorm';
+import { BaseEntity } from '../../common/entities/base.entity';
 import { Project } from '../../projects/entities/project.entity';
 import { User } from '../../users/entities/user.entity';
-import { IssueComment } from './issue-comment.entity';
 
 export enum IssueStatus {
     OPEN = 'OPEN',
@@ -26,9 +26,7 @@ export enum IssueType {
 }
 
 @Entity('issues')
-export class Issue {
-    @PrimaryGeneratedColumn('uuid')
-    id: string;
+export class Issue extends BaseEntity {
 
     @Column({ length: 200 })
     title: string;
@@ -69,29 +67,8 @@ export class Issue {
     @Column({ type: 'simple-array', nullable: true })
     labels?: string[];
 
-    @Column({ name: 'due_date', type: 'timestamp', nullable: true })
-    dueDate?: Date;
-
-    @Column({ name: 'resolved_at', type: 'timestamp', nullable: true })
-    resolvedAt?: Date;
-
-    @Column({ name: 'resolved_by', nullable: true })
-    resolvedBy?: string;
-
     @Column({ name: 'is_pinned', type: 'boolean', default: false })
     isPinned: boolean;
-
-    @Column({ name: 'view_count', type: 'int', default: 0 })
-    viewCount: number;
-
-    @Column({ name: 'like_count', type: 'int', default: 0 })
-    likeCount: number;
-
-    @CreateDateColumn({ name: 'created_at' })
-    createdAt: Date;
-
-    @UpdateDateColumn({ name: 'updated_at' })
-    updatedAt: Date;
 
     // Relations
     @ManyToOne(() => Project, (project) => project.issues, { onDelete: 'CASCADE' })
@@ -106,26 +83,7 @@ export class Issue {
     @JoinColumn({ name: 'assignee_id' })
     assignee?: User;
 
-    @ManyToOne(() => User, { eager: false })
-    @JoinColumn({ name: 'resolved_by' })
-    resolver?: User;
-
-    @OneToMany(() => IssueComment, (comment) => comment.issue, { cascade: true })
-    comments?: IssueComment[];
-
     // Domain methods
-    public markAsResolved(userId: string): void {
-        this.status = IssueStatus.RESOLVED;
-        this.resolvedAt = new Date();
-        this.resolvedBy = userId;
-    }
-
-    public reopen(): void {
-        this.status = IssueStatus.OPEN;
-        this.resolvedAt = undefined;
-        this.resolvedBy = undefined;
-    }
-
     public close(): void {
         this.status = IssueStatus.CLOSED;
     }
@@ -144,20 +102,6 @@ export class Issue {
 
     public unpin(): void {
         this.isPinned = false;
-    }
-
-    public incrementViewCount(): void {
-        this.viewCount += 1;
-    }
-
-    public incrementLikeCount(): void {
-        this.likeCount += 1;
-    }
-
-    public decrementLikeCount(): void {
-        if (this.likeCount > 0) {
-            this.likeCount -= 1;
-        }
     }
 
     public addLabel(label: string): void {
@@ -220,8 +164,6 @@ export class Issue {
         issue.labels = labels;
         issue.status = IssueStatus.OPEN;
         issue.isPinned = false;
-        issue.viewCount = 0;
-        issue.likeCount = 0;
         return issue;
     }
 }
