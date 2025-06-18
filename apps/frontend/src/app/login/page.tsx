@@ -34,9 +34,9 @@ export default function LoginPage() {
     console.log('🔍 Auth state changed:', { isAuthenticated, isLoading });
 
     if (isAuthenticated && !isLoading) {
-      console.log('🚀 User is already authenticated, redirecting to project select...');
+      console.log('🚀 User is already authenticated, redirecting to dashboard...');
       // Use replace to prevent going back to login page
-      router.replace('/projects');
+      router.replace('/dashboard');
     }
   }, [isAuthenticated, isLoading, router]);
 

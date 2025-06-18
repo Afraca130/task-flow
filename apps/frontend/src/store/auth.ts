@@ -159,11 +159,11 @@ class AuthStore {
         userEmail: authData.user.email
       });
 
-      // Redirect to projects page after successful login
+      // Redirect to dashboard page after successful login
       if (typeof window !== 'undefined') {
         // Use setTimeout to ensure state is fully updated before navigation
         setTimeout(() => {
-          window.location.href = '/projects';
+          window.location.href = '/dashboard';
         }, 100);
       }
 

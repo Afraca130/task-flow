@@ -119,10 +119,12 @@ export function NotificationBell({ className = '' }: NotificationBellProps) {
     if (!currentInvitation) return;
 
     try {
-      const invitationId = currentInvitation.metadata?.invitationId;
-      if (invitationId) {
+      // Try to get token from data, fallback to invitationId for backward compatibility
+      const token =
+        currentInvitation.data?.invitationToken || currentInvitation.metadata?.invitationId;
+      if (token) {
         // 실제 초대 수락 API 호출
-        await invitationsApi.acceptInvitation(invitationId);
+        await invitationsApi.acceptInvitation(token);
 
         // 알림을 읽음 처리
         await notificationsApi.markAsRead(currentInvitation.id);
@@ -134,7 +136,8 @@ export function NotificationBell({ className = '' }: NotificationBellProps) {
         alert('초대를 수락했습니다! 프로젝트 페이지로 이동합니다.');
 
         // 프로젝트 페이지로 이동
-        const projectId = currentInvitation.metadata?.projectId;
+        const projectId =
+          currentInvitation.data?.projectId || currentInvitation.metadata?.projectId;
         if (projectId) {
           window.location.href = `/projects/${projectId}`;
         }
@@ -152,10 +155,12 @@ export function NotificationBell({ className = '' }: NotificationBellProps) {
     if (!currentInvitation) return;
 
     try {
-      const invitationId = currentInvitation.metadata?.invitationId;
-      if (invitationId) {
+      // Try to get token from data, fallback to invitationId for backward compatibility
+      const token =
+        currentInvitation.data?.invitationToken || currentInvitation.metadata?.invitationId;
+      if (token) {
         // 실제 초대 거절 API 호출
-        await invitationsApi.declineInvitation(invitationId);
+        await invitationsApi.declineInvitation(token);
 
         // 알림을 읽음 처리
         await notificationsApi.markAsRead(currentInvitation.id);
@@ -216,8 +221,14 @@ export function NotificationBell({ className = '' }: NotificationBellProps) {
       {/* 초대 모달 */}
       <InvitationModal
         isOpen={showInvitationModal}
-        inviterName={currentInvitation?.metadata?.userName || '누군가'}
-        projectName={currentInvitation?.metadata?.projectName || '프로젝트'}
+        inviterName={
+          currentInvitation?.data?.inviterName || currentInvitation?.metadata?.userName || '누군가'
+        }
+        projectName={
+          currentInvitation?.data?.projectName ||
+          currentInvitation?.metadata?.projectName ||
+          '프로젝트'
+        }
         message={currentInvitation?.message}
         onAccept={handleAcceptInvitation}
         onDecline={handleDeclineInvitation}

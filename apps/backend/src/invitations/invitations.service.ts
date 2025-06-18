@@ -70,7 +70,8 @@ export class InvitationsService {
                     createDto.inviteeId,
                     inviterName,
                     projectName,
-                    savedInvitation.id
+                    savedInvitation.id,
+                    savedInvitation.token  // Pass token for notification data
                 );
 
                 this.logger.log(`Invitation notification sent to user: ${createDto.inviteeId}`);

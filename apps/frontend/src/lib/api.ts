@@ -632,7 +632,7 @@ export const notificationsApi = {
 
   markAsRead: async (notificationId: string): Promise<void> => {
     try {
-      await api.patch(`/notifications/${notificationId}/read`);
+      await api.put(`/notifications/${notificationId}/read`);
     } catch (error) {
       console.warn('Mark as read API not available:', error);
     }
@@ -640,7 +640,7 @@ export const notificationsApi = {
 
   markAllAsRead: async (): Promise<{ message: string; count: number }> => {
     try {
-      const response = await api.patch<StandardApiResponse<{ message: string; count: number }>>('/notifications/read-all');
+      const response = await api.put<StandardApiResponse<{ message: string; count: number }>>('/notifications/mark-all-read');
       return extractData(response);
     } catch (error) {
       console.warn('Mark all as read API not available:', error);
