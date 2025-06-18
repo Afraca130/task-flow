@@ -1,6 +1,4 @@
-import { ProjectInvitation } from '@/invitations/entities/project-invitation.entity';
 import { InvitationsModule } from '@/invitations/invitations.module';
-import { ProjectInvitationRepository } from '@/invitations/project-invitation.repository';
 import { UsersModule } from '@/users/users.module';
 import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
@@ -13,16 +11,15 @@ import { ProjectsService } from './projects.service';
 
 @Module({
     imports: [
-        TypeOrmModule.forFeature([Project, ProjectMember, ProjectInvitation]),
+        TypeOrmModule.forFeature([Project, ProjectMember]),
         UsersModule,
-        InvitationsModule,
         ActivityLogModule,
+        InvitationsModule,
     ],
     controllers: [ProjectsController],
     providers: [
         ProjectsService,
         ProjectRepository,
-        ProjectInvitationRepository,
     ],
     exports: [ProjectsService, ProjectRepository],
 })
