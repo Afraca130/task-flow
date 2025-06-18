@@ -38,8 +38,7 @@ export const databaseConfig = (configService: ConfigService): TypeOrmModuleOptio
     synchronize: getEnvVar('NODE_ENV') !== 'production',
     logging: getEnvVar('DB_LOGGING', 'false') === 'true',
 
-    // SSL configuration for production
-    ssl: getEnvVar('NODE_ENV') === 'production' ? { rejectUnauthorized: false } : false,
+    ssl: false,
 
     // Connection pool settings
     extra: {
