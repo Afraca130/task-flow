@@ -1,4 +1,4 @@
-import { Filter, PaginatedResult, PaginationOptions } from '@/common/interfaces/pagination.interface';
+import { Filter, PaginatedResult, PaginationOptions } from '../../common/interfaces/pagination.interface';
 import { InvitationStatus, ProjectInvitation } from '../entities/project-invitation.entity';
 
 export interface CreateInvitationRequest {

@@ -1,5 +1,3 @@
-import { GetUser } from '@/decorators/authenticated-user.decorator';
-import { User } from '@/users/entities/user.entity';
 import {
     Body,
     Controller,
@@ -16,7 +14,9 @@ import {
 } from '@nestjs/common';
 import { ApiBearerAuth, ApiOkResponse, ApiOperation, ApiTags } from '@nestjs/swagger';
 import { PaginatedResponse } from '../common/utils/paginated-response.util';
+import { GetUser } from '../decorators/authenticated-user.decorator';
 import { JwtAuthGuard } from '../guards/jwt-auth.guard';
+import { User } from '../users/entities/user.entity';
 import { CreateTaskDto } from './dto/request/create-task.dto';
 import { ReorderTaskDto } from './dto/request/reorder-task.dto';
 import { UpdateTaskDto } from './dto/request/update-task.dto';

@@ -1,4 +1,3 @@
-import { JwtAuthGuard } from '@/guards/jwt-auth.guard';
 import {
     Body,
     Controller,
@@ -21,6 +20,7 @@ import {
     ApiResponse,
     ApiTags,
 } from '@nestjs/swagger';
+import { JwtAuthGuard } from '../guards/jwt-auth.guard';
 import { CreateNotificationDto } from './dto/request/create-notification.dto';
 import { Notification } from './entities/notification.entity';
 import { NotificationsService } from './notifications.service';

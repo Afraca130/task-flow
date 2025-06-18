@@ -228,7 +228,7 @@ export class ActivityLogService {
                 projectId,
                 entityId: commentId,
                 entityType: EntityType.COMMENT,
-                action: ActivityAction.COMMENT,
+                action: ActivityAction.CREATE,
                 description: `"${taskTitle}" 업무에 댓글을 작성했습니다.`,
                 resourceType: 'comment',
                 metadata: { taskTitle },

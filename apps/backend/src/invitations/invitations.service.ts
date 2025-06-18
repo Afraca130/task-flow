@@ -49,14 +49,18 @@ export class InvitationsService {
             expiresAt.setDate(expiresAt.getDate() + expiryDays);
             this.logger.log(`⏰ Invitation expires at: ${expiresAt.toISOString()}`);
 
-            // Create invitation using factory method with proper token generation
-            const invitation = ProjectInvitation.create(
-                createDto.projectId,
-                inviterId,
-                createDto.inviteeId,
-                createDto.message,
-                expiryDays
-            );
+            // Create invitation object
+            const invitation = new ProjectInvitation();
+            invitation.projectId = createDto.projectId;
+            invitation.inviterId = inviterId;
+            invitation.inviteeId = createDto.inviteeId;
+            invitation.message = createDto.message;
+            invitation.status = InvitationStatus.PENDING;
+            invitation.expiresAt = expiresAt;
+            // Generate token
+            const timestamp = new Date().getTime().toString();
+            const random = Math.random().toString(36).substring(2);
+            invitation.token = `${timestamp}-${random}`;
 
             this.logger.log(`🏭 Created invitation entity with token: ${invitation.token}`);
 
@@ -147,12 +151,14 @@ export class InvitationsService {
                 }
             }
 
-            if (invitation.isExpired()) {
+            // Check if invitation is expired
+            if (new Date() > invitation.expiresAt) {
                 throw new BadRequestException('This invitation has expired');
             }
 
-            // Accept invitation using domain method
-            invitation.accept();
+            // Accept invitation
+            invitation.status = InvitationStatus.ACCEPTED;
+            invitation.respondedAt = new Date();
             this.logger.log(`✅ Invitation status changed to: ${invitation.status}`);
 
             const updatedInvitation = await this.invitationRepository.update(invitation.id, invitation);
@@ -191,12 +197,14 @@ export class InvitationsService {
                 throw new BadRequestException('This invitation has already been processed');
             }
 
-            if (invitation.isExpired()) {
+            // Check if invitation is expired
+            if (new Date() > invitation.expiresAt) {
                 throw new BadRequestException('This invitation has expired');
             }
 
-            // Decline invitation using domain method
-            invitation.decline();
+            // Decline invitation
+            invitation.status = InvitationStatus.DECLINED;
+            invitation.respondedAt = new Date();
 
             const updatedInvitation = await this.invitationRepository.update(invitation.id, invitation);
 

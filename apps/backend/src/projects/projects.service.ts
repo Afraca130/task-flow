@@ -294,7 +294,7 @@ export class ProjectsService {
 
         // Check if current user has permission to change roles
         const currentUserMember = project.members?.find(m => m.userId === currentUserId);
-        if (!currentUserMember || !currentUserMember.isOwner()) {
+        if (!currentUserMember || currentUserMember.role !== ProjectMemberRole.OWNER) {
             throw new ForbiddenException('Only project owners can change member roles');
         }
 
@@ -306,7 +306,10 @@ export class ProjectsService {
 
         // Update role
         const memberRole = this.mapRoleStringToEnum(newRole);
-        targetMember.changeRole(memberRole);
+        if (targetMember.role === ProjectMemberRole.OWNER && memberRole !== ProjectMemberRole.OWNER) {
+            throw new BadRequestException('Cannot change owner role without transferring ownership');
+        }
+        targetMember.role = memberRole;
 
         // Save changes
         await this.projectRepository.update(project);
@@ -366,8 +369,8 @@ export class ProjectsService {
 
         // Only owners and managers can remove members, but members can leave themselves
         const canRemove = currentUserMember && (
-            currentUserMember.isOwner() ||
-            currentUserMember.isManager() ||
+            currentUserMember.role === ProjectMemberRole.OWNER ||
+            currentUserMember.role === ProjectMemberRole.MANAGER ||
             currentUserId === targetUserId
         );
 
@@ -376,7 +379,7 @@ export class ProjectsService {
         }
 
         // Cannot remove owner
-        if (targetMember.isOwner()) {
+        if (targetMember.role === ProjectMemberRole.OWNER) {
             throw new BadRequestException('Cannot remove project owner');
         }
 
@@ -396,7 +399,7 @@ export class ProjectsService {
 
         // Check if user is owner
         const currentUserMember = project.members?.find(m => m.userId === userId);
-        if (!currentUserMember || !currentUserMember.isOwner()) {
+        if (!currentUserMember || currentUserMember.role !== ProjectMemberRole.OWNER) {
             throw new ForbiddenException('Only project owners can delete projects');
         }
 

@@ -1,4 +1,3 @@
-import { TimeUtil } from '@/common/utils/time.util';
 import {
     CallHandler,
     ExecutionContext,
@@ -9,6 +8,7 @@ import {
 import { Request, Response } from 'express';
 import { Observable } from 'rxjs';
 import { tap } from 'rxjs/operators';
+import { TimeUtil } from '../common/utils/time.util';
 
 export interface AuthenticatedRequest extends Request {
     user?: {

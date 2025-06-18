@@ -1,12 +1,12 @@
-import { TimeUtil } from '@/common/utils/time.util';
 import { BadRequestException, Injectable, Logger, NotFoundException } from '@nestjs/common';
 import { ActivityLogService } from '../activity-logs/activity-log.service';
 import { LexoRank } from '../common/utils/lexo-rank.util';
+import { TimeUtil } from '../common/utils/time.util';
 import { NotificationsService } from '../notifications/notifications.service';
 import { UsersService } from '../users/users.service';
 // UserLog imports removed - using ActivityLogService instead
 import { CreateTaskDto, UpdateTaskDto } from './dto/request';
-import { Task, TaskStatus } from './entities/task.entity';
+import { Task, TaskPriority, TaskStatus } from './entities/task.entity';
 import { TaskRepository } from './task.repository';
 
 export interface ReorderTaskResult {
@@ -97,37 +97,19 @@ export class TasksService {
 
             this.logger.log(`Generated LexoRank for new task (at top): ${lexoRank}`);
 
-            // Create task using domain factory method
-            const task = Task.create(
-                command.projectId,
-                command.assignerId,
-                command.title,
-                command.description,
-                command.assigneeId,
-                lexoRank
-            );
-
-            // Set status if provided
-            if (command.status) {
-                task.updateStatus(command.status);
-            }
-
-            // Set additional properties
-            if (command.priority) {
-                task.updatePriority(command.priority as any);
-            }
-
-            if (command.dueDate) {
-                task.setDueDate(TimeUtil.toDate(command.dueDate));
-            }
-
-            if (command.estimatedHours) {
-                task.updateEstimatedHours(command.estimatedHours);
-            }
-
-            if (command.tags && command.tags.length > 0) {
-                command.tags.forEach(tag => task.addTag(tag));
-            }
+            // Create new task object
+            const task = new Task();
+            task.projectId = command.projectId;
+            task.assignerId = command.assignerId;
+            task.title = command.title.trim();
+            task.description = command.description?.trim();
+            task.assigneeId = command.assigneeId;
+            task.status = command.status || TaskStatus.TODO;
+            task.priority = (command.priority as TaskPriority) || TaskPriority.MEDIUM;
+            task.dueDate = command.dueDate ? TimeUtil.toDate(command.dueDate) : undefined;
+            task.estimatedHours = command.estimatedHours;
+            task.tags = command.tags || [];
+            task.lexoRank = lexoRank;
 
             // Save task
             const savedTask = await this.taskRepository.save(task);
@@ -226,23 +208,25 @@ export class TasksService {
             // Update status
             if (command.status !== undefined && command.status !== existingTask.status) {
                 changes.status = { from: existingTask.status, to: command.status };
-                existingTask.updateStatus(command.status);
+                existingTask.status = command.status;
+                // Set completed date if status is completed
+                if (command.status === TaskStatus.COMPLETED && existingTask.status !== TaskStatus.COMPLETED) {
+                    existingTask.completedAt = new Date();
+                } else if (command.status !== TaskStatus.COMPLETED) {
+                    existingTask.completedAt = undefined;
+                }
             }
 
             // Update priority
             if (command.priority !== undefined && command.priority !== existingTask.priority) {
                 changes.priority = { from: existingTask.priority, to: command.priority };
-                existingTask.updatePriority(command.priority);
+                existingTask.priority = command.priority;
             }
 
             // Update assignee
             if (command.assigneeId !== undefined && command.assigneeId !== existingTask.assigneeId) {
                 changes.assignee = { from: existingTask.assigneeId, to: command.assigneeId };
-                if (command.assigneeId) {
-                    existingTask.assignTo(command.assigneeId);
-                } else {
-                    existingTask.unassign();
-                }
+                existingTask.assigneeId = command.assigneeId;
             }
 
             // Save updated task
@@ -347,7 +331,7 @@ export class TasksService {
 
             // 7. Update task
             if (statusChanged) {
-                taskToMove.updateStatus(targetStatus);
+                taskToMove.status = targetStatus;
             }
             taskToMove.lexoRank = newLexoRank;
 

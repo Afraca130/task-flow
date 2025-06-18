@@ -1,6 +1,5 @@
 import { Column, Entity, JoinColumn, ManyToOne } from 'typeorm';
 import { BaseEntity } from '../../common/entities/base.entity';
-import { TimeUtil } from '../../common/utils/time.util';
 import { Project } from '../../projects/entities/project.entity';
 import { User } from '../../users/entities/user.entity';
 
@@ -46,72 +45,4 @@ export class ProjectMember extends BaseEntity {
   @ManyToOne(() => User, { eager: false })
   @JoinColumn({ name: 'invited_by' })
   inviter?: User;
-
-  // Domain methods
-  public isOwner(): boolean {
-    return this.role === ProjectMemberRole.OWNER;
-  }
-
-  public isManager(): boolean {
-    return this.role === ProjectMemberRole.MANAGER;
-  }
-
-  public isMember(): boolean {
-    return this.role === ProjectMemberRole.MEMBER;
-  }
-
-  public hasManagementPermissions(): boolean {
-    return this.isOwner() || this.isManager();
-  }
-
-  public canManageMembers(): boolean {
-    return this.isOwner() || this.isManager();
-  }
-
-  public canModifyProject(): boolean {
-    return this.isOwner() || this.isManager();
-  }
-
-  public canDeleteProject(): boolean {
-    return this.isOwner();
-  }
-
-  public changeRole(newRole: ProjectMemberRole): void {
-    if (this.role === ProjectMemberRole.OWNER && newRole !== ProjectMemberRole.OWNER) {
-      throw new Error('Cannot change owner role without transferring ownership');
-    }
-    this.role = newRole;
-  }
-
-  public activate(): void {
-    this.isActive = true;
-    if (!this.joinedAt) {
-      this.joinedAt = TimeUtil.now();
-    }
-  }
-
-  public deactivate(): void {
-    this.isActive = false;
-  }
-
-  public static createOwner(projectId: string, userId: string): ProjectMember {
-    const member = new ProjectMember();
-    member.projectId = projectId;
-    member.userId = userId;
-    member.role = ProjectMemberRole.OWNER;
-    member.isActive = true;
-    member.joinedAt = TimeUtil.now();
-    return member;
-  }
-
-  public static createMember(projectId: string, userId: string, invitedBy?: string): ProjectMember {
-    const member = new ProjectMember();
-    member.projectId = projectId;
-    member.userId = userId;
-    member.role = ProjectMemberRole.MEMBER;
-    member.isActive = true;
-    member.joinedAt = TimeUtil.now();
-    member.invitedBy = invitedBy;
-    return member;
-  }
 }

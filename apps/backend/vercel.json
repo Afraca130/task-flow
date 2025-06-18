@@ -2,16 +2,16 @@
   "version": 2,
   "builds": [
     {
-      "src": "apps/backend/api/index.ts",
+      "src": "api/index.ts",
       "use": "@vercel/node"
     }
   ],
   "routes": [
     {
       "src": "/(.*)",
-      "dest": "apps/backend/api/index.ts"
+      "dest": "api/index.ts"
     }
   ],
-  "installCommand": "cd apps/backend && npm install",
-  "buildCommand": "cd apps/backend && npm run build"
+  "installCommand": "npm install",
+  "buildCommand": "npm run build"
 }

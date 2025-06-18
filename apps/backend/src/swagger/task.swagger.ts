@@ -13,12 +13,12 @@ import {
     getSchemaPath
 } from '@nestjs/swagger';
 
-import { TaskStatus } from '@/tasks/entities/task.entity';
 import { ErrorResponseDto } from '../common/dto/response/error-response.dto';
 import { CreateTaskDto } from '../tasks/dto/request/create-task.dto';
 import { ReorderTaskDto } from '../tasks/dto/request/reorder-task.dto';
 import { UpdateTaskDto } from '../tasks/dto/request/update-task.dto';
 import { TaskResponseDto } from '../tasks/dto/response/task-response.dto';
+import { TaskStatus } from '../tasks/entities/task.entity';
 
 export const ApiCreateTask = () => applyDecorators(
     ApiOperation({

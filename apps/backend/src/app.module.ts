@@ -13,9 +13,8 @@ import { TasksModule } from './tasks/tasks.module';
 import { UsersModule } from './users/users.module';
 
 // Config
-import { AppConfig } from './config/app.config';
 import { databaseConfig } from './config/database.config';
-import { JwtConfigService } from './config/jwt.config';
+import { JwtConfig } from './config/jwt.config';
 import { JwtStrategy } from './config/jwt.strategy';
 import { LoggingConfigService } from './config/logging.config';
 
@@ -60,9 +59,8 @@ import { NotificationsModule } from './notifications/notifications.module';
   controllers: [AppController],
   providers: [
     // Configuration Services
-    AppConfig,
     LoggingConfigService,
-    JwtConfigService,
+    JwtConfig,
     JwtStrategy,
 
     AppService,

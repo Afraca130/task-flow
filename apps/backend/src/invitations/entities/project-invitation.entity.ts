@@ -1,6 +1,5 @@
 import { Column, Entity, JoinColumn, ManyToOne } from 'typeorm';
 import { BaseEntity } from '../../common/entities/base.entity';
-import { TimeUtil } from '../../common/utils/time.util';
 import { Project } from '../../projects/entities/project.entity';
 import { User } from '../../users/entities/user.entity';
 
@@ -56,102 +55,4 @@ export class ProjectInvitation extends BaseEntity {
   @ManyToOne(() => User, (user) => user.receivedInvitations, { nullable: true })
   @JoinColumn({ name: 'invitee_id' })
   invitee?: User;
-
-  // Domain methods
-  public accept(): void {
-    if (this.status !== InvitationStatus.PENDING) {
-      throw new Error('Only pending invitations can be accepted');
-    }
-    if (this.isExpired()) {
-      throw new Error('Cannot accept expired invitation');
-    }
-    this.status = InvitationStatus.ACCEPTED;
-    this.respondedAt = TimeUtil.now();
-  }
-
-  public decline(): void {
-    if (this.status !== InvitationStatus.PENDING) {
-      throw new Error('Only pending invitations can be declined');
-    }
-    this.status = InvitationStatus.DECLINED;
-    this.respondedAt = TimeUtil.now();
-  }
-
-  public expire(): void {
-    if (this.status === InvitationStatus.PENDING) {
-      this.status = InvitationStatus.EXPIRED;
-      this.respondedAt = TimeUtil.now();
-    }
-  }
-
-  public isExpired(): boolean {
-    return TimeUtil.isAfter(TimeUtil.now(), this.expiresAt) || this.status === InvitationStatus.EXPIRED;
-  }
-
-  public isPending(): boolean {
-    return this.status === InvitationStatus.PENDING && !this.isExpired();
-  }
-
-  public isAccepted(): boolean {
-    return this.status === InvitationStatus.ACCEPTED;
-  }
-
-  public isDeclined(): boolean {
-    return this.status === InvitationStatus.DECLINED;
-  }
-
-  public getDaysUntilExpiry(): number {
-    if (this.isExpired()) return 0;
-    return TimeUtil.diff(this.expiresAt, TimeUtil.now(), 'day');
-  }
-
-  public getHoursUntilExpiry(): number {
-    if (this.isExpired()) return 0;
-    return TimeUtil.diff(this.expiresAt, TimeUtil.now(), 'hour');
-  }
-
-  public canResend(): boolean {
-    if (this.status !== InvitationStatus.PENDING) return false;
-
-    // 마지막 전송 후 1시간이 지났는지 확인
-    const oneHourAgo = TimeUtil.subtract(TimeUtil.now(), 1, 'hour');
-    return TimeUtil.isBefore(this.createdAt, oneHourAgo);
-  }
-
-  public extendExpiry(days: number = 7): void {
-    if (this.status !== InvitationStatus.PENDING) {
-      throw new Error('Can only extend pending invitations');
-    }
-
-    this.expiresAt = TimeUtil.add(TimeUtil.now(), days, 'day');
-  }
-
-  public static create(
-    projectId: string,
-    inviterId: string,
-    inviteeId: string,
-    message?: string,
-    expiryDays: number = 7
-  ): ProjectInvitation {
-    const invitation = new ProjectInvitation();
-    invitation.projectId = projectId;
-    invitation.inviterId = inviterId;
-    invitation.inviteeId = inviteeId;
-    invitation.message = message;
-    invitation.status = InvitationStatus.PENDING;
-
-    // 만료일 설정 (기본 7일)
-    invitation.expiresAt = TimeUtil.add(TimeUtil.now(), expiryDays, 'day');
-
-    // 토큰 생성
-    invitation.token = invitation.generateToken();
-
-    return invitation;
-  }
-
-  private generateToken(): string {
-    const timestamp = TimeUtil.now().getTime().toString();
-    const random = Math.random().toString(36).substring(2);
-    return `${timestamp}-${random}`;
-  }
 }

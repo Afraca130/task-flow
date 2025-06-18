@@ -1,10 +1,10 @@
-import { TimeUtil } from '@/common/utils/time.util';
+import { TimeUtil } from '../common/utils/time.util';
 
-import { User } from '@/users/entities/user.entity';
-import { UserRepository } from '@/users/user.repository';
 import { ConflictException, Injectable, UnauthorizedException } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import * as bcrypt from 'bcryptjs';
+import { User } from '../users/entities/user.entity';
+import { UserRepository } from '../users/user.repository';
 import { LoginResponseDto, RegisterResponseDto, UserDto } from './dto/auth-response.dto';
 import { ChangePasswordRequestDto, LoginRequestDto, RegisterRequestDto, UpdateProfileRequestDto } from './dto/request/auth-request.dto';
 
@@ -123,7 +123,7 @@ export class AuthService {
    * 프로필 업데이트
    */
   async updateProfile(userId: string, updateProfileDto: UpdateProfileRequestDto): Promise<UserDto> {
-    const { name, profileImage, profileColor, organization } = updateProfileDto;
+    const { name, profileColor, organization } = updateProfileDto;
 
     const user = await this.userRepository.findById(userId);
     if (!user) {
@@ -133,7 +133,7 @@ export class AuthService {
     // 프로필 업데이트
     const updatedUser = await this.userRepository.update(userId, {
       name,
-      profileImage,
+
       profileColor,
       organization,
     });
@@ -203,7 +203,6 @@ export class AuthService {
       id: user.id,
       email: user.email,
       name: user.name,
-      profileImage: user.profileImage,
       profileColor: user.profileColor,
       organization: user.organization,
       isActive: user.isActive,

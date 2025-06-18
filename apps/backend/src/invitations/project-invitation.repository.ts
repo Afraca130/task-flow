@@ -18,13 +18,19 @@ export class ProjectInvitationRepository {
             let invitation: ProjectInvitation;
 
             if (request.inviteeId) {
-                invitation = ProjectInvitation.create(
-                    request.projectId,
-                    request.inviterId,
-                    request.inviteeId,
-                    request.message,
-                    request.expiryDays,
-                );
+                invitation = new ProjectInvitation();
+                invitation.projectId = request.projectId;
+                invitation.inviterId = request.inviterId;
+                invitation.inviteeId = request.inviteeId;
+                invitation.message = request.message;
+                invitation.status = InvitationStatus.PENDING;
+                // Set expiry date
+                const expiryDays = request.expiryDays || 7;
+                invitation.expiresAt = new Date(Date.now() + expiryDays * 24 * 60 * 60 * 1000);
+                // Generate token
+                const timestamp = new Date().getTime().toString();
+                const random = Math.random().toString(36).substring(2);
+                invitation.token = `${timestamp}-${random}`;
             } else {
                 throw new Error('inviteeId must be provided');
             }

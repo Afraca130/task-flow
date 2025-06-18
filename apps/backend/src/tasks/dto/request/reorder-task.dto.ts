@@ -1,7 +1,7 @@
-import { TaskStatus } from '@/tasks/entities/task.entity';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { Type } from 'class-transformer';
 import { IsArray, IsEnum, IsNotEmpty, IsOptional, IsUUID, ValidateNested } from 'class-validator';
+import { TaskStatus } from '../../entities/task.entity';
 
 export class TaskPositionDto {
     @ApiProperty({

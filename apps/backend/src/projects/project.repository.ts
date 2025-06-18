@@ -1,8 +1,8 @@
-import { Task } from '@/tasks/entities/task.entity';
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, SelectQueryBuilder } from 'typeorm';
 import { ProjectId } from '../common/value-objects/project-id.vo';
+import { Task } from '../tasks/entities/task.entity';
 import { ProjectMember, ProjectMemberRole } from './entities/project-member.entity';
 import { Project, ProjectStatus } from './entities/project.entity';
 

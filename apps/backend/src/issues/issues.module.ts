@@ -1,6 +1,6 @@
-import { ActivityLogModule } from "@/activity-logs/activity-log.module";
 import { Module } from "@nestjs/common";
 import { TypeOrmModule } from "@nestjs/typeorm";
+import { ActivityLogModule } from "../activity-logs/activity-log.module";
 import { NotificationsModule } from "../notifications/notifications.module";
 import { UsersModule } from "../users/users.module";
 import { Issue } from "./entities/issue.entity";

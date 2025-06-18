@@ -1,4 +1,3 @@
-import { JwtAuthGuard } from '@/guards/jwt-auth.guard';
 import {
     Body,
     Controller,
@@ -19,6 +18,7 @@ import {
     ApiResponse,
     ApiTags,
 } from '@nestjs/swagger';
+import { JwtAuthGuard } from '../../guards/jwt-auth.guard';
 import { CommentsService } from './comments.service';
 import { CreateCommentDto, UpdateCommentDto } from './dto/request';
 import { CommentResponseDto } from './dto/response';

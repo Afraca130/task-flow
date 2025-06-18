@@ -1,5 +1,3 @@
-import { GetUser } from '@/decorators/authenticated-user.decorator';
-import { User } from '@/users/entities/user.entity';
 import {
     Body,
     Controller,
@@ -24,7 +22,9 @@ import {
     ApiTags,
 } from '@nestjs/swagger';
 import { PaginatedResponse } from '../common/utils/paginated-response.util';
+import { GetUser } from '../decorators/authenticated-user.decorator';
 import { JwtAuthGuard } from '../guards/jwt-auth.guard';
+import { User } from '../users/entities/user.entity';
 import { CreateProjectCommand } from './create-project.command';
 import { CreateProjectDto } from './dto/request/create-project.dto';
 import { UpdateProjectDto } from './dto/request/update-project.dto';

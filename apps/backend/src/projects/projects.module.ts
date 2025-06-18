@@ -1,7 +1,7 @@
-import { UsersModule } from '@/users/users.module';
 import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { ActivityLogModule } from '../activity-logs/activity-log.module';
+import { UsersModule } from '../users/users.module';
 import { ProjectMember } from './entities/project-member.entity';
 import { Project } from './entities/project.entity';
 import { ProjectRepository } from './project.repository';

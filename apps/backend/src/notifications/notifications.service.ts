@@ -18,15 +18,15 @@ export class NotificationsService {
         this.logger.log(`Creating notification for user: ${createDto.userId}`);
 
         try {
-            const notification = Notification.create(
-                createDto.userId,
-                createDto.type,
-                createDto.title,
-                createDto.message,
-                createDto.data,
-                createDto.relatedEntityType,
-                createDto.relatedEntityId
-            );
+            const notification = new Notification();
+            notification.userId = createDto.userId;
+            notification.type = createDto.type;
+            notification.title = createDto.title;
+            notification.message = createDto.message;
+            notification.data = createDto.data;
+            notification.relatedEntityType = createDto.relatedEntityType;
+            notification.relatedEntityId = createDto.relatedEntityId;
+            notification.isRead = false;
 
             const savedNotification = await this.notificationsRepository.save(notification);
             this.logger.log(`Notification created successfully: ${savedNotification.id}`);
@@ -70,7 +70,10 @@ export class NotificationsService {
                 throw new Error('Unauthorized to mark this notification as read');
             }
 
-            notification.markAsRead();
+            if (!notification.isRead) {
+                notification.isRead = true;
+                notification.readAt = new Date();
+            }
             const updatedNotification = await this.notificationsRepository.save(notification);
             this.logger.log(`Notification marked as read: ${notificationId}`);
             return updatedNotification;

@@ -1,4 +1,4 @@
-import { Filter, PaginatedResult, PaginationOptions } from '@/common/interfaces/pagination.interface';
+import { Filter, PaginatedResult, PaginationOptions } from '../../common/interfaces/pagination.interface';
 import { ActivityLog } from '../entities/activity-log.entity';
 
 export interface CreateActivityLogRequest {

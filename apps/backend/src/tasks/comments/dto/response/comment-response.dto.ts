@@ -1,6 +1,6 @@
-import { UserResponseDto } from '@/users/dto/response/user-response.dto';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { Exclude, Expose, Type } from 'class-transformer';
+import { UserResponseDto } from '../../../../users/dto/response/user-response.dto';
 import { Comment } from '../../entities/comment.entity';
 
 

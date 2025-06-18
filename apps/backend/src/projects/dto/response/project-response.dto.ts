@@ -1,7 +1,7 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { Exclude, Expose } from 'class-transformer';
 
-import { Project, ProjectStatus } from '@/projects/entities/project.entity';
+import { Project, ProjectStatus } from '../../entities/project.entity';
 import { ProjectPriority } from '../request/create-project.dto';
 
 @Exclude()

@@ -1,6 +1,6 @@
-import { TaskPriority, TaskStatus } from '@/tasks/entities/task.entity';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { Exclude, Expose, Type } from 'class-transformer';
+import { TaskPriority, TaskStatus } from '../../entities/task.entity';
 
 
 export class TaskAssigneeDto {
@@ -24,13 +24,6 @@ export class TaskAssigneeDto {
     })
     @Expose()
     readonly email: string;
-
-    @ApiPropertyOptional({
-        description: 'User profile image URL',
-        example: 'https://example.com/profile.jpg',
-    })
-    @Expose()
-    readonly profileImage?: string;
 }
 
 export class TaskProjectDto {
@@ -244,13 +237,11 @@ export class TaskResponseDto {
                 id: task.assignee.id,
                 name: task.assignee.name,
                 email: task.assignee.email,
-                profileImage: task.assignee.profileImage,
             } : undefined,
             assigner: task.assigner ? {
                 id: task.assigner.id,
                 name: task.assigner.name,
                 email: task.assigner.email,
-                profileImage: task.assigner.profileImage,
             } : undefined,
             project: task.project ? {
                 id: task.project.id,

@@ -1,4 +1,3 @@
-import { JwtAuthGuard } from '@/guards/jwt-auth.guard';
 import {
     Controller,
     Get,
@@ -16,6 +15,7 @@ import {
     ApiResponse,
     ApiTags,
 } from '@nestjs/swagger';
+import { JwtAuthGuard } from '../guards/jwt-auth.guard';
 import { ActivityLogRepository } from './activity-log.repository';
 import { ActivityLogService } from './activity-log.service';
 import { ActivityLog } from './entities/activity-log.entity';

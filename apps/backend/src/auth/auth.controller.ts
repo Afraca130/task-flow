@@ -1,11 +1,11 @@
 import { Body, Controller, Get, Patch, Post, UseGuards } from '@nestjs/common';
 import { ApiBearerAuth, ApiBody, ApiCreatedResponse, ApiOperation, ApiResponse, ApiTags, ApiUnauthorizedResponse } from '@nestjs/swagger';
 
-import { ErrorResponseDto } from '@/common/dto/response/error-response.dto';
-import { GetUser } from '@/decorators/authenticated-user.decorator';
-import { User } from '@/users/entities/user.entity';
+import { ErrorResponseDto } from '../common/dto/response/error-response.dto';
+import { GetUser } from '../decorators/authenticated-user.decorator';
 import { Public } from '../decorators/public.decorator';
 import { JwtAuthGuard } from '../guards/jwt-auth.guard';
+import { User } from '../users/entities/user.entity';
 import { AuthService } from './auth.service';
 import { LoginResponseDto, RegisterResponseDto, UserDto } from './dto/auth-response.dto';
 import { ChangePasswordRequestDto, LoginRequestDto, RefreshTokenRequestDto, RegisterRequestDto, UpdateProfileRequestDto } from './dto/request/auth-request.dto';

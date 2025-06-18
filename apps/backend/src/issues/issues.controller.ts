@@ -1,4 +1,3 @@
-import { JwtAuthGuard } from '@/guards/jwt-auth.guard';
 import {
     Body,
     Controller,
@@ -21,6 +20,7 @@ import {
     ApiResponse,
     ApiTags,
 } from '@nestjs/swagger';
+import { JwtAuthGuard } from '../guards/jwt-auth.guard';
 import { CreateIssueDto, UpdateIssueDto } from './dto/request';
 import { Issue, IssueType } from './entities/issue.entity';
 import { IssuesService } from './issues.service';

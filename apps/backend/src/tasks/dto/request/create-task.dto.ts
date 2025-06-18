@@ -1,7 +1,7 @@
-import { TaskPriority, TaskStatus } from '@/tasks/entities/task.entity';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { Transform } from 'class-transformer';
 import { IsArray, IsDateString, IsEnum, IsNotEmpty, IsNumber, IsOptional, IsString, IsUUID, Min } from 'class-validator';
+import { TaskPriority, TaskStatus } from '../../entities/task.entity';
 
 
 export class CreateTaskDto {

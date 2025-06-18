@@ -75,13 +75,7 @@ export class UpdateProfileRequestDto {
   @MaxLength(50, { message: '이름은 최대 50자까지 가능합니다.' })
   name: string;
 
-  @ApiPropertyOptional({
-    description: '프로필 이미지 URL',
-    example: 'https://example.com/profile.jpg',
-  })
-  @IsOptional()
-  @IsString()
-  profileImage?: string;
+  ;
 
   @ApiPropertyOptional({
     description: '프로필 색상 (HEX 코드)',

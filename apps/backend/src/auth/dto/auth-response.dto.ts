@@ -22,11 +22,7 @@ export class UserDto {
   })
   name: string;
 
-  @ApiPropertyOptional({
-    description: '프로필 이미지 URL',
-    example: 'https://example.com/profile.jpg',
-  })
-  profileImage?: string;
+
 
   @ApiPropertyOptional({
     description: '프로필 색상 (HEX 코드)',

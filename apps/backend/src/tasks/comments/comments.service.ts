@@ -18,13 +18,17 @@ export class CommentsService {
         this.logger.log(`Creating comment for task ${createDto.taskId}`);
 
         try {
-            // Create comment using factory method
-            const comment = Comment.createComment(
-                createDto.taskId,
-                userId,
-                createDto.content,
-                createDto.parentId
-            );
+            // Create comment object
+            if (!createDto.content || createDto.content.trim().length === 0) {
+                throw new Error('Comment content cannot be empty');
+            }
+
+            const comment = new Comment();
+            comment.taskId = createDto.taskId;
+            comment.userId = userId;
+            comment.content = createDto.content.trim();
+            comment.parentId = createDto.parentId;
+            comment.isDeleted = false;
 
             const savedComment = await this.commentsRepository.save(comment);
             this.logger.log(`Comment created successfully: ${savedComment.id}`);
@@ -54,7 +58,10 @@ export class CommentsService {
             }
 
             // Update comment content
-            comment.updateContent(updateDto.content);
+            if (!updateDto.content || updateDto.content.trim().length === 0) {
+                throw new Error('Comment content cannot be empty');
+            }
+            comment.content = updateDto.content.trim();
 
             const updatedComment = await this.commentsRepository.save(comment);
             this.logger.log(`Comment updated successfully: ${updatedComment.id}`);

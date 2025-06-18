@@ -32,13 +32,6 @@ export class ProjectMemberUserDto {
     @Expose()
     readonly name: string;
 
-    @ApiPropertyOptional({
-        description: 'User profile image URL',
-        example: 'https://example.com/avatar.jpg',
-    })
-    @Expose()
-    readonly profileImage?: string;
-
     constructor(partial: Partial<ProjectMemberUserDto>) {
         Object.assign(this, partial);
     }
@@ -141,13 +134,11 @@ export class ProjectMemberResponseDto {
                 id: entity.user.id,
                 email: entity.user.email,
                 name: entity.user.name,
-                profileImage: entity.user.profileImage,
             }) : undefined,
             inviter: entity.inviter ? new ProjectMemberUserDto({
                 id: entity.inviter.id,
                 email: entity.inviter.email,
                 name: entity.inviter.name,
-                profileImage: entity.inviter.profileImage,
             }) : undefined,
         });
     }
