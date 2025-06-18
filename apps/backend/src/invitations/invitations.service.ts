@@ -1,5 +1,7 @@
 import { BadRequestException, Injectable, Logger, NotFoundException } from '@nestjs/common';
+import { InjectRepository } from '@nestjs/typeorm';
 import * as crypto from 'crypto';
+import { Repository } from 'typeorm';
 import { NotificationsService } from '../notifications/notifications.service';
 import { UsersService } from '../users/users.service';
 import { CreateInvitationDto } from './dto/request/create-invitation.dto';
@@ -12,6 +14,8 @@ export class InvitationsService {
 
     constructor(
         private readonly invitationRepository: ProjectInvitationRepository,
+        @InjectRepository(ProjectInvitation)
+        private readonly typeormRepository: Repository<ProjectInvitation>,
         private readonly notificationsService: NotificationsService,
         private readonly usersService: UsersService,
     ) { }
@@ -43,20 +47,19 @@ export class InvitationsService {
             expiresAt.setDate(expiresAt.getDate() + expiryDays);
             this.logger.log(`⏰ Invitation expires at: ${expiresAt.toISOString()}`);
 
-            // Create invitation using factory method
+            // Create invitation using factory method with proper token generation
             const invitation = ProjectInvitation.create(
                 createDto.projectId,
                 inviterId,
                 createDto.inviteeId,
-                createDto.message
+                createDto.message,
+                expiryDays
             );
 
-            const savedInvitation = await this.invitationRepository.create({
-                projectId: createDto.projectId,
-                inviterId: inviterId,
-                inviteeId: createDto.inviteeId,
-                message: createDto.message
-            });
+            this.logger.log(`🏭 Created invitation entity with token: ${invitation.token}`);
+
+            // Save the invitation directly using repository.save()
+            const savedInvitation = await this.typeormRepository.save(invitation);
 
             this.logger.log(`✅ Invitation created successfully: ${savedInvitation.id}`);
             this.logger.log(`🔗 Invitation token stored: ${savedInvitation.token || 'NO TOKEN FOUND!'}`);
@@ -79,7 +82,8 @@ export class InvitationsService {
                     inviterName,
                     projectName,
                     savedInvitation.id,
-                    savedInvitation.token  // Pass token for notification data
+                    savedInvitation.token,  // Pass token for notification data
+                    createDto.projectId     // Pass actual projectId
                 );
 
                 this.logger.log(`✅ Invitation notification created: ${notification.id}`);

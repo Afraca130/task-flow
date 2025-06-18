@@ -134,7 +134,8 @@ export class NotificationsService {
         inviterName: string,
         projectName: string,
         invitationId: string,
-        invitationToken?: string
+        invitationToken?: string,
+        projectId?: string
     ): Promise<Notification> {
         return await this.createNotification({
             userId: inviteeId,
@@ -146,6 +147,8 @@ export class NotificationsService {
                 projectName,
                 invitationId,
                 invitationToken,
+                projectId: projectId || invitationId,
+                userName: inviterName,
             },
             relatedEntityType: 'invitation',
             relatedEntityId: invitationId,

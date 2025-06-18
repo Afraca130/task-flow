@@ -15,6 +15,9 @@ export default function ProjectsPage() {
   const [loading, setLoading] = useState(true);
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [creating, setCreating] = useState(false);
+  const [allProjects, setAllProjects] = useState<Project[]>([]);
+  const [myProjects, setMyProjects] = useState<Project[]>([]);
+  const [otherProjects, setOtherProjects] = useState<Project[]>([]);
   const [createForm, setCreateForm] = useState({
     name: '',
     description: '',
@@ -33,21 +36,44 @@ export default function ProjectsPage() {
 
   // Load projects
   useEffect(() => {
-    if (!isAuthenticated) return;
+    if (!isAuthenticated || !user?.id) return;
 
     const loadProjects = async () => {
       try {
         setLoading(true);
-        console.log('Loading projects...');
-        const result = await projectsApi.getProjects({ page: 1, limit: 100 });
-        console.log('Projects API response:', result);
+        console.log('Loading all projects...');
 
-        // 응답 형식에 맞게 프로젝트 배열 추출
-        const projectList = result.projects || [];
-        console.log('Extracted projects:', projectList);
-        setProjects(projectList);
+        // Get all projects (public projects or projects user has access to)
+        const allProjectsResult = await projectsApi.getProjects({ page: 1, limit: 1000 });
+        console.log('All projects API response:', allProjectsResult);
+
+        // Get user's projects (projects where user is a member)
+        const userProjectsResult = await projectsApi.getProjects({ page: 1, limit: 100 });
+        console.log('User projects API response:', userProjectsResult);
+
+        const allProjectsList = allProjectsResult.projects || [];
+        const userProjectsList = userProjectsResult.projects || [];
+
+        console.log('All projects:', allProjectsList);
+        console.log('User projects:', userProjectsList);
+
+        // Separate projects into "my projects" and "other projects"
+        const userProjectIds = new Set(userProjectsList.map((p: Project) => p.id));
+        const myProjectsList = allProjectsList.filter((p: Project) => userProjectIds.has(p.id));
+        const otherProjectsList = allProjectsList.filter((p: Project) => !userProjectIds.has(p.id));
+
+        setAllProjects(allProjectsList);
+        setMyProjects(myProjectsList);
+        setOtherProjects(otherProjectsList);
+        setProjects(userProjectsList); // Keep existing behavior for other components
+
+        console.log('My projects:', myProjectsList);
+        console.log('Other projects:', otherProjectsList);
       } catch (error) {
         console.error('Failed to load projects:', error);
+        setAllProjects([]);
+        setMyProjects([]);
+        setOtherProjects([]);
         setProjects([]);
       } finally {
         setLoading(false);
@@ -55,11 +81,19 @@ export default function ProjectsPage() {
     };
 
     loadProjects();
-  }, [isAuthenticated, setProjects]);
+  }, [isAuthenticated, user?.id, setProjects]);
 
   const handleProjectClick = (project: Project) => {
-    // 프로젝트 클릭 시 해당 프로젝트의 대시보드로 이동
-    router.push(`/dashboard?projectId=${project.id}`);
+    // Check if user is a member of this project
+    const isMyProject = myProjects.some(p => p.id === project.id);
+
+    if (isMyProject) {
+      // 사용자가 속한 프로젝트 - 대시보드로 이동
+      router.push(`/dashboard?projectId=${project.id}`);
+    } else {
+      // 사용자가 속하지 않은 프로젝트 - 접근 불가 메시지
+      alert('이 프로젝트에 접근할 권한이 없습니다. 프로젝트 관리자에게 초대를 요청하세요.');
+    }
   };
 
   const handleCreateProject = () => {
@@ -165,7 +199,7 @@ export default function ProjectsPage() {
               <p className='text-gray-500'>프로젝트를 불러오는 중...</p>
             </div>
           </div>
-        ) : projects.length === 0 ? (
+        ) : allProjects.length === 0 ? (
           <div className='text-center py-12'>
             <FolderOpen className='w-16 h-16 text-gray-300 mx-auto mb-4' />
             <h3 className='text-lg font-medium text-gray-900 mb-2'>프로젝트가 없습니다</h3>
@@ -175,77 +209,200 @@ export default function ProjectsPage() {
             </Button>
           </div>
         ) : (
-          <div className='grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6'>
-            {projects.map(project => (
-              <div
-                key={project.id}
-                onClick={() => handleProjectClick(project)}
-                className='bg-white rounded-lg shadow-sm border border-gray-200 p-6 hover:shadow-md transition-shadow cursor-pointer group relative'
-              >
-                {/* 프로젝트 헤더 */}
-                <div className='flex items-start justify-between mb-4'>
-                  <div className='flex items-center gap-3'>
+          <div className='space-y-8'>
+            {/* 내 프로젝트 섹션 */}
+            {myProjects.length > 0 && (
+              <div>
+                <div className='flex items-center gap-2 mb-4'>
+                  <h2 className='text-lg font-semibold text-gray-900'>내 프로젝트</h2>
+                  <span className='bg-blue-100 text-blue-800 text-xs px-2 py-1 rounded-full'>
+                    {myProjects.length}개
+                  </span>
+                </div>
+                <div className='grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6'>
+                  {myProjects.map(project => (
                     <div
-                      className='w-10 h-10 rounded-lg flex items-center justify-center text-white font-medium'
-                      style={{ backgroundColor: getProjectColor(project) }}
+                      key={project.id}
+                      onClick={() => handleProjectClick(project)}
+                      className='bg-white rounded-lg shadow-sm border border-gray-200 p-6 hover:shadow-md transition-shadow cursor-pointer group relative'
                     >
-                      {project.name.charAt(0).toUpperCase()}
-                    </div>
-                    <div>
-                      <h3 className='font-semibold text-gray-900 group-hover:text-blue-600 transition-colors'>
-                        {project.name}
-                      </h3>
-                      <p className='text-sm text-gray-500'>{project.memberCount || 0}명 참여</p>
-                    </div>
-                  </div>
+                      {/* 프로젝트 헤더 */}
+                      <div className='flex items-start justify-between mb-4'>
+                        <div className='flex items-center gap-3'>
+                          <div
+                            className='w-10 h-10 rounded-lg flex items-center justify-center text-white font-medium'
+                            style={{ backgroundColor: getProjectColor(project) }}
+                          >
+                            {project.name.charAt(0).toUpperCase()}
+                          </div>
+                          <div>
+                            <h3 className='font-semibold text-gray-900 group-hover:text-blue-600 transition-colors'>
+                              {project.name}
+                            </h3>
+                            <p className='text-sm text-gray-500'>
+                              {project.memberCount || 0}명 참여
+                            </p>
+                          </div>
+                        </div>
 
-                  <div className='flex items-center gap-1'>
-                    <div
-                      className='w-2 h-2 rounded-full'
-                      style={{ backgroundColor: getProjectColor(project) }}
-                    ></div>
-                    <span className='text-xs text-gray-500 capitalize'>
-                      {project.priority?.toLowerCase() || 'medium'}
-                    </span>
-                  </div>
+                        <div className='flex items-center gap-1'>
+                          <div
+                            className='w-2 h-2 rounded-full'
+                            style={{ backgroundColor: getProjectColor(project) }}
+                          ></div>
+                          <span className='text-xs text-gray-500 capitalize'>
+                            {project.priority?.toLowerCase() || 'medium'}
+                          </span>
+                        </div>
+                      </div>
+
+                      {/* 프로젝트 설명 */}
+                      {project.description && (
+                        <p className='text-sm text-gray-600 mb-4 line-clamp-2'>
+                          {project.description}
+                        </p>
+                      )}
+
+                      {/* 프로젝트 통계 */}
+                      <div className='flex items-center justify-between text-sm text-gray-500 mb-4'>
+                        <div className='flex items-center gap-4'>
+                          <div className='flex items-center gap-1'>
+                            <Activity className='w-4 h-4' />
+                            <span>{project.taskCount || 0}개 태스크</span>
+                          </div>
+                          <div className='flex items-center gap-1'>
+                            <Users className='w-4 h-4' />
+                            <span>{project.memberCount || 0}명</span>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* 프로젝트 날짜 */}
+                      <div className='flex items-center justify-between text-xs text-gray-400 pt-4 border-t border-gray-100'>
+                        <div className='flex items-center gap-1'>
+                          <Calendar className='w-3 h-3' />
+                          <span>생성일: {formatDate(project.createdAt)}</span>
+                        </div>
+                        {project.dueDate && (
+                          <div className='flex items-center gap-1'>
+                            <span>마감: {formatDate(project.dueDate)}</span>
+                          </div>
+                        )}
+                      </div>
+
+                      {/* 호버 효과 */}
+                      <div className='absolute inset-0 bg-blue-50 opacity-0 group-hover:opacity-10 rounded-lg transition-opacity pointer-events-none'></div>
+                    </div>
+                  ))}
                 </div>
-
-                {/* 프로젝트 설명 */}
-                {project.description && (
-                  <p className='text-sm text-gray-600 mb-4 line-clamp-2'>{project.description}</p>
-                )}
-
-                {/* 프로젝트 통계 */}
-                <div className='flex items-center justify-between text-sm text-gray-500 mb-4'>
-                  <div className='flex items-center gap-4'>
-                    <div className='flex items-center gap-1'>
-                      <Activity className='w-4 h-4' />
-                      <span>{project.taskCount || 0}개 태스크</span>
-                    </div>
-                    <div className='flex items-center gap-1'>
-                      <Users className='w-4 h-4' />
-                      <span>{project.memberCount || 0}명</span>
-                    </div>
-                  </div>
-                </div>
-
-                {/* 프로젝트 날짜 */}
-                <div className='flex items-center justify-between text-xs text-gray-400 pt-4 border-t border-gray-100'>
-                  <div className='flex items-center gap-1'>
-                    <Calendar className='w-3 h-3' />
-                    <span>생성일: {formatDate(project.createdAt)}</span>
-                  </div>
-                  {project.dueDate && (
-                    <div className='flex items-center gap-1'>
-                      <span>마감: {formatDate(project.dueDate)}</span>
-                    </div>
-                  )}
-                </div>
-
-                {/* 호버 효과 */}
-                <div className='absolute inset-0 bg-blue-50 opacity-0 group-hover:opacity-10 rounded-lg transition-opacity pointer-events-none'></div>
               </div>
-            ))}
+            )}
+
+            {/* 다른 프로젝트 섹션 */}
+            {otherProjects.length > 0 && (
+              <div>
+                <div className='flex items-center gap-2 mb-4'>
+                  <h2 className='text-lg font-semibold text-gray-900'>다른 프로젝트</h2>
+                  <span className='bg-gray-100 text-gray-600 text-xs px-2 py-1 rounded-full'>
+                    {otherProjects.length}개
+                  </span>
+                  <span className='text-sm text-gray-500'>• 접근 권한 없음</span>
+                </div>
+                <div className='grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6'>
+                  {otherProjects.map(project => (
+                    <div
+                      key={project.id}
+                      onClick={() => handleProjectClick(project)}
+                      className='bg-gray-50 rounded-lg shadow-sm border border-gray-200 p-6 hover:shadow-md transition-shadow cursor-pointer group relative opacity-75'
+                    >
+                      {/* 접근 불가 오버레이 */}
+                      <div className='absolute top-2 right-2 bg-gray-500 text-white text-xs px-2 py-1 rounded-full'>
+                        읽기 전용
+                      </div>
+
+                      {/* 프로젝트 헤더 */}
+                      <div className='flex items-start justify-between mb-4'>
+                        <div className='flex items-center gap-3'>
+                          <div
+                            className='w-10 h-10 rounded-lg flex items-center justify-center text-white font-medium'
+                            style={{ backgroundColor: getProjectColor(project) }}
+                          >
+                            {project.name.charAt(0).toUpperCase()}
+                          </div>
+                          <div>
+                            <h3 className='font-semibold text-gray-900 group-hover:text-blue-600 transition-colors'>
+                              {project.name}
+                            </h3>
+                            <p className='text-sm text-gray-500'>
+                              {project.memberCount || 0}명 참여
+                            </p>
+                          </div>
+                        </div>
+
+                        <div className='flex items-center gap-1'>
+                          <div
+                            className='w-2 h-2 rounded-full'
+                            style={{ backgroundColor: getProjectColor(project) }}
+                          ></div>
+                          <span className='text-xs text-gray-500 capitalize'>
+                            {project.priority?.toLowerCase() || 'medium'}
+                          </span>
+                        </div>
+                      </div>
+
+                      {/* 프로젝트 설명 */}
+                      {project.description && (
+                        <p className='text-sm text-gray-600 mb-4 line-clamp-2'>
+                          {project.description}
+                        </p>
+                      )}
+
+                      {/* 프로젝트 통계 */}
+                      <div className='flex items-center justify-between text-sm text-gray-500 mb-4'>
+                        <div className='flex items-center gap-4'>
+                          <div className='flex items-center gap-1'>
+                            <Activity className='w-4 h-4' />
+                            <span>{project.taskCount || 0}개 태스크</span>
+                          </div>
+                          <div className='flex items-center gap-1'>
+                            <Users className='w-4 h-4' />
+                            <span>{project.memberCount || 0}명</span>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* 프로젝트 날짜 */}
+                      <div className='flex items-center justify-between text-xs text-gray-400 pt-4 border-t border-gray-100'>
+                        <div className='flex items-center gap-1'>
+                          <Calendar className='w-3 h-3' />
+                          <span>생성일: {formatDate(project.createdAt)}</span>
+                        </div>
+                        {project.dueDate && (
+                          <div className='flex items-center gap-1'>
+                            <span>마감: {formatDate(project.dueDate)}</span>
+                          </div>
+                        )}
+                      </div>
+
+                      {/* 호버 효과 */}
+                      <div className='absolute inset-0 bg-blue-50 opacity-0 group-hover:opacity-10 rounded-lg transition-opacity pointer-events-none'></div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* 프로젝트가 없는 경우 */}
+            {myProjects.length === 0 && otherProjects.length === 0 && (
+              <div className='text-center py-12'>
+                <FolderOpen className='w-16 h-16 text-gray-300 mx-auto mb-4' />
+                <h3 className='text-lg font-medium text-gray-900 mb-2'>프로젝트가 없습니다</h3>
+                <p className='text-gray-600 mb-6'>새 프로젝트를 생성하여 시작해보세요.</p>
+                <Button onClick={handleCreateProject}>
+                  <Plus className='mr-2 h-4 w-4' />첫 번째 프로젝트 만들기
+                </Button>
+              </div>
+            )}
           </div>
         )}
       </div>
