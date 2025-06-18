@@ -132,9 +132,19 @@ export class InvitationsService {
                 throw new BadRequestException('You can only accept invitations sent to you');
             }
 
-            // Validate invitation
+            // Validate invitation status
             if (invitation.status !== InvitationStatus.PENDING) {
-                throw new BadRequestException('This invitation has already been processed');
+                this.logger.warn(`⚠️ Invitation already processed: ${invitation.status}`);
+
+                if (invitation.status === InvitationStatus.ACCEPTED) {
+                    // If already accepted, just return success (idempotent)
+                    this.logger.log(`✅ Invitation already accepted, returning existing result`);
+                    return invitation;
+                } else if (invitation.status === InvitationStatus.DECLINED) {
+                    throw new BadRequestException('This invitation has been declined and cannot be accepted');
+                } else {
+                    throw new BadRequestException(`This invitation has status: ${invitation.status}`);
+                }
             }
 
             if (invitation.isExpired()) {

@@ -1,4 +1,3 @@
-import { InvitationsModule } from '@/invitations/invitations.module';
 import { UsersModule } from '@/users/users.module';
 import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
@@ -14,7 +13,6 @@ import { ProjectsService } from './projects.service';
         TypeOrmModule.forFeature([Project, ProjectMember]),
         UsersModule,
         ActivityLogModule,
-        InvitationsModule,
     ],
     controllers: [ProjectsController],
     providers: [

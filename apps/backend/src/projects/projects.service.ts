@@ -101,39 +101,56 @@ export class ProjectsService {
     }
 
     /**
-     * Get projects for a user with pagination and filtering
-     * Consolidated from GetProjectsUseCase
+     * Get user projects (projects where user is a member)
      */
     async getUserProjects(
         userId: string,
-        options: GetProjectsOptions = {}
-    ): Promise<ProjectsResult> {
-        const result = await this.projectRepository.findByUserId(
-            userId,
-            {
-                page: options.page || 1,
-                limit: options.limit || 10,
-                search: options.search,
-                isActive: options.isActive,
-            }
-        );
+        options: GetProjectsOptions,
+    ): Promise<{
+        projects: Project[];
+        total: number;
+        page: number;
+        limit: number;
+        totalPages: number;
+    }> {
+        try {
+            this.logger.log(`🔍 Getting projects for user: ${userId} with options:`, options);
 
-        // 각 프로젝트에 memberCount와 taskCount 추가
-        const projectsWithCounts = result.projects.map(project => {
-            const memberCount = project.members ? project.members.length : 0;
-            const taskCount = project.tasks ? project.tasks.length : 0;
+            const result = await this.projectRepository.findByUserId(userId, options);
 
-            // 프로젝트 객체에 count 정보를 추가 (원본 객체를 유지하면서)
-            (project as any).memberCount = memberCount;
-            (project as any).taskCount = taskCount;
+            // Calculate accurate member and task counts for each project
+            const projectsWithCounts = await Promise.all(
+                result.projects.map(async (project) => {
+                    try {
+                        const memberCount = project.members ? project.members.length : 0;
+                        const taskCount = project.tasks ? project.tasks.length : 0;
 
-            return project;
-        });
+                        this.logger.log(`📊 Project ${project.name}: ${memberCount} members, ${taskCount} tasks`);
 
-        return {
-            ...result,
-            projects: projectsWithCounts,
-        };
+                        // Add counts to the project object
+                        (project as any).memberCount = memberCount;
+                        (project as any).taskCount = taskCount;
+
+                        return project;
+                    } catch (error) {
+                        this.logger.error(`💥 Failed to calculate counts for project ${project.id}:`, error);
+                        (project as any).memberCount = 0;
+                        (project as any).taskCount = 0;
+                        return project;
+                    }
+                })
+            );
+
+            this.logger.log(`✅ Found ${result.projects.length} projects for user: ${userId}`);
+
+            return {
+                ...result,
+                projects: projectsWithCounts,
+            };
+        } catch (error) {
+            this.logger.error(`💥 Failed to get projects for user: ${userId}`, error.stack || error);
+            throw error;
+        }
     }
 
     /**
@@ -153,15 +170,42 @@ export class ProjectsService {
         try {
             this.logger.log(`🌍 Getting all public projects with options:`, options);
 
-            const projects = await this.projectRepository.findAllProjects({
+            const result = await this.projectRepository.findAllProjects({
                 page: options.page,
                 limit: options.limit,
                 search: options.search,
                 isActive: true, // Only show active projects
             });
 
-            this.logger.log(`✅ Found ${projects.projects.length} public projects`);
-            return projects;
+            // Calculate accurate member and task counts for each project
+            const projectsWithCounts = await Promise.all(
+                result.projects.map(async (project) => {
+                    try {
+                        const memberCount = project.members ? project.members.length : 0;
+                        const taskCount = project.tasks ? project.tasks.length : 0;
+
+                        this.logger.log(`📊 Public project ${project.name}: ${memberCount} members, ${taskCount} tasks`);
+
+                        // Add counts to the project object
+                        (project as any).memberCount = memberCount;
+                        (project as any).taskCount = taskCount;
+
+                        return project;
+                    } catch (error) {
+                        this.logger.error(`💥 Failed to calculate counts for project ${project.id}:`, error);
+                        (project as any).memberCount = 0;
+                        (project as any).taskCount = 0;
+                        return project;
+                    }
+                })
+            );
+
+            this.logger.log(`✅ Found ${result.projects.length} public projects`);
+
+            return {
+                ...result,
+                projects: projectsWithCounts,
+            };
         } catch (error) {
             this.logger.error(`💥 Failed to get all public projects:`, error.stack || error);
             throw error;

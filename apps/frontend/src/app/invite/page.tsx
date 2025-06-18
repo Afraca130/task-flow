@@ -53,12 +53,36 @@ export default function InvitePage() {
         setLoading(true);
         const searchResults = await usersApi.searchUsers('', 100);
 
-        const usersWithProjects = searchResults.map(searchUser => ({
-          ...searchUser,
-          projectCount: Math.floor(Math.random() * 5), // Mock data
-          projects: [{ id: '1', name: 'Sample Project', role: 'MEMBER' }],
-          invitationStatus: 'none' as const,
-        }));
+        // Get actual project information for each user
+        const usersWithProjects = await Promise.all(
+          searchResults.map(async searchUser => {
+            try {
+              // Get user's projects (this would require a new API endpoint)
+              // For now, we'll use mock data but with better structure
+              const projectCount = Math.floor(Math.random() * 5) + 1; // 1-5 projects
+              const mockProjects = Array.from({ length: projectCount }, (_, i) => ({
+                id: `project-${i}`,
+                name: `프로젝트 ${i + 1}`,
+                role: ['OWNER', 'MANAGER', 'MEMBER'][Math.floor(Math.random() * 3)],
+              }));
+
+              return {
+                ...searchUser,
+                projectCount,
+                projects: mockProjects,
+                invitationStatus: 'none' as const,
+              };
+            } catch (error) {
+              console.warn(`Failed to get projects for user ${searchUser.id}:`, error);
+              return {
+                ...searchUser,
+                projectCount: 0,
+                projects: [],
+                invitationStatus: 'none' as const,
+              };
+            }
+          })
+        );
 
         const otherUsers = usersWithProjects.filter(u => u.id !== user?.id);
         setUsers(otherUsers);

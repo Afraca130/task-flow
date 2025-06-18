@@ -745,12 +745,12 @@ export const issuesApi = {
     limit?: number;
     search?: string;
   }): Promise<{ data: Issue[]; total: number; page: number; limit: number; totalPages: number }> => {
-    const response = await api.get<StandardApiResponse<{ data: Issue[]; total: number; page: number; limit: number; totalPages: number }>>('/issues', { params });
+    const response = await api.get<StandardApiResponse<{ data: Issue[]; total: number; page: number; limit: number; totalPages: number }>>('/v1/issues', { params });
     return extractData(response);
   },
 
   getIssue: async (issueId: string): Promise<Issue> => {
-    const response = await api.get<StandardApiResponse<Issue>>(`/issues/${issueId}`);
+    const response = await api.get<StandardApiResponse<Issue>>(`/v1/issues/${issueId}`);
     return extractData(response);
   },
 
@@ -761,7 +761,7 @@ export const issuesApi = {
     projectId: string;
     assigneeId?: string;
   }): Promise<Issue> => {
-    const response = await api.post<StandardApiResponse<Issue>>('/issues', data);
+    const response = await api.post<StandardApiResponse<Issue>>('/v1/issues', data);
     return extractData(response);
   },
 
@@ -774,7 +774,8 @@ export const issuesApi = {
     mentionedUserIds?: string[];
   }): Promise<Issue> => {
     const { mentionedUserIds, ...issueData } = data;
-    const response = await api.post<StandardApiResponse<Issue>>('/issues/with-mentions', {
+    console.log('🚀 Creating issue with mentions:', { issueData, mentionedUserIds });
+    const response = await api.post<StandardApiResponse<Issue>>('/v1/issues/with-mentions', {
       issue: issueData,
       mentionedUserIds: mentionedUserIds || [],
     });
@@ -782,24 +783,24 @@ export const issuesApi = {
   },
 
   updateIssue: async (issueId: string, data: Partial<Issue>): Promise<Issue> => {
-    const response = await api.put<StandardApiResponse<Issue>>(`/issues/${issueId}`, data);
+    const response = await api.put<StandardApiResponse<Issue>>(`/v1/issues/${issueId}`, data);
     return extractData(response);
   },
 
   deleteIssue: async (issueId: string): Promise<void> => {
-    await api.delete(`/issues/${issueId}`);
+    await api.delete(`/v1/issues/${issueId}`);
   },
 
   updateIssueStatus: async (
     issueId: string,
     status: 'OPEN' | 'IN_PROGRESS' | 'RESOLVED' | 'CLOSED'
   ): Promise<Issue> => {
-    const response = await api.patch<StandardApiResponse<Issue>>(`/issues/${issueId}/status`, { status });
+    const response = await api.patch<StandardApiResponse<Issue>>(`/v1/issues/${issueId}/status`, { status });
     return extractData(response);
   },
 
   assignIssue: async (issueId: string, assigneeId: string): Promise<Issue> => {
-    const response = await api.patch<StandardApiResponse<Issue>>(`/issues/${issueId}/assign`, { assigneeId });
+    const response = await api.patch<StandardApiResponse<Issue>>(`/v1/issues/${issueId}/assign`, { assigneeId });
     return extractData(response);
   },
 };
