@@ -111,44 +111,22 @@ export class User extends BaseEntity {
     return this.isActive;
   }
 
-  public hasProfileImage(): boolean {
-    return !!this.profileImage;
-  }
-
-  public getDisplayName(): string {
-    return this.name || this.email;
-  }
-
-  public getInitials(): string {
-    if (!this.name) return this.email.charAt(0).toUpperCase();
-
-    const nameParts = this.name.trim().split(' ');
-    if (nameParts.length === 1) {
-      return nameParts[0].charAt(0).toUpperCase();
-    }
-
-    return (nameParts[0].charAt(0) + nameParts[nameParts.length - 1].charAt(0)).toUpperCase();
-  }
-
-  public static create(email: string, password: string, name: string): User {
-    if (!email || !email.includes('@')) {
-      throw new Error('Valid email is required');
-    }
-
-    if (!password || password.length < 6) {
-      throw new Error('Password must be at least 6 characters long');
-    }
-
-    if (!name || name.trim().length === 0) {
-      throw new Error('Name is required');
-    }
-
+  public static create(
+    email: string,
+    password: string,
+    name: string,
+    profileImage?: string,
+    profileColor?: string,
+    organization?: string
+  ): User {
     const user = new User();
-    user.email = email.toLowerCase().trim();
+    user.email = email;
     user.password = password;
-    user.name = name.trim();
+    user.name = name;
+    user.profileImage = profileImage;
+    user.profileColor = profileColor || '#3B82F6'; // Default blue color
+    user.organization = organization;
     user.isActive = true;
-
     return user;
   }
 }

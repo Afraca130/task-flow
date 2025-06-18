@@ -1,4 +1,6 @@
 import { BadRequestException, ForbiddenException, Injectable, Logger, NotFoundException } from '@nestjs/common';
+import { InjectRepository } from '@nestjs/typeorm';
+import { Repository } from 'typeorm';
 import { ActivityLogService } from '../activity-logs/activity-log.service';
 import { ProjectId } from '../common/value-objects/project-id.vo';
 import { ProjectName } from '../common/value-objects/project-name.vo';
@@ -32,6 +34,8 @@ export class ProjectsService {
     constructor(
         private readonly projectRepository: ProjectRepository,
         private readonly activityLogService: ActivityLogService,
+        @InjectRepository(ProjectMember)
+        private readonly projectMemberRepository: Repository<ProjectMember>,
     ) { }
 
     /**
@@ -262,6 +266,39 @@ export class ProjectsService {
 
         // Save changes
         await this.projectRepository.update(project);
+    }
+
+    /**
+     * Add member to project
+     */
+    async addMember(projectId: string, userId: string, role: ProjectMemberRole = ProjectMemberRole.MEMBER): Promise<void> {
+        try {
+            this.logger.log(`🚀 Adding member ${userId} to project ${projectId} with role ${role}`);
+
+            // Check if user is already a member
+            const existingMember = await this.projectMemberRepository.findOne({
+                where: { projectId, userId }
+            });
+
+            if (existingMember) {
+                this.logger.warn(`⚠️ User ${userId} is already a member of project ${projectId}`);
+                return;
+            }
+
+            // Create new project member
+            const projectMember = new ProjectMember();
+            projectMember.projectId = projectId;
+            projectMember.userId = userId;
+            projectMember.role = role;
+            projectMember.joinedAt = new Date();
+
+            await this.projectMemberRepository.save(projectMember);
+            this.logger.log(`✅ Successfully added member ${userId} to project ${projectId}`);
+
+        } catch (error) {
+            this.logger.error(`💥 Failed to add member ${userId} to project ${projectId}:`, error.stack || error);
+            throw error;
+        }
     }
 
     /**

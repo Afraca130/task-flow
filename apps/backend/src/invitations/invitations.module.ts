@@ -1,6 +1,7 @@
 import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { NotificationsModule } from '../notifications/notifications.module';
+import { ProjectsModule } from '../projects/projects.module';
 import { UsersModule } from '../users/users.module';
 import { ProjectInvitation } from './entities/project-invitation.entity';
 import { InvitationsController } from './invitations.controller';
@@ -12,6 +13,7 @@ import { ProjectInvitationRepository } from './project-invitation.repository';
         TypeOrmModule.forFeature([ProjectInvitation]),
         NotificationsModule,
         UsersModule,
+        ProjectsModule,
     ],
     controllers: [InvitationsController],
     providers: [

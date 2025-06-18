@@ -83,45 +83,83 @@ export class IssuesService implements IssueServiceInterface {
         mentionedUserIds: string[] = []
     ): Promise<Issue> {
         this.logger.log(`🚀 Creating issue with mentions: ${createDto.title}`);
+        this.logger.log(`👤 Creator: ${userId}`);
         this.logger.log(`👥 Mentioned users: ${mentionedUserIds.length > 0 ? mentionedUserIds.join(', ') : 'none'}`);
+        this.logger.log(`📁 Project: ${createDto.projectId}`);
 
-        const issue = await this.createIssue(userId, createDto);
+        try {
+            // Create the issue first
+            const issue = await this.createIssue(userId, createDto);
+            this.logger.log(`✅ Issue created successfully: ${issue.id}`);
 
-        // Send mention notifications
-        if (mentionedUserIds.length > 0) {
-            try {
-                this.logger.log(`🔔 Preparing to send mention notifications to ${mentionedUserIds.length} users`);
+            // Send mention notifications if there are users to mention
+            if (mentionedUserIds.length > 0) {
+                try {
+                    this.logger.log(`🔔 Processing mention notifications for ${mentionedUserIds.length} users`);
 
-                const creator = await this.usersService.findById(userId);
-                const creatorName = creator?.name || 'Someone';
+                    // Get creator details
+                    const creator = await this.usersService.findById(userId);
+                    if (!creator) {
+                        this.logger.error(`💥 Creator not found: ${userId}`);
+                        throw new Error(`Creator not found: ${userId}`);
+                    }
 
-                this.logger.log(`👤 Creator details: ${creatorName} (${userId})`);
+                    const creatorName = creator.name || 'Someone';
+                    this.logger.log(`👤 Creator details: ${creatorName} (${userId})`);
 
-                const notifications = await this.notificationsService.createIssueMentionNotifications(
-                    mentionedUserIds.filter(id => id !== userId), // Don't notify the creator
-                    creatorName,
-                    issue.title,
-                    issue.id
-                );
+                    // Filter out the creator from mentions (don't notify yourself)
+                    const filteredMentionedUserIds = mentionedUserIds.filter(id => id !== userId);
+                    this.logger.log(`🎯 Filtered mentioned users (excluding creator): ${filteredMentionedUserIds.length > 0 ? filteredMentionedUserIds.join(', ') : 'none'}`);
 
-                this.logger.log(`✅ Created ${notifications.length} mention notifications`);
-                notifications.forEach(notification => {
-                    this.logger.log(`📧 Mention notification:`, {
-                        id: notification.id,
-                        userId: notification.userId,
-                        type: notification.type,
-                        title: notification.title,
-                        message: notification.message
+                    if (filteredMentionedUserIds.length > 0) {
+                        // Create mention notifications
+                        const notifications = await this.notificationsService.createIssueMentionNotifications(
+                            filteredMentionedUserIds,
+                            creatorName,
+                            issue.title,
+                            issue.id
+                        );
+
+                        this.logger.log(`✅ Created ${notifications.length} mention notifications`);
+                        notifications.forEach((notification, index) => {
+                            this.logger.log(`📧 Mention notification ${index + 1}:`, {
+                                id: notification.id,
+                                userId: notification.userId,
+                                type: notification.type,
+                                title: notification.title,
+                                message: notification.message,
+                                data: notification.data
+                            });
+                        });
+                    } else {
+                        this.logger.log(`⚠️ No users to mention after filtering (all mentioned users were the creator)`);
+                    }
+                } catch (error) {
+                    this.logger.error(`💥 Failed to send mention notifications:`, {
+                        error: error.message,
+                        stack: error.stack,
+                        mentionedUserIds,
+                        issueId: issue.id
                     });
-                });
-            } catch (error) {
-                this.logger.error(`💥 Failed to send mention notifications:`, error.stack || error);
+                    // Don't fail the issue creation if notification fails
+                }
+            } else {
+                this.logger.log(`⚠️ No users to mention, skipping notifications`);
             }
-        } else {
-            this.logger.log(`⚠️ No users to mention, skipping notifications`);
-        }
 
-        return issue;
+            this.logger.log(`🎉 Issue creation with mentions completed successfully: ${issue.id}`);
+            return issue;
+
+        } catch (error) {
+            this.logger.error(`💥 Failed to create issue with mentions:`, {
+                error: error.message,
+                stack: error.stack,
+                createDto,
+                mentionedUserIds,
+                userId
+            });
+            throw error;
+        }
     }
 
     /**

@@ -3,6 +3,7 @@ import { InjectRepository } from '@nestjs/typeorm';
 import * as crypto from 'crypto';
 import { Repository } from 'typeorm';
 import { NotificationsService } from '../notifications/notifications.service';
+import { ProjectsService } from '../projects/projects.service';
 import { UsersService } from '../users/users.service';
 import { CreateInvitationDto } from './dto/request/create-invitation.dto';
 import { InvitationStatus, ProjectInvitation } from './entities/project-invitation.entity';
@@ -18,6 +19,7 @@ export class InvitationsService {
         private readonly typeormRepository: Repository<ProjectInvitation>,
         private readonly notificationsService: NotificationsService,
         private readonly usersService: UsersService,
+        private readonly projectsService: ProjectsService,
     ) { }
 
     async createInvitation(createDto: CreateInvitationDto, inviterId?: string): Promise<ProjectInvitation> {
@@ -108,13 +110,26 @@ export class InvitationsService {
     }
 
     async acceptInvitation(token: string, userId: string): Promise<ProjectInvitation> {
-        this.logger.log(`Accepting invitation with token: ${token}`);
+        this.logger.log(`🎯 Accepting invitation with token: ${token} by user: ${userId}`);
 
         try {
             // Find invitation by token
             const invitation = await this.invitationRepository.findByToken(token);
             if (!invitation) {
                 throw new NotFoundException('Invitation not found or invalid');
+            }
+
+            this.logger.log(`📧 Found invitation:`, {
+                id: invitation.id,
+                projectId: invitation.projectId,
+                inviteeId: invitation.inviteeId,
+                status: invitation.status,
+                expiresAt: invitation.expiresAt
+            });
+
+            // Validate that the user accepting is the invitee
+            if (invitation.inviteeId !== userId) {
+                throw new BadRequestException('You can only accept invitations sent to you');
             }
 
             // Validate invitation
@@ -128,14 +143,25 @@ export class InvitationsService {
 
             // Accept invitation using domain method
             invitation.accept();
+            this.logger.log(`✅ Invitation status changed to: ${invitation.status}`);
 
             const updatedInvitation = await this.invitationRepository.update(invitation.id, invitation);
 
-            this.logger.log(`Invitation accepted successfully: ${updatedInvitation.id}`);
+            // Add user to project as member
+            try {
+                this.logger.log(`👥 Adding user ${userId} to project ${invitation.projectId}`);
+                await this.projectsService.addMember(invitation.projectId, userId);
+                this.logger.log(`✅ User successfully added to project`);
+            } catch (error) {
+                this.logger.error(`💥 Failed to add user to project:`, error.stack || error);
+                // Don't fail the invitation acceptance if member addition fails
+            }
+
+            this.logger.log(`🎉 Invitation accepted successfully: ${updatedInvitation.id}`);
             return updatedInvitation;
 
         } catch (error) {
-            this.logger.error(`Failed to accept invitation with token: ${token}`, error);
+            this.logger.error(`💥 Failed to accept invitation with token: ${token}`, error.stack || error);
             throw error;
         }
     }
