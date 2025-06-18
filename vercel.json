@@ -6,11 +6,11 @@
   "installCommand": "npm ci --prefix apps/frontend",
   "ignoreCommand": "git diff --quiet HEAD^ HEAD ./apps/frontend",
   "env": {
-    "NEXT_PUBLIC_API_URL": "@next_public_api_url"
+    "NEXT_PUBLIC_API_URL": "https://taskflow-api-new.vercel.app/api"
   },
   "build": {
     "env": {
-      "NEXT_PUBLIC_API_URL": "@next_public_api_url"
+      "NEXT_PUBLIC_API_URL": "https://taskflow-api-new.vercel.app/api"
     }
   }
 }

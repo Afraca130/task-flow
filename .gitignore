@@ -151,3 +151,4 @@ coverage/
 
 # Docker
 .dockerignore
+.vercel

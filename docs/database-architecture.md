@@ -23,7 +23,6 @@ Comment ||--o{ Comment : "부모댓글-답글"
         Date createdAt
         Date updatedAt
         boolean isActive "계정 활성화 상태"
-        string profileImage "프로필 이미지"
     }
 
     Project {
