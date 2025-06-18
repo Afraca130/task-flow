@@ -118,13 +118,22 @@ export function NotificationBell({ className = '' }: NotificationBellProps) {
   const handleAcceptInvitation = async () => {
     if (!currentInvitation) return;
 
+    console.log('🎯 Accept invitation called with:', currentInvitation);
+
     try {
       // Try to get token from data, fallback to invitationId for backward compatibility
       const token =
         currentInvitation.data?.invitationToken || currentInvitation.metadata?.invitationId;
+
+      console.log('🔑 Token found:', token);
+      console.log('📧 Invitation data:', currentInvitation.data);
+      console.log('📋 Invitation metadata:', currentInvitation.metadata);
+
       if (token) {
+        console.log('✅ Calling accept invitation API with token:', token);
         // 실제 초대 수락 API 호출
         await invitationsApi.acceptInvitation(token);
+        console.log('✅ Accept invitation API call successful');
 
         // 알림을 읽음 처리
         await notificationsApi.markAsRead(currentInvitation.id);
@@ -141,9 +150,12 @@ export function NotificationBell({ className = '' }: NotificationBellProps) {
         if (projectId) {
           window.location.href = `/projects/${projectId}`;
         }
+      } else {
+        console.error('❌ No token found in invitation data');
+        alert('초대 정보를 찾을 수 없습니다.');
       }
     } catch (error) {
-      console.error('Failed to accept invitation:', error);
+      console.error('💥 Failed to accept invitation:', error);
       alert('초대 수락에 실패했습니다.');
     } finally {
       setShowInvitationModal(false);
@@ -154,13 +166,20 @@ export function NotificationBell({ className = '' }: NotificationBellProps) {
   const handleDeclineInvitation = async () => {
     if (!currentInvitation) return;
 
+    console.log('🎯 Decline invitation called with:', currentInvitation);
+
     try {
       // Try to get token from data, fallback to invitationId for backward compatibility
       const token =
         currentInvitation.data?.invitationToken || currentInvitation.metadata?.invitationId;
+
+      console.log('🔑 Token found:', token);
+
       if (token) {
+        console.log('✅ Calling decline invitation API with token:', token);
         // 실제 초대 거절 API 호출
         await invitationsApi.declineInvitation(token);
+        console.log('✅ Decline invitation API call successful');
 
         // 알림을 읽음 처리
         await notificationsApi.markAsRead(currentInvitation.id);
@@ -170,9 +189,12 @@ export function NotificationBell({ className = '' }: NotificationBellProps) {
         setUnreadCount(prev => Math.max(0, prev - 1));
 
         alert('초대를 거절했습니다.');
+      } else {
+        console.error('❌ No token found in invitation data');
+        alert('초대 정보를 찾을 수 없습니다.');
       }
     } catch (error) {
-      console.error('Failed to decline invitation:', error);
+      console.error('💥 Failed to decline invitation:', error);
       alert('초대 거절에 실패했습니다.');
     } finally {
       setShowInvitationModal(false);

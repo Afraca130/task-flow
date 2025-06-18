@@ -480,42 +480,64 @@ export default function DashboardPage() {
     const activeId = active.id as string;
     const overId = over.id as string;
 
-    // Find the dragged task
+    console.log('🎯 Drag ended:', { activeId, overId });
+
     const task = tasks.find(t => t.id === activeId);
     if (!task) return;
 
-    try {
-      // Determine if over is a column or a task
-      const isOverColumn = statusColumns[overId as keyof typeof statusColumns];
-      const isOverTask = tasks.find(t => t.id === overId);
+    console.log('📋 Dragged task:', task);
 
-      let newStatus: keyof typeof statusColumns;
+    try {
+      // Determine new status and position
+      let newStatus: keyof typeof statusColumns = task.status as keyof typeof statusColumns;
       let newIndex = 0;
 
-      if (isOverColumn) {
-        // Dropped on column - add to end
+      const isOverContainer = Object.keys(statusColumns).includes(overId);
+      const isOverTask = tasks.find(t => t.id === overId);
+
+      if (isOverContainer) {
+        // Dropped on container - append to end
         newStatus = overId as keyof typeof statusColumns;
-        const tasksInStatus = getTasksByStatus(newStatus);
+        const tasksInStatus = sortByRank(getTasksByStatus(newStatus));
         newIndex = tasksInStatus.length;
+        console.log('📦 Dropped on container:', { newStatus, tasksCount: tasksInStatus.length });
       } else if (isOverTask) {
         // Dropped on task - insert before that task
         newStatus = isOverTask.status as keyof typeof statusColumns;
         const tasksInStatus = sortByRank(getTasksByStatus(newStatus));
         newIndex = tasksInStatus.findIndex(t => t.id === overId);
         if (newIndex === -1) newIndex = tasksInStatus.length;
+        console.log('📋 Dropped on task:', {
+          newStatus,
+          targetTaskId: overId,
+          newIndex,
+          tasksInStatus: tasksInStatus.map(t => ({ id: t.id, lexoRank: t.lexoRank })),
+        });
       } else {
+        console.log('❌ Invalid drop target');
         return; // Invalid drop target
       }
 
       // Same status reorder
       if (task.status === newStatus) {
+        console.log('↔️ Same status reorder');
         const tasksInStatus = getTasksByStatus(newStatus);
         const oldIndex = tasksInStatus.findIndex(t => t.id === activeId);
 
-        if (oldIndex === newIndex) return; // No change needed
+        console.log('📊 Reorder details:', {
+          oldIndex,
+          newIndex,
+          tasksInStatus: tasksInStatus.map(t => ({ id: t.id, lexoRank: t.lexoRank })),
+        });
+
+        if (oldIndex === newIndex) {
+          console.log('✅ No change needed');
+          return; // No change needed
+        }
 
         // Calculate new LexoRank
         const newLexoRank = calculateNewLexoRank(tasksInStatus, activeId, newIndex);
+        console.log('🔢 Calculated new LexoRank:', newLexoRank);
 
         // Optimistic update
         const optimisticUpdate = (prevTasks: Task[]) => {
@@ -526,15 +548,25 @@ export default function DashboardPage() {
 
         // Server update
         await tasksApi.reorderTask(activeId, newLexoRank);
+        console.log('✅ Server update completed');
 
         // Reload to ensure consistency
         await loadTasks();
+        console.log('✅ Tasks reloaded');
         return;
       }
 
       // Status change
+      console.log('🔄 Status change');
       const targetTasks = getTasksByStatus(newStatus);
       const newLexoRank = calculateNewLexoRank(targetTasks, '', newIndex);
+
+      console.log('🔢 Status change LexoRank:', {
+        newStatus,
+        newIndex,
+        targetTasks: targetTasks.map(t => ({ id: t.id, lexoRank: t.lexoRank })),
+        newLexoRank,
+      });
 
       // Optimistic update
       const optimisticUpdate = (prevTasks: Task[]) =>
@@ -549,11 +581,13 @@ export default function DashboardPage() {
         status: newStatus,
         lexoRank: newLexoRank,
       });
+      console.log('✅ Status change server update completed');
 
       // Reload to ensure consistency
       await loadTasks();
+      console.log('✅ Tasks reloaded after status change');
     } catch (error) {
-      console.error('Failed to update task:', error);
+      console.error('💥 Failed to update task:', error);
       // Revert on error
       await loadTasks();
     }
@@ -852,7 +886,7 @@ export default function DashboardPage() {
             <div className='mb-6'>
               <div className='flex items-center justify-between mb-4'>
                 <h1 className='text-2xl font-bold text-gray-900 mb-4'>
-                  {selectedProject?.name || ''} 이슈
+                  {selectedProject?.name || ''} 프로젝트
                 </h1>
                 <div className='flex items-center space-x-4'>
                   <Button onClick={() => handleCreateTask()}>

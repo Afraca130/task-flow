@@ -82,23 +82,43 @@ export class IssuesService implements IssueServiceInterface {
         createDto: CreateIssueDto,
         mentionedUserIds: string[] = []
     ): Promise<Issue> {
+        this.logger.log(`🚀 Creating issue with mentions: ${createDto.title}`);
+        this.logger.log(`👥 Mentioned users: ${mentionedUserIds.length > 0 ? mentionedUserIds.join(', ') : 'none'}`);
+
         const issue = await this.createIssue(userId, createDto);
 
         // Send mention notifications
         if (mentionedUserIds.length > 0) {
             try {
+                this.logger.log(`🔔 Preparing to send mention notifications to ${mentionedUserIds.length} users`);
+
                 const creator = await this.usersService.findById(userId);
                 const creatorName = creator?.name || 'Someone';
 
-                await this.notificationsService.createIssueMentionNotifications(
+                this.logger.log(`👤 Creator details: ${creatorName} (${userId})`);
+
+                const notifications = await this.notificationsService.createIssueMentionNotifications(
                     mentionedUserIds.filter(id => id !== userId), // Don't notify the creator
                     creatorName,
                     issue.title,
                     issue.id
                 );
+
+                this.logger.log(`✅ Created ${notifications.length} mention notifications`);
+                notifications.forEach(notification => {
+                    this.logger.log(`📧 Mention notification:`, {
+                        id: notification.id,
+                        userId: notification.userId,
+                        type: notification.type,
+                        title: notification.title,
+                        message: notification.message
+                    });
+                });
             } catch (error) {
-                this.logger.error(`Failed to send mention notifications:`, error.stack || error);
+                this.logger.error(`💥 Failed to send mention notifications:`, error.stack || error);
             }
+        } else {
+            this.logger.log(`⚠️ No users to mention, skipping notifications`);
         }
 
         return issue;

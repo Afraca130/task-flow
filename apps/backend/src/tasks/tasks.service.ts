@@ -156,21 +156,34 @@ export class TasksService {
             // Notify assignee
             if (command.assigneeId) {
                 try {
+                    this.logger.log(`🔔 Preparing to send task assignment notification to: ${command.assigneeId}`);
+
                     const assigner = await this.usersService.findById(command.assignerId);
                     const assignerName = assigner?.name || 'Someone';
 
-                    await this.notificationsService.createTaskAssignmentNotification(
+                    this.logger.log(`👤 Assigner details: ${assignerName} (${command.assignerId})`);
+
+                    const notification = await this.notificationsService.createTaskAssignmentNotification(
                         command.assigneeId,
                         assignerName,
                         command.title,
                         savedTask.id
                     );
 
-                    this.logger.log(`Task assignment notification sent to user: ${command.assigneeId}`);
+                    this.logger.log(`✅ Task assignment notification created: ${notification.id}`);
+                    this.logger.log(`📧 Notification details:`, {
+                        id: notification.id,
+                        userId: notification.userId,
+                        type: notification.type,
+                        title: notification.title,
+                        message: notification.message
+                    });
                 } catch (error) {
-                    this.logger.error(`Failed to send task assignment notification:`, error.stack || error);
+                    this.logger.error(`💥 Failed to send task assignment notification:`, error.stack || error);
                     // Don't fail the task creation if notification fails
                 }
+            } else {
+                this.logger.log(`⚠️ No assignee specified, skipping notification`);
             }
 
             this.logger.log(`Task created successfully: ${savedTask.id}`);

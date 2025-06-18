@@ -129,29 +129,97 @@ export function isValidLexoRank(rank: string): boolean {
  * Calculate LexoRank between two ranks
  */
 export function between(left: string, right: string): string {
-    // Simple implementation - in production, use a proper LexoRank library
-    const leftNum = rankToNumber(left);
-    const rightNum = rankToNumber(right);
-    const middle = Math.floor((leftNum + rightNum) / 2);
-    return numberToRank(middle);
+    console.log('🔄 LexoRank between:', { left, right });
+
+    // Ensure left < right
+    if (left >= right) {
+        console.warn('⚠️ Left rank >= right rank, adjusting');
+        const newRank = left + '1';
+        console.log('✅ Generated rank:', newRank);
+        return newRank;
+    }
+
+    // Simple string-based interpolation
+    const result = generateBetween(left, right);
+    console.log('✅ Generated between rank:', result);
+    return result;
 }
 
 /**
  * Calculate LexoRank before a given rank
  */
 export function before(rank: string): string {
-    const num = rankToNumber(rank);
-    const newNum = Math.max(0, num - 1000);
-    return numberToRank(newNum);
+    console.log('⬆️ LexoRank before:', rank);
+
+    // If rank is empty or starts with '0', prepend with a smaller character
+    if (!rank || rank.startsWith('0')) {
+        const result = '0' + rank;
+        console.log('✅ Generated before rank:', result);
+        return result;
+    }
+
+    // Decrement the last character if possible
+    const lastChar = rank.slice(-1);
+    const lastCharCode = lastChar.charCodeAt(0);
+
+    if (lastCharCode > 48) { // Greater than '0'
+        const newLastChar = String.fromCharCode(lastCharCode - 1);
+        const result = rank.slice(0, -1) + newLastChar + 'z';
+        console.log('✅ Generated before rank:', result);
+        return result;
+    }
+
+    // Default fallback
+    const result = rank.slice(0, -1) + '0';
+    console.log('✅ Generated before rank (fallback):', result);
+    return result;
 }
 
 /**
  * Calculate LexoRank after a given rank
  */
 export function after(rank: string): string {
-    const num = rankToNumber(rank);
-    const newNum = num + 1000;
-    return numberToRank(newNum);
+    console.log('⬇️ LexoRank after:', rank);
+
+    const result = rank + '1';
+    console.log('✅ Generated after rank:', result);
+    return result;
+}
+
+/**
+ * Generate a rank between two given ranks
+ */
+function generateBetween(left: string, right: string): string {
+    const maxLength = Math.max(left.length, right.length);
+    const leftPadded = left.padEnd(maxLength, '0');
+    const rightPadded = right.padEnd(maxLength, '0');
+
+    let result = '';
+    let carry = false;
+
+    for (let i = 0; i < maxLength; i++) {
+        const leftChar = leftPadded[i];
+        const rightChar = rightPadded[i];
+
+        if (leftChar === rightChar) {
+            result += leftChar;
+            continue;
+        }
+
+        const leftCode = leftChar.charCodeAt(0);
+        const rightCode = rightChar.charCodeAt(0);
+        const midCode = Math.floor((leftCode + rightCode) / 2);
+
+        if (midCode === leftCode) {
+            result += leftChar + '1';
+            break;
+        } else {
+            result += String.fromCharCode(midCode);
+            break;
+        }
+    }
+
+    return result || (left + '1');
 }
 
 /**

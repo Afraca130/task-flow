@@ -35,11 +35,13 @@ export class InvitationsService {
 
             // Generate invitation token
             const inviteToken = crypto.randomBytes(32).toString('hex');
+            this.logger.log(`🔑 Generated invitation token: ${inviteToken}`);
 
             // Calculate expiry date
             const expiryDays = 7; // Default 7 days
             const expiresAt = new Date();
             expiresAt.setDate(expiresAt.getDate() + expiryDays);
+            this.logger.log(`⏰ Invitation expires at: ${expiresAt.toISOString()}`);
 
             // Create invitation using factory method
             const invitation = ProjectInvitation.create(
@@ -56,17 +58,23 @@ export class InvitationsService {
                 message: createDto.message
             });
 
-            this.logger.log(`Invitation created successfully: ${savedInvitation.id}`);
+            this.logger.log(`✅ Invitation created successfully: ${savedInvitation.id}`);
+            this.logger.log(`🔗 Invitation token stored: ${savedInvitation.token || 'NO TOKEN FOUND!'}`);
 
             // Create notification for the invitee
             try {
+                this.logger.log(`🔔 Preparing invitation notification for user: ${createDto.inviteeId}`);
+
                 const inviter = await this.usersService.findById(inviterId);
                 const inviterName = inviter?.name || 'Someone';
 
                 // Get project name if available
                 const projectName = savedInvitation.project?.name || 'Project';
 
-                await this.notificationsService.createProjectInvitationNotification(
+                this.logger.log(`👤 Inviter details: ${inviterName} (${inviterId})`);
+                this.logger.log(`📁 Project details: ${projectName} (${createDto.projectId})`);
+
+                const notification = await this.notificationsService.createProjectInvitationNotification(
                     createDto.inviteeId,
                     inviterName,
                     projectName,
@@ -74,9 +82,16 @@ export class InvitationsService {
                     savedInvitation.token  // Pass token for notification data
                 );
 
-                this.logger.log(`Invitation notification sent to user: ${createDto.inviteeId}`);
+                this.logger.log(`✅ Invitation notification created: ${notification.id}`);
+                this.logger.log(`📧 Notification data:`, {
+                    id: notification.id,
+                    userId: notification.userId,
+                    type: notification.type,
+                    title: notification.title,
+                    data: notification.data
+                });
             } catch (error) {
-                this.logger.error(`Failed to send invitation notification:`, error.stack || error);
+                this.logger.error(`💥 Failed to send invitation notification:`, error.stack || error);
                 // Don't fail the invitation creation if notification fails
             }
 
