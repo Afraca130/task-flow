@@ -19,10 +19,8 @@ export function IssueModal({ issue, onClose, onSave, fixedProjectId }: IssueModa
   const [formData, setFormData] = useState({
     title: '',
     description: '',
-    status: 'OPEN' as 'OPEN' | 'IN_PROGRESS' | 'RESOLVED' | 'CLOSED',
-    priority: 'MEDIUM' as 'LOW' | 'MEDIUM' | 'HIGH' | 'URGENT',
+    type: 'BUG' as 'BUG' | 'FEATURE' | 'IMPROVEMENT' | 'QUESTION' | 'DISCUSSION',
     projectId: fixedProjectId || projects[0]?.id || '',
-    assigneeId: '',
     mentionedUserIds: [] as string[],
   });
 
@@ -70,10 +68,8 @@ export function IssueModal({ issue, onClose, onSave, fixedProjectId }: IssueModa
       setFormData({
         title: issue.title || '',
         description: issue.description || '',
-        status: issue.status || 'OPEN',
-        priority: issue.priority || 'MEDIUM',
+        type: issue.type || 'BUG',
         projectId: issue.projectId || fixedProjectId || projects[0]?.id || '',
-        assigneeId: issue.assigneeId || '',
         mentionedUserIds: [],
       });
     } else {
@@ -81,10 +77,8 @@ export function IssueModal({ issue, onClose, onSave, fixedProjectId }: IssueModa
       setFormData({
         title: '',
         description: '',
-        status: 'OPEN',
-        priority: 'MEDIUM',
+        type: 'BUG',
         projectId: fixedProjectId || projects[0]?.id || '',
-        assigneeId: '',
         mentionedUserIds: [],
       });
     }
@@ -103,9 +97,7 @@ export function IssueModal({ issue, onClose, onSave, fixedProjectId }: IssueModa
         savedIssue = await issuesApi.updateIssue(issue.id, {
           title: formData.title.trim(),
           description: formData.description.trim() || undefined,
-          status: formData.status,
-          priority: formData.priority,
-          assigneeId: formData.assigneeId || undefined,
+          type: formData.type,
         });
       } else {
         // Create new issue
@@ -113,23 +105,20 @@ export function IssueModal({ issue, onClose, onSave, fixedProjectId }: IssueModa
           savedIssue = await issuesApi.createIssueWithMentions({
             title: formData.title.trim(),
             description: formData.description.trim() || undefined,
-            priority: formData.priority,
+            type: formData.type,
             projectId: formData.projectId,
-            assigneeId: formData.assigneeId || undefined,
             mentionedUserIds: formData.mentionedUserIds,
           });
         } else {
           savedIssue = await issuesApi.createIssue({
             title: formData.title.trim(),
             description: formData.description.trim() || undefined,
-            priority: formData.priority,
+            type: formData.type,
             projectId: formData.projectId,
-            assigneeId: formData.assigneeId || undefined,
           });
         }
       }
 
-      // Remove mention notifications message since they're now handled by backend
       onSave(savedIssue);
       onClose();
     } catch (error) {
@@ -147,6 +136,10 @@ export function IssueModal({ issue, onClose, onSave, fixedProjectId }: IssueModa
         ? prev.mentionedUserIds.filter(id => id !== userId)
         : [...prev.mentionedUserIds, userId],
     }));
+  };
+
+  const getSelectedProjectName = () => {
+    return projects.find(p => p.id === formData.projectId)?.name || '프로젝트 선택';
   };
 
   return (
@@ -186,76 +179,26 @@ export function IssueModal({ issue, onClose, onSave, fixedProjectId }: IssueModa
           </div>
 
           <div>
-            <label className='block text-sm font-medium text-gray-700 mb-2'>우선순위</label>
+            <label className='block text-sm font-medium text-gray-700 mb-2'>이슈 유형</label>
             <select
-              value={formData.priority}
-              onChange={e => setFormData({ ...formData, priority: e.target.value as any })}
+              value={formData.type}
+              onChange={e => setFormData({ ...formData, type: e.target.value as any })}
               className='w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500'
             >
-              <option value='LOW'>낮음</option>
-              <option value='MEDIUM'>보통</option>
-              <option value='HIGH'>높음</option>
-              <option value='URGENT'>긴급</option>
+              <option value='BUG'>🐛 버그</option>
+              <option value='FEATURE'>✨ 기능 요청</option>
+              <option value='IMPROVEMENT'>⚡ 개선사항</option>
+              <option value='QUESTION'>❓ 질문</option>
+              <option value='DISCUSSION'>💬 토론</option>
             </select>
           </div>
 
-          {issue?.id && (
-            <div>
-              <label className='block text-sm font-medium text-gray-700 mb-2'>상태</label>
-              <select
-                value={formData.status}
-                onChange={e => setFormData({ ...formData, status: e.target.value as any })}
-                className='w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500'
-              >
-                <option value='OPEN'>열림</option>
-                <option value='IN_PROGRESS'>진행중</option>
-                <option value='RESOLVED'>해결됨</option>
-                <option value='CLOSED'>닫힘</option>
-              </select>
-            </div>
-          )}
-
-          {!fixedProjectId && (
-            <div>
-              <label className='block text-sm font-medium text-gray-700 mb-2'>프로젝트 *</label>
-              <select
-                required
-                value={formData.projectId}
-                onChange={e => setFormData({ ...formData, projectId: e.target.value })}
-                className='w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500'
-                disabled={loading}
-              >
-                <option value=''>프로젝트를 선택하세요</option>
-                {projects.map(project => (
-                  <option key={project.id} value={project.id}>
-                    {project.name}
-                  </option>
-                ))}
-              </select>
-            </div>
-          )}
-
           <div>
-            <label className='block text-sm font-medium text-gray-700 mb-2'>담당자</label>
-            <select
-              value={formData.assigneeId}
-              onChange={e => setFormData({ ...formData, assigneeId: e.target.value })}
-              className='w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500'
-              disabled={loading}
-            >
-              <option value=''>담당자를 선택하세요</option>
-              {projectMembers.map(member => (
-                <option key={member.id} value={member.userId}>
-                  {member.user?.name || member.user?.email} (
-                  {member.role === 'OWNER'
-                    ? '소유자'
-                    : member.role === 'MANAGER'
-                      ? '관리자'
-                      : '멤버'}
-                  )
-                </option>
-              ))}
-            </select>
+            <label className='block text-sm font-medium text-gray-700 mb-2'>프로젝트</label>
+            <div className='w-full px-3 py-2 border border-gray-300 rounded-lg bg-gray-100 text-gray-600 cursor-not-allowed'>
+              {getSelectedProjectName()}
+            </div>
+            <p className='text-xs text-gray-500 mt-1'>프로젝트는 변경할 수 없습니다.</p>
           </div>
 
           <div>

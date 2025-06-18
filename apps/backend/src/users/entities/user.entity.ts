@@ -67,9 +67,6 @@ export class User extends BaseEntity {
   @OneToMany(() => Issue, (issue) => issue.author)
   createdIssues?: Issue[];
 
-  @OneToMany(() => Issue, (issue) => issue.assignee)
-  assignedIssues?: Issue[];
-
   // Domain methods
   public updateProfile(name: string, profileImage?: string, profileColor?: string, organization?: string): void {
     if (!name || name.trim().length === 0) {

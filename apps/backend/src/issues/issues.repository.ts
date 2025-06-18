@@ -1,62 +1,65 @@
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
-import { Issue, IssuePriority, IssueStatus, IssueType } from './entities/issue.entity';
+import { Issue, IssueType } from './entities/issue.entity';
 
 @Injectable()
 export class IssuesRepository {
     constructor(
         @InjectRepository(Issue)
-        private readonly repository: Repository<Issue>,
+        private readonly issueRepository: Repository<Issue>,
     ) { }
 
+    async create(issue: Issue): Promise<Issue> {
+        return await this.issueRepository.save(issue);
+    }
+
     async save(issue: Issue): Promise<Issue> {
-        return await this.repository.save(issue);
+        return await this.issueRepository.save(issue);
     }
 
     async findById(id: string): Promise<Issue | null> {
-        return await this.repository.findOne({
+        return await this.issueRepository.findOne({
             where: { id },
-            relations: ['author', 'assignee', 'project']
+            relations: ['project', 'author'],
         });
     }
 
     async findByProjectId(projectId: string): Promise<Issue[]> {
-        return await this.repository.find({
+        return await this.issueRepository.find({
             where: { projectId },
-            relations: ['author', 'assignee'],
-            order: { createdAt: 'DESC' }
-        });
-    }
-
-    async findByAssigneeId(assigneeId: string): Promise<Issue[]> {
-        return await this.repository.find({
-            where: { assigneeId },
-            relations: ['author', 'project'],
-            order: { createdAt: 'DESC' }
+            relations: ['project', 'author'],
+            order: { createdAt: 'DESC' },
         });
     }
 
     async findByAuthorId(authorId: string): Promise<Issue[]> {
-        return await this.repository.find({
-            where: { authorId: authorId },
-            relations: ['author', 'assignee', 'project'],
-            order: { createdAt: 'DESC' }
+        return await this.issueRepository.find({
+            where: { authorId },
+            relations: ['project', 'author'],
+            order: { createdAt: 'DESC' },
+        });
+    }
+
+    async findAll(): Promise<Issue[]> {
+        return await this.issueRepository.find({
+            relations: ['project', 'author'],
+            order: { createdAt: 'DESC' },
         });
     }
 
     async delete(id: string): Promise<void> {
-        await this.repository.delete(id);
+        await this.issueRepository.delete(id);
     }
 
     async searchIssues(query: string, projectId?: string): Promise<Issue[]> {
-        const queryBuilder = this.repository.createQueryBuilder('issue');
-
-        queryBuilder
-            .leftJoinAndSelect('issue.author', 'author')
-            .leftJoinAndSelect('issue.assignee', 'assignee')
+        const queryBuilder = this.issueRepository
+            .createQueryBuilder('issue')
             .leftJoinAndSelect('issue.project', 'project')
-            .where('(issue.title ILIKE :query OR issue.description ILIKE :query)', { query: `%${query}%` });
+            .leftJoinAndSelect('issue.author', 'author')
+            .where('issue.title ILIKE :query OR issue.description ILIKE :query', {
+                query: `%${query}%`,
+            });
 
         if (projectId) {
             queryBuilder.andWhere('issue.projectId = :projectId', { projectId });
@@ -67,55 +70,30 @@ export class IssuesRepository {
             .getMany();
     }
 
-    async findAll(): Promise<Issue[]> {
-        return await this.repository.find({
-            relations: ['author', 'assignee', 'project'],
-            order: { createdAt: 'DESC' }
-        });
-    }
-
     async findWithFilters(filters: {
         projectId?: string;
-        status?: IssueStatus;
-        priority?: IssuePriority;
         type?: IssueType;
-        assigneeId?: string;
         authorId?: string;
-        labels?: string[];
     }): Promise<Issue[]> {
-        const queryBuilder = this.repository.createQueryBuilder('issue');
-
-        queryBuilder
-            .leftJoinAndSelect('issue.author', 'author')
-            .leftJoinAndSelect('issue.assignee', 'assignee')
-            .leftJoinAndSelect('issue.project', 'project');
+        const queryBuilder = this.issueRepository
+            .createQueryBuilder('issue')
+            .leftJoinAndSelect('issue.project', 'project')
+            .leftJoinAndSelect('issue.author', 'author');
 
         if (filters.projectId) {
-            queryBuilder.andWhere('issue.projectId = :projectId', { projectId: filters.projectId });
-        }
-
-        if (filters.status) {
-            queryBuilder.andWhere('issue.status = :status', { status: filters.status });
-        }
-
-        if (filters.priority) {
-            queryBuilder.andWhere('issue.priority = :priority', { priority: filters.priority });
+            queryBuilder.andWhere('issue.projectId = :projectId', {
+                projectId: filters.projectId,
+            });
         }
 
         if (filters.type) {
             queryBuilder.andWhere('issue.type = :type', { type: filters.type });
         }
 
-        if (filters.assigneeId) {
-            queryBuilder.andWhere('issue.assigneeId = :assigneeId', { assigneeId: filters.assigneeId });
-        }
-
         if (filters.authorId) {
-            queryBuilder.andWhere('issue.authorId = :authorId', { authorId: filters.authorId });
-        }
-
-        if (filters.labels && filters.labels.length > 0) {
-            queryBuilder.andWhere('issue.labels && :labels', { labels: filters.labels });
+            queryBuilder.andWhere('issue.authorId = :authorId', {
+                authorId: filters.authorId,
+            });
         }
 
         return await queryBuilder

@@ -1,6 +1,6 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import { IsArray, IsEnum, IsNotEmpty, IsOptional, IsString, IsUUID } from 'class-validator';
-import { IssuePriority, IssueType } from '../../entities/issue.entity';
+import { IsEnum, IsNotEmpty, IsOptional, IsString, IsUUID } from 'class-validator';
+import { IssueType } from '../../entities/issue.entity';
 
 export class CreateIssueDto {
     @ApiProperty({
@@ -30,24 +30,6 @@ export class CreateIssueDto {
     readonly projectId: string;
 
     @ApiPropertyOptional({
-        description: 'Assignee user ID',
-        example: 'uuid-string',
-        format: 'uuid',
-    })
-    @IsUUID()
-    @IsOptional()
-    readonly assigneeId?: string;
-
-    @ApiPropertyOptional({
-        description: 'Issue priority',
-        enum: IssuePriority,
-        example: IssuePriority.MEDIUM,
-    })
-    @IsEnum(IssuePriority)
-    @IsOptional()
-    readonly priority?: IssuePriority;
-
-    @ApiPropertyOptional({
         description: 'Issue type',
         enum: IssueType,
         example: IssueType.BUG,
@@ -55,14 +37,4 @@ export class CreateIssueDto {
     @IsEnum(IssueType)
     @IsOptional()
     readonly type?: IssueType;
-
-    @ApiPropertyOptional({
-        description: 'Issue labels',
-        example: ['frontend', 'urgent'],
-        type: [String],
-    })
-    @IsArray()
-    @IsString({ each: true })
-    @IsOptional()
-    readonly labels?: string[];
 }

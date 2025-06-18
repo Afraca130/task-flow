@@ -342,15 +342,12 @@ export interface Issue {
   id: string;
   title: string;
   description?: string;
-  status: 'OPEN' | 'IN_PROGRESS' | 'RESOLVED' | 'CLOSED';
-  priority: 'LOW' | 'MEDIUM' | 'HIGH' | 'URGENT';
+  type: 'BUG' | 'FEATURE' | 'IMPROVEMENT' | 'QUESTION' | 'DISCUSSION';
   authorId: string;
-  assigneeId?: string;
   projectId: string;
   createdAt: string;
   updatedAt: string;
   author?: User;
-  assignee?: User;
   project?: Project;
 }
 
@@ -738,44 +735,41 @@ export const usersApi = {
 export const issuesApi = {
   getIssues: async (params?: {
     projectId?: string;
-    status?: 'OPEN' | 'IN_PROGRESS' | 'RESOLVED' | 'CLOSED';
+    type?: 'BUG' | 'FEATURE' | 'IMPROVEMENT' | 'QUESTION' | 'DISCUSSION';
     authorId?: string;
-    assigneeId?: string;
     page?: number;
     limit?: number;
     search?: string;
   }): Promise<{ data: Issue[]; total: number; page: number; limit: number; totalPages: number }> => {
-    const response = await api.get<StandardApiResponse<{ data: Issue[]; total: number; page: number; limit: number; totalPages: number }>>('/v1/issues', { params });
+    const response = await api.get<StandardApiResponse<{ data: Issue[]; total: number; page: number; limit: number; totalPages: number }>>('/issues', { params });
     return extractData(response);
   },
 
   getIssue: async (issueId: string): Promise<Issue> => {
-    const response = await api.get<StandardApiResponse<Issue>>(`/v1/issues/${issueId}`);
+    const response = await api.get<StandardApiResponse<Issue>>(`/issues/${issueId}`);
     return extractData(response);
   },
 
   createIssue: async (data: {
     title: string;
     description?: string;
-    priority?: 'LOW' | 'MEDIUM' | 'HIGH' | 'URGENT';
+    type?: 'BUG' | 'FEATURE' | 'IMPROVEMENT' | 'QUESTION' | 'DISCUSSION';
     projectId: string;
-    assigneeId?: string;
   }): Promise<Issue> => {
-    const response = await api.post<StandardApiResponse<Issue>>('/v1/issues', data);
+    const response = await api.post<StandardApiResponse<Issue>>('/issues', data);
     return extractData(response);
   },
 
   createIssueWithMentions: async (data: {
     title: string;
     description?: string;
-    priority?: 'LOW' | 'MEDIUM' | 'HIGH' | 'URGENT';
+    type?: 'BUG' | 'FEATURE' | 'IMPROVEMENT' | 'QUESTION' | 'DISCUSSION';
     projectId: string;
-    assigneeId?: string;
     mentionedUserIds?: string[];
   }): Promise<Issue> => {
     const { mentionedUserIds, ...issueData } = data;
     console.log('🚀 Creating issue with mentions:', { issueData, mentionedUserIds });
-    const response = await api.post<StandardApiResponse<Issue>>('/v1/issues/with-mentions', {
+    const response = await api.post<StandardApiResponse<Issue>>('/issues/with-mentions', {
       issue: issueData,
       mentionedUserIds: mentionedUserIds || [],
     });
@@ -783,25 +777,12 @@ export const issuesApi = {
   },
 
   updateIssue: async (issueId: string, data: Partial<Issue>): Promise<Issue> => {
-    const response = await api.put<StandardApiResponse<Issue>>(`/v1/issues/${issueId}`, data);
+    const response = await api.put<StandardApiResponse<Issue>>(`/issues/${issueId}`, data);
     return extractData(response);
   },
 
   deleteIssue: async (issueId: string): Promise<void> => {
-    await api.delete(`/v1/issues/${issueId}`);
-  },
-
-  updateIssueStatus: async (
-    issueId: string,
-    status: 'OPEN' | 'IN_PROGRESS' | 'RESOLVED' | 'CLOSED'
-  ): Promise<Issue> => {
-    const response = await api.patch<StandardApiResponse<Issue>>(`/v1/issues/${issueId}/status`, { status });
-    return extractData(response);
-  },
-
-  assignIssue: async (issueId: string, assigneeId: string): Promise<Issue> => {
-    const response = await api.patch<StandardApiResponse<Issue>>(`/v1/issues/${issueId}/assign`, { assigneeId });
-    return extractData(response);
+    await api.delete(`/issues/${issueId}`);
   },
 };
 

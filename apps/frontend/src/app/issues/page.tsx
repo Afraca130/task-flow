@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Issue, issuesApi } from '@/lib/api';
 import { useAuthStore } from '@/store/auth';
 import { useProjectsStore } from '@/store/projects';
-import { AlertCircle, ArrowLeft, Bug, Clock, Plus, User } from 'lucide-react';
+import { ArrowLeft, Bug, Clock, Plus, User } from 'lucide-react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useEffect, useState } from 'react';
 
@@ -83,33 +83,54 @@ export default function IssuesPage() {
     setSelectedIssue(null);
   };
 
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case 'OPEN':
+  const getTypeColor = (type: string) => {
+    switch (type) {
+      case 'BUG':
+        return 'bg-red-100 text-red-800';
+      case 'FEATURE':
         return 'bg-blue-100 text-blue-800';
-      case 'IN_PROGRESS':
-        return 'bg-yellow-100 text-yellow-800';
-      case 'RESOLVED':
+      case 'IMPROVEMENT':
         return 'bg-green-100 text-green-800';
-      case 'CLOSED':
-        return 'bg-gray-100 text-gray-800';
+      case 'QUESTION':
+        return 'bg-yellow-100 text-yellow-800';
+      case 'DISCUSSION':
+        return 'bg-purple-100 text-purple-800';
       default:
         return 'bg-gray-100 text-gray-800';
     }
   };
 
-  const getPriorityColor = (priority: string) => {
-    switch (priority) {
-      case 'URGENT':
-        return 'bg-red-100 text-red-800';
-      case 'HIGH':
-        return 'bg-orange-100 text-orange-800';
-      case 'MEDIUM':
-        return 'bg-yellow-100 text-yellow-800';
-      case 'LOW':
-        return 'bg-gray-100 text-gray-800';
+  const getTypeIcon = (type: string) => {
+    switch (type) {
+      case 'BUG':
+        return '🐛';
+      case 'FEATURE':
+        return '✨';
+      case 'IMPROVEMENT':
+        return '⚡';
+      case 'QUESTION':
+        return '❓';
+      case 'DISCUSSION':
+        return '💬';
       default:
-        return 'bg-gray-100 text-gray-800';
+        return '📝';
+    }
+  };
+
+  const getTypeLabel = (type: string) => {
+    switch (type) {
+      case 'BUG':
+        return '버그';
+      case 'FEATURE':
+        return '기능 요청';
+      case 'IMPROVEMENT':
+        return '개선사항';
+      case 'QUESTION':
+        return '질문';
+      case 'DISCUSSION':
+        return '토론';
+      default:
+        return type;
     }
   };
 
@@ -178,26 +199,9 @@ export default function IssuesPage() {
                   </div>
                   <div className='flex items-center gap-2 ml-4'>
                     <span
-                      className={`px-2 py-1 text-xs font-medium rounded-full ${getStatusColor(issue.status)}`}
+                      className={`px-2 py-1 text-xs font-medium rounded-full ${getTypeColor(issue.type)}`}
                     >
-                      {issue.status === 'OPEN'
-                        ? '열림'
-                        : issue.status === 'IN_PROGRESS'
-                          ? '진행중'
-                          : issue.status === 'RESOLVED'
-                            ? '해결됨'
-                            : '닫힘'}
-                    </span>
-                    <span
-                      className={`px-2 py-1 text-xs font-medium rounded-full ${getPriorityColor(issue.priority)}`}
-                    >
-                      {issue.priority === 'URGENT'
-                        ? '긴급'
-                        : issue.priority === 'HIGH'
-                          ? '높음'
-                          : issue.priority === 'MEDIUM'
-                            ? '보통'
-                            : '낮음'}
+                      {getTypeLabel(issue.type)}
                     </span>
                   </div>
                 </div>
@@ -208,12 +212,6 @@ export default function IssuesPage() {
                       <User className='w-4 h-4' />
                       <span>{issue.author?.name || '작성자'}</span>
                     </div>
-                    {issue.assignee && (
-                      <div className='flex items-center gap-1'>
-                        <AlertCircle className='w-4 h-4' />
-                        <span>담당: {issue.assignee.name}</span>
-                      </div>
-                    )}
                     <div className='flex items-center gap-1'>
                       <Clock className='w-4 h-4' />
                       <span>{formatDate(issue.createdAt)}</span>

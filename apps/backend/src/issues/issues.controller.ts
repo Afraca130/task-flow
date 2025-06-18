@@ -22,7 +22,7 @@ import {
     ApiTags,
 } from '@nestjs/swagger';
 import { CreateIssueDto, UpdateIssueDto } from './dto/request';
-import { Issue, IssuePriority, IssueStatus, IssueType } from './entities/issue.entity';
+import { Issue, IssueType } from './entities/issue.entity';
 import { IssuesService } from './issues.service';
 
 @ApiTags('issues')
@@ -246,28 +246,6 @@ export class IssuesController {
         return await this.issuesService.getIssuesByProject(projectId);
     }
 
-    @Get('assignee/:userId')
-    @ApiOperation({
-        summary: 'Get issues by assignee',
-        description: 'Retrieves all issues assigned to a specific user',
-    })
-    @ApiParam({
-        name: 'userId',
-        description: 'User ID',
-        type: 'string',
-        format: 'uuid',
-    })
-    @ApiResponse({
-        status: 200,
-        description: 'Issues retrieved successfully',
-        type: [Issue],
-    })
-    async getIssuesByAssignee(
-        @Param('userId', ParseUUIDPipe) userId: string,
-    ): Promise<Issue[]> {
-        return await this.issuesService.getIssuesByAssignee(userId);
-    }
-
     @Get('author/:userId')
     @ApiOperation({
         summary: 'Get issues by author',
@@ -325,10 +303,7 @@ export class IssuesController {
         description: 'Retrieves issues with optional filters',
     })
     @ApiQuery({ name: 'projectId', required: false, type: 'string' })
-    @ApiQuery({ name: 'status', required: false, enum: IssueStatus })
-    @ApiQuery({ name: 'priority', required: false, enum: IssuePriority })
     @ApiQuery({ name: 'type', required: false, enum: IssueType })
-    @ApiQuery({ name: 'assigneeId', required: false, type: 'string' })
     @ApiQuery({ name: 'authorId', required: false, type: 'string' })
     @ApiResponse({
         status: 200,
@@ -337,18 +312,12 @@ export class IssuesController {
     })
     async getIssuesWithFilters(
         @Query('projectId') projectId?: string,
-        @Query('status') status?: IssueStatus,
-        @Query('priority') priority?: IssuePriority,
         @Query('type') type?: IssueType,
-        @Query('assigneeId') assigneeId?: string,
         @Query('authorId') authorId?: string,
     ): Promise<Issue[]> {
         return await this.issuesService.getIssuesWithFilters({
             projectId,
-            status,
-            priority,
             type,
-            assigneeId,
             authorId,
         });
     }

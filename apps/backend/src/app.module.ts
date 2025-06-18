@@ -92,7 +92,6 @@ import { NotificationsModule } from './notifications/notifications.module';
 })
 export class AppModule {
   constructor(
-    private readonly appConfig: AppConfig,
     private readonly configService: ConfigService
   ) {
     console.log('🌍 Environment:', this.configService.get('NODE_ENV'));

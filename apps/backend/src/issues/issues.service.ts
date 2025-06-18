@@ -4,10 +4,9 @@ import { NotificationsService } from '../notifications/notifications.service';
 import { UsersService } from '../users/users.service';
 import { CreateIssueDto } from './dto/request/create-issue.dto';
 import { UpdateIssueDto } from './dto/request/update-issue.dto';
-import { Issue, IssuePriority, IssueStatus, IssueType } from './entities/issue.entity';
+import { Issue, IssueType } from './entities/issue.entity';
 import { IssueServiceInterface } from './interfaces/issue-service.interface';
 import { IssuesRepository } from './issues.repository';
-
 
 @Injectable()
 export class IssuesService implements IssueServiceInterface {
@@ -33,10 +32,7 @@ export class IssuesService implements IssueServiceInterface {
                 createDto.description,
                 userId,
                 createDto.projectId,
-                createDto.assigneeId,
-                createDto.priority || IssuePriority.MEDIUM,
-                createDto.type || IssueType.BUG,
-                createDto.labels
+                createDto.type || IssueType.BUG
             );
 
             const savedIssue = await this.issuesRepository.save(issue);
@@ -49,23 +45,8 @@ export class IssuesService implements IssueServiceInterface {
                 savedIssue.id,
                 savedIssue.title,
                 savedIssue.type,
-                savedIssue.priority
+                ''
             );
-
-            // Send assignment notification
-            if (createDto.assigneeId && createDto.assigneeId !== userId) {
-                try {
-                    const creator = await this.usersService.findById(userId);
-                    await this.notificationsService.createIssueAssignmentNotification(
-                        createDto.assigneeId,
-                        creator?.name || 'Someone',
-                        savedIssue.title,
-                        savedIssue.id
-                    );
-                } catch (error) {
-                    this.logger.error('Failed to send assignment notification:', error);
-                }
-            }
 
             return savedIssue;
         } catch (error) {
@@ -174,68 +155,21 @@ export class IssuesService implements IssueServiceInterface {
                 throw new NotFoundException('Issue not found');
             }
 
-            const oldValues = {
-                status: issue.status,
-                priority: issue.priority,
-                assigneeId: issue.assigneeId,
-            };
+            // Update fields
+            if (updateDto.title !== undefined) {
+                issue.updateTitle(updateDto.title);
+            }
 
-            // Update issue fields
-            if (updateDto.title) issue.updateTitle(updateDto.title);
-            if (updateDto.description) issue.updateDescription(updateDto.description);
-            if (updateDto.status) issue.updateStatus(updateDto.status);
-            if (updateDto.priority) issue.updatePriority(updateDto.priority);
-            if (updateDto.assigneeId) issue.updateAssignee(updateDto.assigneeId);
-            if (updateDto.labels) issue.updateLabels(updateDto.labels);
+            if (updateDto.description !== undefined) {
+                issue.updateDescription(updateDto.description);
+            }
+
+            if (updateDto.type !== undefined) {
+                issue.updateType(updateDto.type);
+            }
 
             const updatedIssue = await this.issuesRepository.save(issue);
             this.logger.log(`Issue updated successfully: ${updatedIssue.id}`);
-
-            // Log specific changes
-            if (updateDto.status && oldValues.status !== updateDto.status) {
-                await this.activityLogService.logIssueStatusChanged(
-                    userId,
-                    updatedIssue.projectId,
-                    updatedIssue.id,
-                    updatedIssue.title,
-                    oldValues.status,
-                    updateDto.status
-                );
-            }
-
-            if (updateDto.priority && oldValues.priority !== updateDto.priority) {
-                await this.activityLogService.logIssuePriorityChanged(
-                    userId,
-                    updatedIssue.projectId,
-                    updatedIssue.id,
-                    updatedIssue.title,
-                    oldValues.priority,
-                    updateDto.priority
-                );
-            }
-
-            if (updateDto.assigneeId && oldValues.assigneeId !== updateDto.assigneeId) {
-                // TODO: Get assignee name from user service
-                await this.activityLogService.logIssueAssigned(
-                    userId,
-                    updatedIssue.projectId,
-                    updatedIssue.id,
-                    updatedIssue.title,
-                    updateDto.assigneeId,
-                    'Assignee' // Placeholder - should get actual name
-                );
-            }
-
-            // Log general update if no specific changes logged
-            if (!updateDto.status && !updateDto.priority && !updateDto.assigneeId) {
-                await this.activityLogService.logIssueUpdated(
-                    userId,
-                    updatedIssue.projectId,
-                    updatedIssue.id,
-                    updatedIssue.title,
-                    updateDto
-                );
-            }
 
             return updatedIssue;
         } catch (error) {
@@ -287,13 +221,6 @@ export class IssuesService implements IssueServiceInterface {
     }
 
     /**
-     * Get issues by assignee
-     */
-    async getIssuesByAssignee(assigneeId: string): Promise<Issue[]> {
-        return await this.issuesRepository.findByAssigneeId(assigneeId);
-    }
-
-    /**
      * Get issues by author (previously called reporter)
      */
     async getIssuesByAuthor(authorId: string): Promise<Issue[]> {
@@ -319,12 +246,8 @@ export class IssuesService implements IssueServiceInterface {
      */
     async getIssuesWithFilters(filters: {
         projectId?: string;
-        status?: IssueStatus;
-        priority?: IssuePriority;
         type?: IssueType;
-        assigneeId?: string;
         authorId?: string;
-        labels?: string[];
     }): Promise<Issue[]> {
         return await this.issuesRepository.findWithFilters(filters);
     }

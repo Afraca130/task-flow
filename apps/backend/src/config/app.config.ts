@@ -30,16 +30,6 @@ export class AppConfig {
     return this.configService.get<string>('API_PREFIX', 'api');
   }
 
-  get apiVersion(): string {
-    return this.configService.get<string>('API_VERSION', 'v1');
-  }
-
-  // CORS 설정
-  get allowedOrigins(): string[] {
-    const origins = this.configService.get<string>('ALLOWED_ORIGINS', 'http://localhost:3000');
-    return origins.split(',').map(origin => origin.trim());
-  }
-
   // Swagger 설정
   get swaggerEnabled(): boolean {
     return this.configService.get<boolean>('SWAGGER_ENABLED', !this.isProduction);
@@ -95,14 +85,11 @@ export class AppConfig {
       environment: this.nodeEnv,
       port: this.port,
       apiPrefix: this.apiPrefix,
-      apiVersion: this.apiVersion,
+
       // 데이터베이스 정보는 DatabaseConfig에서 관리됨
       swagger: {
         enabled: this.swaggerEnabled,
         path: this.swaggerPath,
-      },
-      cors: {
-        allowedOrigins: this.allowedOrigins,
       },
     };
   }
