@@ -25,13 +25,11 @@ import { PaginatedResponse } from '../../common/utils/paginated-response.util';
 import { GetUser } from '../../decorators/authenticated-user.decorator';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { User } from '../users/entities/user.entity';
-import { CreateProjectCommand } from './create-project.command';
 import { CreateProjectDto } from './dto/request/create-project.dto';
 import { UpdateProjectDto } from './dto/request/update-project.dto';
 import { ProjectMemberResponseDto } from './dto/response/project-member-response.dto';
 import { ProjectMember } from './entities/project-member.entity';
 import { Project } from './entities/project.entity';
-import { GetProjectQuery } from './get-project.query';
 import { ProjectsService } from './projects.service';
 
 @ApiTags('projects')
@@ -48,8 +46,7 @@ export class ProjectsController {
         @Body() createProjectDto: CreateProjectDto,
         @GetUser() user: User,
     ): Promise<Project> {
-        const command = CreateProjectCommand.fromDto(createProjectDto, user.id);
-        return await this.projectsService.createProject(command);
+        return await this.projectsService.createProject(createProjectDto, user.id);
     }
 
     @Get('all/public')
@@ -122,8 +119,7 @@ export class ProjectsController {
         @Param('id', ParseUUIDPipe) id: string,
         @GetUser() user: User,
     ): Promise<Project | null> {
-        const query = new GetProjectQuery(id, user.id);
-        return await this.projectsService.getProjectById(query);
+        return await this.projectsService.getProjectById(id, user.id);
     }
 
     @Put(':id')

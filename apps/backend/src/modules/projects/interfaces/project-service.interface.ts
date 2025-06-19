@@ -1,4 +1,6 @@
-import { CreateProjectDto, UpdateProjectDto } from '../dto/request';
+
+import { CreateProjectDto } from '../dto/request/create-project.dto';
+import { UpdateProjectDto } from '../dto/request/update-project.dto';
 import { ProjectMember } from '../entities/project-member.entity';
 import { Project } from '../entities/project.entity';
 

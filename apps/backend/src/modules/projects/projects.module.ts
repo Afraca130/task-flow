@@ -19,6 +19,9 @@ import { ProjectsService } from './projects.service';
         ProjectsService,
         ProjectRepository,
     ],
-    exports: [ProjectsService, ProjectRepository],
+    exports: [
+        ProjectsService,
+        ProjectRepository,
+    ],
 })
 export class ProjectsModule { }

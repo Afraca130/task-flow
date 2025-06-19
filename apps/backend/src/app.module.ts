@@ -1,6 +1,7 @@
 import { Module } from '@nestjs/common';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { APP_FILTER, APP_GUARD, APP_INTERCEPTOR } from '@nestjs/core';
+import { ScheduleModule } from '@nestjs/schedule';
 import { TypeOrmModule } from '@nestjs/typeorm';
 
 // Feature Modules
@@ -28,7 +29,9 @@ import { LoggingInterceptor } from './interceptors/logging.interceptor';
 import { ResponseInterceptor } from './interceptors/response.interceptor';
 import { ActivityLogModule } from './modules/activity-logs/activity-log.module';
 import { JwtAuthGuard } from './modules/auth/guards/jwt-auth.guard';
+import { CronModule } from './modules/cron/cron.module';
 import { NotificationsModule } from './modules/notifications/notifications.module';
+import { SharedModule } from './modules/shared/shared.module';
 
 @Module({
   imports: [
@@ -38,6 +41,9 @@ import { NotificationsModule } from './modules/notifications/notifications.modul
       envFilePath: '.env',
     }),
 
+    // Schedule Module for Cron Jobs
+    ScheduleModule.forRoot(),
+
     // Database Configuration
     TypeOrmModule.forRootAsync({
       imports: [ConfigModule],
@@ -46,6 +52,7 @@ import { NotificationsModule } from './modules/notifications/notifications.modul
     }),
 
     // Modules
+    SharedModule,
     UsersModule,
     ProjectsModule,
     TasksModule,
@@ -55,6 +62,7 @@ import { NotificationsModule } from './modules/notifications/notifications.modul
     AuthModule,
     ActivityLogModule,
     NotificationsModule,
+    CronModule,
   ],
   controllers: [AppController],
   providers: [
@@ -94,5 +102,6 @@ export class AppModule {
     console.log('Environment:', this.configService.get('NODE_ENV'));
     console.log('Server Port:', this.configService.get('PORT') || '3000');
     console.log('Database Host:', this.configService.get('DB_HOST'));
+    console.log('Cron Jobs Enabled');
   }
 }

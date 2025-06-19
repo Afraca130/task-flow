@@ -22,6 +22,9 @@ import { TasksService } from './tasks.service';
         TasksService,
         TaskRepository,
     ],
-    exports: [TasksService, TaskRepository],
+    exports: [
+        TasksService,
+        TaskRepository,
+    ],
 })
 export class TasksModule { }

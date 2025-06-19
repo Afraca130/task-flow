@@ -165,4 +165,6 @@ export class NotificationsController {
         const totalCount = await this.notificationsService.getTotalCount(req.user.id);
         return { unreadCount, totalCount };
     }
+
+
 }

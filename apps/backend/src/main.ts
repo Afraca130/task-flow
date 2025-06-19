@@ -51,7 +51,7 @@ async function bootstrap() {
   // Swagger 설정 (개발 환경에서만)
   if (process.env.NODE_ENV !== 'production') {
     SwaggerConfig.setup(app);
-    console.log('📚 Swagger documentation enabled');
+    console.log('Swagger documentation enabled');
   }
 
   // 글로벌 프리픽스 설정
@@ -64,7 +64,7 @@ async function bootstrap() {
 
   console.log(`TaskFlow Backend API is running on: http://localhost:${port}`);
   if (process.env.NODE_ENV !== 'production') {
-    console.log(`📚 Swagger docs available at: http://localhost:${port}/api/docs`);
+    console.log(`Swagger docs available at: http://localhost:${port}/api/docs`);
   }
 }
 

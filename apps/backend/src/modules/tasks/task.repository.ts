@@ -1,7 +1,6 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
-import { ProjectId } from '../../common/value-objects/project-id.vo';
 import { Task, TaskStatus } from './entities/task.entity';
 
 
@@ -218,9 +217,9 @@ export class TaskRepository {
         }
     }
 
-    async count(projectId: ProjectId): Promise<number> {
+    async count(projectId: string): Promise<number> {
         return await this.taskRepository.count({
-            where: { projectId: projectId.getValue() },
+            where: { projectId: projectId },
         });
     }
 }

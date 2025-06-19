@@ -47,4 +47,8 @@ export class UsersService {
     async searchUsers(query: string, limit: number = 10): Promise<User[]> {
         return await this.userRepository.searchUsers(query, limit);
     }
+
+    async findMany(userIds: string[]): Promise<User[]> {
+        return await this.userRepository.findMany(userIds);
+    }
 }

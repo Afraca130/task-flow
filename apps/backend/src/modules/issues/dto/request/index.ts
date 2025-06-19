@@ -1,2 +1,3 @@
-export * from './create-issue.dto';
-export * from './update-issue.dto';
+export { CreateIssueDto } from './create-issue.dto';
+export { UpdateIssueDto } from './update-issue.dto';
+

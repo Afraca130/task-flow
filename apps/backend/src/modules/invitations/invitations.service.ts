@@ -1,10 +1,10 @@
-import { BadRequestException, Injectable, Logger, NotFoundException } from '@nestjs/common';
+import { BadRequestException, Inject, Injectable, Logger, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import * as crypto from 'crypto';
 import { Repository } from 'typeorm';
+import { TimeUtil } from '../../common/utils/time.util';
 import { NotificationsService } from '../notifications/notifications.service';
-import { ProjectsService } from '../projects/projects.service';
-import { UsersService } from '../users/users.service';
+import { IProjectService, IUserService } from '../shared/interfaces';
 import { CreateInvitationDto } from './dto/request/create-invitation.dto';
 import { InvitationStatus, ProjectInvitation } from './entities/project-invitation.entity';
 import { ProjectInvitationRepository } from './invitation.repository';
@@ -18,8 +18,8 @@ export class InvitationsService {
         @InjectRepository(ProjectInvitation)
         private readonly typeormRepository: Repository<ProjectInvitation>,
         private readonly notificationsService: NotificationsService,
-        private readonly usersService: UsersService,
-        private readonly projectsService: ProjectsService,
+        @Inject('IUserService') private readonly usersService: IUserService,
+        @Inject('IProjectService') private readonly projectsService: IProjectService,
     ) { }
 
     async createInvitation(createDto: CreateInvitationDto, inviterId?: string): Promise<ProjectInvitation> {
@@ -45,9 +45,8 @@ export class InvitationsService {
 
             // Calculate expiry date
             const expiryDays = 7; // Default 7 days
-            const expiresAt = new Date();
-            expiresAt.setDate(expiresAt.getDate() + expiryDays);
-            this.logger.log(`Invitation expires at: ${expiresAt.toISOString()}`);
+            const expiresAt = TimeUtil.add(TimeUtil.now(), expiryDays, 'day');
+            this.logger.log(`Invitation expires at: ${TimeUtil.formatISO(expiresAt)}`);
 
             // Create invitation object
             const invitation = new ProjectInvitation();
@@ -58,7 +57,7 @@ export class InvitationsService {
             invitation.status = InvitationStatus.PENDING;
             invitation.expiresAt = expiresAt;
             // Generate token
-            const timestamp = new Date().getTime().toString();
+            const timestamp = TimeUtil.unix(TimeUtil.now()).toString();
             const random = Math.random().toString(36).substring(2);
             invitation.token = `${timestamp}-${random}`;
 
@@ -152,13 +151,13 @@ export class InvitationsService {
             }
 
             // Check if invitation is expired
-            if (new Date() > invitation.expiresAt) {
+            if (TimeUtil.now() > invitation.expiresAt) {
                 throw new BadRequestException('This invitation has expired');
             }
 
             // Accept invitation
             invitation.status = InvitationStatus.ACCEPTED;
-            invitation.respondedAt = new Date();
+            invitation.respondedAt = TimeUtil.now();
             this.logger.log(`Invitation status changed to: ${invitation.status}`);
 
             const updatedInvitation = await this.invitationRepository.update(invitation.id, invitation);
@@ -198,13 +197,13 @@ export class InvitationsService {
             }
 
             // Check if invitation is expired
-            if (new Date() > invitation.expiresAt) {
+            if (TimeUtil.now() > invitation.expiresAt) {
                 throw new BadRequestException('This invitation has expired');
             }
 
             // Decline invitation
             invitation.status = InvitationStatus.DECLINED;
-            invitation.respondedAt = new Date();
+            invitation.respondedAt = TimeUtil.now();
 
             const updatedInvitation = await this.invitationRepository.update(invitation.id, invitation);
 

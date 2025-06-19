@@ -196,7 +196,7 @@ export class ActivityLogService {
         userId: string,
         projectId: string,
         projectName: string,
-        changes: Record<string, any>,
+        changes: string[],
     ): Promise<void> {
         try {
             const request: CreateActivityLogRequest = {
@@ -205,14 +205,38 @@ export class ActivityLogService {
                 entityId: projectId,
                 entityType: EntityType.PROJECT,
                 action: ActivityAction.UPDATE,
-                description: `프로젝트 "${projectName}"를 수정했습니다.`,
+                description: `프로젝트 "${projectName}"을(를) 수정했습니다.`,
                 resourceType: 'project',
                 metadata: { projectName, changes },
             };
 
             await this.activityLogRepository.create(request);
+            this.logger.log(`Activity log created for project update: ${projectId}`);
         } catch (error) {
-            this.logger.error('Failed to log project update', error);
+            this.logger.error(`Failed to log project update: ${projectId}`, error);
+        }
+    }
+
+    async logProjectDeleted(
+        userId: string,
+        projectId: string,
+    ): Promise<void> {
+        try {
+            const request: CreateActivityLogRequest = {
+                userId,
+                projectId,
+                entityId: projectId,
+                entityType: EntityType.PROJECT,
+                action: ActivityAction.DELETE,
+                description: `프로젝트를 삭제했습니다.`,
+                resourceType: 'project',
+                metadata: { projectId },
+            };
+
+            await this.activityLogRepository.create(request);
+            this.logger.log(`Activity log created for project deletion: ${projectId}`);
+        } catch (error) {
+            this.logger.error(`Failed to log project deletion: ${projectId}`, error);
         }
     }
 

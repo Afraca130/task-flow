@@ -46,6 +46,13 @@ export class UserRepository {
         return count > 0;
     }
 
+    async findMany(userIds: string[]): Promise<User[]> {
+        if (!userIds || userIds.length === 0) {
+            return [];
+        }
+        return this.userRepository.findByIds(userIds);
+    }
+
     async findActiveUsers(): Promise<User[]> {
         return this.userRepository.find({ where: { isActive: true } });
     }

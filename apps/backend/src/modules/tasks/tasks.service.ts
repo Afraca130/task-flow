@@ -1,13 +1,15 @@
-import { BadRequestException, Injectable, Logger, NotFoundException } from '@nestjs/common';
+import { BadRequestException, ForbiddenException, Inject, Injectable, Logger, NotFoundException } from '@nestjs/common';
 import { LexoRank } from '../../common/utils/lexo-rank.util';
 import { TimeUtil } from '../../common/utils/time.util';
 import { ActivityLogService } from '../activity-logs/activity-log.service';
 import { NotificationsService } from '../notifications/notifications.service';
-import { UsersService } from '../users/users.service';
-// UserLog imports removed - using ActivityLogService instead
-import { CreateTaskDto, UpdateTaskDto } from './dto/request';
+import { IProjectService, IUserService } from '../shared/interfaces';
+import { CreateTaskDto } from './dto/request/create-task.dto';
+import { UpdateTaskDto } from './dto/request/update-task.dto';
 import { Task, TaskPriority, TaskStatus } from './entities/task.entity';
 import { TaskRepository } from './task.repository';
+// UserLog imports removed - using ActivityLogService instead
+;
 
 export interface ReorderTaskResult {
     task: Task;
@@ -31,7 +33,8 @@ export class TasksService {
         private readonly taskRepository: TaskRepository,
         private readonly activityLogService: ActivityLogService,
         private readonly notificationsService: NotificationsService,
-        private readonly usersService: UsersService,
+        @Inject('IUserService') private readonly usersService: IUserService,
+        @Inject('IProjectService') private readonly projectsService: IProjectService,
     ) { }
 
     /**
@@ -135,7 +138,7 @@ export class TasksService {
             }
 
             // Notify assignee
-            if (command.assigneeId) {
+            if (command.assigneeId && command.assigneeId !== command.assignerId) {
                 try {
                     this.logger.log(`Preparing to send task assignment notification to: ${command.assigneeId}`);
 
@@ -183,6 +186,9 @@ export class TasksService {
         this.logger.log(`Updating task: ${taskId}`);
 
         try {
+            // Check permission first
+            await this.checkTaskPermission(taskId, userId, 'update');
+
             // Find existing task
             const existingTask = await this.taskRepository.findById(taskId);
             if (!existingTask) {
@@ -210,7 +216,7 @@ export class TasksService {
                 existingTask.status = command.status;
                 // Set completed date if status is completed
                 if (command.status === TaskStatus.COMPLETED && existingTask.status !== TaskStatus.COMPLETED) {
-                    existingTask.completedAt = new Date();
+                    existingTask.completedAt = TimeUtil.now();
                 } else if (command.status !== TaskStatus.COMPLETED) {
                     existingTask.completedAt = undefined;
                 }
@@ -424,19 +430,36 @@ export class TasksService {
     /**
      * Delete a task
      */
-    async deleteTask(id: string, userId?: string): Promise<void> {
-        if (userId) {
+    async deleteTask(id: string, userId: string): Promise<void> {
+        this.logger.log(`Deleting task: ${id} by user: ${userId}`);
+
+        try {
+            // Check permission first
+            await this.checkTaskPermission(id, userId, 'delete');
+
+            // Get task details for logging before deletion
             const task = await this.taskRepository.findById(id);
-            if (task) {
-                await this.activityLogService.logTaskDeleted(
-                    userId,
-                    task.projectId,
-                    task.id,
-                    task.title
-                );
+            if (!task) {
+                throw new NotFoundException(`Task with id ${id} not found`);
             }
+
+            // Log task deletion activity
+            await this.activityLogService.logTaskDeleted(
+                userId,
+                task.projectId,
+                task.id,
+                task.title
+            );
+
+            // Delete the task
+            await this.taskRepository.delete(id);
+
+            this.logger.log(`Task deleted successfully: ${id}`);
+
+        } catch (error) {
+            this.logger.error(`Failed to delete task: ${id}`, error);
+            throw error;
         }
-        await this.taskRepository.delete(id);
     }
 
     /**
@@ -501,5 +524,54 @@ export class TasksService {
         }
 
         return reorderedTasks;
+    }
+
+    /**
+     * Check if user has permission to modify/delete a task
+     * - 소유주와 매니저는 모든 태스크 수정/삭제 가능
+     * - 멤버는 자신이 assigner(생성자)인 태스크만 수정/삭제 가능
+     */
+    private async checkTaskPermission(taskId: string, userId: string, action: 'update' | 'delete'): Promise<void> {
+        this.logger.log(`Checking ${action} permission for task: ${taskId}, user: ${userId}`);
+
+        try {
+            // Find the task
+            const task = await this.taskRepository.findById(taskId);
+            if (!task) {
+                throw new NotFoundException(`Task with id ${taskId} not found`);
+            }
+
+            // Get project members to check user role
+            const projectMembers = await this.projectsService.getProjectMembers(task.projectId, userId);
+            const userMember = projectMembers.find(member => member.userId === userId);
+
+            if (!userMember) {
+                throw new ForbiddenException('You do not have access to this project');
+            }
+
+            // Check permissions based on role
+            const userRole = userMember.role;
+
+            // 소유주와 매니저는 모든 태스크 수정/삭제 가능
+            if (userRole === 'OWNER' || userRole === 'MANAGER') {
+                this.logger.log(`User has ${userRole} role, ${action} allowed`);
+                return;
+            }
+
+            // 멤버는 자신이 assigner(생성자)인 태스크만 수정/삭제 가능
+            if (userRole === 'MEMBER') {
+                if (task.assignerId === userId) {
+                    this.logger.log(`User is the assigner of the task, ${action} allowed`);
+                    return;
+                }
+                throw new ForbiddenException(`Members can only ${action} tasks they created`);
+            }
+
+            throw new ForbiddenException(`Invalid role: ${userRole}`);
+
+        } catch (error) {
+            this.logger.error(`Permission check failed for ${action} task: ${taskId}`, error);
+            throw error;
+        }
     }
 }

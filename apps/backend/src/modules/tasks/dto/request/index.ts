@@ -1,4 +1,4 @@
-export * from './create-task.dto';
-export * from './reorder-task.dto';
-export * from './update-task.dto';
+export { CreateTaskDto } from './create-task.dto';
+export { ReorderTaskDto } from './reorder-task.dto';
+export { UpdateTaskDto } from './update-task.dto';
 

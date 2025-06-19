@@ -1,9 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, SelectQueryBuilder } from 'typeorm';
-import { ProjectId } from '../../common/value-objects/project-id.vo';
-import { Task } from '../tasks/entities/task.entity';
-import { ProjectMember, ProjectMemberRole } from './entities/project-member.entity';
+import { ProjectMember } from './entities/project-member.entity';
 import { Project } from './entities/project.entity';
 
 
@@ -21,37 +19,12 @@ export class ProjectRepository {
     ) { }
 
     async create(project: Project): Promise<Project> {
-        const savedProject = await this.projectRepository.save(project);
-
-        // Create initial project member entry for owner
-        const projectMember = new ProjectMember();
-        projectMember.projectId = savedProject.id;
-        projectMember.userId = savedProject.ownerId;
-        projectMember.role = ProjectMemberRole.OWNER;
-        projectMember.joinedAt = new Date();
-
-        await this.projectMemberRepository.save(projectMember);
-
-        return savedProject;
+        return await this.projectRepository.save(project);
     }
 
-    async findByIdWithAccess(projectId: ProjectId, userId: string): Promise<Project | null> {
-        const queryBuilder = this.projectRepository
-            .createQueryBuilder('project')
-            .leftJoinAndSelect('project.members', 'member')
-            .leftJoinAndSelect('member.user', 'user')
-            .where('project.id = :projectId', { projectId: projectId.getValue() })
-            .andWhere(
-                '(project.ownerId = :userId OR member.userId = :userId)',
-                { userId }
-            );
-
-        return await queryBuilder.getOne();
-    }
-
-    async findById(projectId: ProjectId): Promise<Project | null> {
+    async findById(projectId: string): Promise<Project | null> {
         return await this.projectRepository.findOne({
-            where: { id: projectId.getValue() },
+            where: { id: projectId },
             relations: ['members', 'members.user', 'tasks'],
         });
     }
@@ -131,6 +104,9 @@ export class ProjectRepository {
 
         const queryBuilder = this.projectRepository.createQueryBuilder('project');
 
+        // 공개 프로젝트만 필터링
+        queryBuilder.where('project.isPublic = :isPublic', { isPublic: true });
+
         // Apply filters
         if (search) {
             queryBuilder.andWhere(
@@ -167,12 +143,17 @@ export class ProjectRepository {
         };
     }
 
-    async update(project: Project): Promise<Project> {
-        return await this.projectRepository.save(project);
+    async update(projectId: string, updateData: Partial<Project>): Promise<Project> {
+        await this.projectRepository.update(projectId, updateData);
+        const updatedProject = await this.findById(projectId);
+        if (!updatedProject) {
+            throw new Error(`Project with id ${projectId} not found after update`);
+        }
+        return updatedProject;
     }
 
-    async delete(projectId: ProjectId): Promise<void> {
-        await this.projectRepository.delete(projectId.getValue());
+    async delete(projectId: string): Promise<void> {
+        await this.projectRepository.delete(projectId);
     }
 
     async existsByNameAndUserId(name: string, userId: string): Promise<boolean> {
@@ -189,21 +170,20 @@ export class ProjectRepository {
         return count > 0;
     }
 
-    async countMembers(projectId: ProjectId): Promise<number> {
+    async countMembers(projectId: string): Promise<number> {
         return await this.projectMemberRepository.count({
-            where: { projectId: projectId.getValue() }
+            where: { projectId }
         });
     }
 
-    async countTasks(projectId: ProjectId): Promise<number> {
+    async countTasks(projectId: string): Promise<number> {
         const count = await this.projectRepository
             .createQueryBuilder('project')
-            .leftJoin(Task, 'task', 'task.projectId = project.id')
-            .where('project.id = :projectId', { projectId: projectId.toString() })
-            .select('COUNT(task.id)', 'taskCount')
-            .getRawOne();
+            .leftJoin('project.tasks', 'task')
+            .where('project.id = :projectId', { projectId })
+            .getCount();
 
-        return parseInt(count.taskCount) || 0;
+        return count;
     }
 
     private createProjectQueryBuilder(userId: string): SelectQueryBuilder<Project> {
@@ -213,8 +193,6 @@ export class ProjectRepository {
             .where(
                 '(project.ownerId = :userId OR member.userId = :userId)',
                 { userId }
-            )
-            // .groupBy('project.id');
-            .distinct(true);
+            );
     }
 }

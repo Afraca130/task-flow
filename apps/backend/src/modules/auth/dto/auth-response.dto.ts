@@ -22,19 +22,11 @@ export class UserDto {
   })
   name: string;
 
-
-
   @ApiPropertyOptional({
     description: '프로필 색상 (HEX 코드)',
     example: '#3B82F6',
   })
   profileColor?: string;
-
-  @ApiPropertyOptional({
-    description: '소속 조직/회사',
-    example: '테크컴퍼니',
-  })
-  organization?: string;
 
   @ApiProperty({
     description: '계정 활성화 상태',

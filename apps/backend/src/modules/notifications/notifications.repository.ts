@@ -17,7 +17,7 @@ export class NotificationsRepository {
     async findById(id: string): Promise<Notification | null> {
         return await this.repository.findOne({
             where: { id },
-            relations: ['user', 'task', 'project']
+            relations: ['user']
         });
     }
 
@@ -26,8 +26,6 @@ export class NotificationsRepository {
 
         queryBuilder
             .leftJoinAndSelect('notification.user', 'user')
-            .leftJoinAndSelect('notification.task', 'task')
-            .leftJoinAndSelect('notification.project', 'project')
             .where('notification.userId = :userId', { userId });
 
         if (unreadOnly) {
@@ -74,5 +72,9 @@ export class NotificationsRepository {
             },
             relations: ['user']
         });
+    }
+
+    async markAsRead(id: string): Promise<void> {
+        await this.repository.update(id, { isRead: true });
     }
 }

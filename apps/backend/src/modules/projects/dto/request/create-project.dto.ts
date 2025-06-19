@@ -1,6 +1,6 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { Transform } from 'class-transformer';
-import { IsEnum, IsHexColor, IsNotEmpty, IsOptional, IsString, Length } from 'class-validator';
+import { IsBoolean, IsEnum, IsHexColor, IsNotEmpty, IsOptional, IsString, Length } from 'class-validator';
 
 export enum ProjectPriority {
     LOW = 'LOW',
@@ -60,4 +60,13 @@ export class CreateProjectDto {
     @IsOptional()
     @Transform(({ value }) => value ? new Date(value) : undefined)
     readonly dueDate?: Date;
+
+    @ApiPropertyOptional({
+        description: '프로젝트 공개 여부',
+        example: false,
+        default: false,
+    })
+    @IsOptional()
+    @IsBoolean({ message: '공개 여부는 boolean 값이어야 합니다' })
+    readonly isPublic?: boolean = false;
 }
