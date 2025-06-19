@@ -25,7 +25,6 @@ import {
   Search,
   Settings,
   TrendingUp,
-  User,
 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { useEffect, useMemo, useState } from 'react';
@@ -33,7 +32,6 @@ import { NotificationBell } from '../../components/notifications/notification-be
 import { TaskModal } from '../../components/task-modal';
 import { Button } from '../../components/ui/button';
 import { projectsApi, Task, tasksApi } from '../../lib/api';
-import { calculateNewLexoRank, sortByRank } from '../../lib/lexorank';
 import { useAuthStore } from '../../store/auth';
 import { useProjectsStore } from '../../store/projects';
 
@@ -475,117 +473,47 @@ export default function DashboardPage() {
     const { active, over } = event;
     setActiveTaskId(null);
 
-    if (!over) return;
+    if (!over || !user) return;
 
     const activeId = active.id as string;
     const overId = over.id as string;
 
-    console.log(' Drag ended:', { activeId, overId });
-
     const task = tasks.find(t => t.id === activeId);
     if (!task) return;
 
-    console.log('📋 Dragged task:', task);
-
     try {
-      // Determine new status and position
+      // Determine new status
       let newStatus: keyof typeof statusColumns = task.status as keyof typeof statusColumns;
-      let newIndex = 0;
 
       const isOverContainer = Object.keys(statusColumns).includes(overId);
       const isOverTask = tasks.find(t => t.id === overId);
 
       if (isOverContainer) {
-        // Dropped on container - append to end
         newStatus = overId as keyof typeof statusColumns;
-        const tasksInStatus = sortByRank(getTasksByStatus(newStatus));
-        newIndex = tasksInStatus.length;
-        console.log('📦 Dropped on container:', { newStatus, tasksCount: tasksInStatus.length });
       } else if (isOverTask) {
-        // Dropped on task - insert before that task
         newStatus = isOverTask.status as keyof typeof statusColumns;
-        const tasksInStatus = sortByRank(getTasksByStatus(newStatus));
-        newIndex = tasksInStatus.findIndex(t => t.id === overId);
-        if (newIndex === -1) newIndex = tasksInStatus.length;
-        console.log('📋 Dropped on task:', {
-          newStatus,
-          targetTaskId: overId,
-          newIndex,
-          tasksInStatus: tasksInStatus.map(t => ({ id: t.id, lexoRank: t.lexoRank })),
-        });
       } else {
-        console.log('❌ Invalid drop target');
         return; // Invalid drop target
       }
 
-      // Same status reorder
+      // If status hasn't changed, don't do anything
       if (task.status === newStatus) {
-        console.log('↔️ Same status reorder');
-        const tasksInStatus = getTasksByStatus(newStatus);
-        const oldIndex = tasksInStatus.findIndex(t => t.id === activeId);
-
-        console.log('Reorder details:', {
-          oldIndex,
-          newIndex,
-          tasksInStatus: tasksInStatus.map(t => ({ id: t.id, lexoRank: t.lexoRank })),
-        });
-
-        if (oldIndex === newIndex) {
-          console.log('No change needed');
-          return; // No change needed
-        }
-
-        // Calculate new LexoRank
-        const newLexoRank = calculateNewLexoRank(tasksInStatus, activeId, newIndex);
-        console.log('🔢 Calculated new LexoRank:', newLexoRank);
-
-        // Optimistic update
-        const optimisticUpdate = (prevTasks: Task[]) => {
-          return prevTasks.map(t => (t.id === activeId ? { ...t, lexoRank: newLexoRank } : t));
-        };
-
-        setTasks(optimisticUpdate);
-
-        // Server update
-        await tasksApi.reorderTask(activeId, newLexoRank);
-        console.log('Server update completed');
-
-        // Reload to ensure consistency
-        await loadTasks();
-        console.log('Tasks reloaded');
         return;
       }
 
-      // Status change
-      console.log('🔄 Status change');
-      const targetTasks = getTasksByStatus(newStatus);
-      const newLexoRank = calculateNewLexoRank(targetTasks, '', newIndex);
-
-      console.log('🔢 Status change LexoRank:', {
-        newStatus,
-        newIndex,
-        targetTasks: targetTasks.map(t => ({ id: t.id, lexoRank: t.lexoRank })),
-        newLexoRank,
-      });
-
-      // Optimistic update
+      // Optimistic update for status change only
       const optimisticUpdate = (prevTasks: Task[]) =>
-        prevTasks.map(task =>
-          task.id === activeId ? { ...task, status: newStatus, lexoRank: newLexoRank } : task
-        );
+        prevTasks.map(t => (t.id === activeId ? { ...t, status: newStatus } : t));
 
       setTasks(optimisticUpdate);
 
-      // Server update
+      // Server update - only status change
       await tasksApi.updateTask(activeId, {
         status: newStatus,
-        lexoRank: newLexoRank,
       });
-      console.log('Status change server update completed');
 
       // Reload to ensure consistency
       await loadTasks();
-      console.log('Tasks reloaded after status change');
     } catch (error) {
       console.error('Failed to update task:', error);
       // Revert on error
@@ -787,40 +715,14 @@ export default function DashboardPage() {
 
                 {/* 사용자 드롭다운 메뉴 */}
                 {isUserMenuOpen && (
-                  <div className='absolute right-0 mt-2 w-64 bg-white rounded-lg shadow-lg border border-gray-200 py-2 z-50'>
-                    {/* 사용자 정보 */}
-                    <div className='px-4 py-3 border-b border-gray-100'>
-                      <div className='flex items-center gap-3'>
-                        <div
-                          className={`w-10 h-10 rounded-full flex items-center justify-center text-white text-sm font-medium ${!user?.profileColor ? 'bg-blue-500' : ''}`}
-                          style={getUserColorStyle(user)}
-                        >
-                          {user?.name?.charAt(0) || 'U'}
-                        </div>
-                        <div>
-                          <div className='text-sm font-medium text-gray-900'>
-                            {user?.name || '사용자'}
-                          </div>
-                          <div className='text-xs text-gray-500'>
-                            {user?.email || 'user@example.com'}
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-
-                    {/* 메뉴 항목들 */}
+                  <div className='absolute right-0 top-full mt-1 w-48 bg-white rounded-lg shadow-lg border border-gray-200 z-50'>
                     <div className='py-1'>
-                      <button
-                        onClick={() => {
-                          setIsUserMenuOpen(false);
-                          router.push('/profile');
-                        }}
-                        className='flex items-center gap-3 w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-50'
-                      >
-                        <User className='w-4 h-4' />내 정보
-                      </button>
-
-                      <div className='border-t border-gray-100 my-1'></div>
+                      <div className='px-4 py-2 border-b border-gray-100'>
+                        <p className='text-sm font-medium text-gray-900'>
+                          {user?.name || '사용자'}
+                        </p>
+                        <p className='text-xs text-gray-500'>{user?.email}</p>
+                      </div>
 
                       <button
                         onClick={async () => {

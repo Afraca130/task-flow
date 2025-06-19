@@ -116,13 +116,6 @@ export function NotificationDropdown({
                 모두 읽음
               </button>
             )}
-            <button
-              onClick={() => (window.location.href = '/notifications')}
-              className='text-sm text-blue-600 hover:text-blue-800 flex items-center gap-1'
-              title='모든 알림 보기'
-            >
-              모든 알림 보기
-            </button>
           </div>
         </div>
       </div>
@@ -222,18 +215,6 @@ export function NotificationDropdown({
           </div>
         )}
       </div>
-
-      {/* 푸터 */}
-      {notifications.length > 0 && (
-        <div className='p-3 border-t border-gray-200 bg-gray-50'>
-          <button
-            onClick={() => (window.location.href = '/notifications')}
-            className='w-full text-sm text-blue-600 hover:text-blue-800 text-center py-1'
-          >
-            모든 알림 보기
-          </button>
-        </div>
-      )}
     </div>
   );
 }

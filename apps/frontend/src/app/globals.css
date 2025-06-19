@@ -74,36 +74,32 @@
 
 body {
   color: rgb(var(--foreground-rgb));
-  background: linear-gradient(
-      to bottom,
-      transparent,
-      rgb(var(--background-end-rgb))
-    )
+  background: linear-gradient(to bottom, transparent, rgb(var(--background-end-rgb)))
     rgb(var(--background-start-rgb));
 }
 
 /* JIRA 스타일 UI 커스텀 스타일 */
 .jira-style {
   /* Design Tokens - Atlassian Design System 기반 */
-  --color-primary: #0052CC;
-  --color-primary-hover: #0146B3;
+  --color-primary: #0052cc;
+  --color-primary-hover: #0146b3;
   --color-primary-pressed: #003366;
-  --color-background-neutral: #FAFBFC;
-  --color-background-card: #FFFFFF;
-  --color-background-hover: #F4F5F7;
-  --color-background-selected: #DEEBFF;
-  --color-text-primary: #172B4D;
-  --color-text-secondary: #6B778C;
-  --color-text-subtle: #97A0AF;
-  --color-border: #DFE1E6;
-  --color-border-focus: #4C9AFF;
-  
+  --color-background-neutral: #fafbfc;
+  --color-background-card: #ffffff;
+  --color-background-hover: #f4f5f7;
+  --color-background-selected: #deebff;
+  --color-text-primary: #172b4d;
+  --color-text-secondary: #6b778c;
+  --color-text-subtle: #97a0af;
+  --color-border: #dfe1e6;
+  --color-border-focus: #4c9aff;
+
   /* Status Colors */
-  --color-todo: #DDD6FE;
-  --color-inprogress: #FEF3C7;
-  --color-done: #D1FAE5;
-  --color-error: #FFEBE6;
-  
+  --color-todo: #ddd6fe;
+  --color-inprogress: #fef3c7;
+  --color-done: #d1fae5;
+  --color-error: #ffebe6;
+
   /* Spacing - 8px Grid System */
   --space-50: 4px;
   --space-100: 8px;
@@ -113,19 +109,19 @@ body {
   --space-400: 32px;
   --space-500: 40px;
   --space-600: 48px;
-  
+
   /* Typography */
   --font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', sans-serif;
   --font-size-small: 12px;
   --font-size-body: 14px;
   --font-size-heading: 16px;
   --font-size-large: 20px;
-  
+
   /* Elevation */
   --shadow-card: 0 1px 3px rgba(9, 30, 66, 0.25);
   --shadow-raised: 0 4px 8px rgba(9, 30, 66, 0.15);
   --shadow-modal: 0 8px 32px rgba(9, 30, 66, 0.25);
-  
+
   /* Border Radius */
   --radius-small: 3px;
   --radius-medium: 6px;
@@ -170,40 +166,40 @@ body {
 
 /* Priority Badge 스타일 */
 .priority-high {
-  background: #FFEBE6;
-  color: #BF2600;
-  border: 1px solid #FFB8A3;
+  background: #ffebe6;
+  color: #bf2600;
+  border: 1px solid #ffb8a3;
 }
 
 .priority-medium {
-  background: #FFF4E6;
-  color: #974F0C;
-  border: 1px solid #FFD6A3;
+  background: #fff4e6;
+  color: #974f0c;
+  border: 1px solid #ffd6a3;
 }
 
 .priority-low {
-  background: #E3FCEF;
+  background: #e3fcef;
   color: #006644;
-  border: 1px solid #B8E6CC;
+  border: 1px solid #b8e6cc;
 }
 
 /* Status Badge 스타일 */
 .status-todo {
   background: var(--color-todo);
-  color: #6B46C1;
-  border: 1px solid #C4B5FD;
+  color: #6b46c1;
+  border: 1px solid #c4b5fd;
 }
 
 .status-inprogress {
   background: var(--color-inprogress);
-  color: #D97706;
-  border: 1px solid #FDE68A;
+  color: #d97706;
+  border: 1px solid #fde68a;
 }
 
 .status-done {
   background: var(--color-done);
   color: #059669;
-  border: 1px solid #A7F3D0;
+  border: 1px solid #a7f3d0;
 }
 
 /* Avatar 스타일 */
@@ -273,16 +269,20 @@ body {
 }
 
 @keyframes fadeIn {
-  from { opacity: 0; }
-  to { opacity: 1; }
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
 }
 
 @keyframes slideIn {
-  from { 
+  from {
     opacity: 0;
     transform: scale(0.9) translateY(-20px);
   }
-  to { 
+  to {
     opacity: 1;
     transform: scale(1) translateY(0);
   }
@@ -332,12 +332,12 @@ button:focus {
     flex-direction: column;
     gap: 16px;
   }
-  
+
   .kanban-column {
     min-width: auto;
     width: 100%;
   }
-  
+
   .modal {
     max-width: 95vw;
     max-height: 95vh;
@@ -369,31 +369,36 @@ button:focus {
 }
 
 @keyframes spin {
-  to { transform: rotate(360deg); }
+  to {
+    transform: rotate(360deg);
+  }
 }
 
 /* 테마 변수 */
 .light-theme {
-  --color-primary: #0052CC;
-  --color-background-neutral: #FAFBFC;
-  --color-background-card: #FFFFFF;
-  --color-text-primary: #172B4D;
-  --color-text-secondary: #6B778C;
-  --color-border: #DFE1E6;
+  --color-primary: #0052cc;
+  --color-background-neutral: #fafbfc;
+  --color-background-card: #ffffff;
+  --color-text-primary: #172b4d;
+  --color-text-secondary: #6b778c;
+  --color-border: #dfe1e6;
 }
 
 .dark-theme {
-  --color-primary: #4C9AFF;
-  --color-background-neutral: #1D2125;
-  --color-background-card: #22272B;
-  --color-text-primary: #B6C2CF;
-  --color-text-secondary: #9FADBC;
-  --color-border: #454F59;
+  --color-primary: #4c9aff;
+  --color-background-neutral: #1d2125;
+  --color-background-card: #22272b;
+  --color-text-primary: #b6c2cf;
+  --color-text-secondary: #9fadbc;
+  --color-border: #454f59;
 }
 
 /* 트랜지션 */
 * {
-  transition: background-color 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease;
+  transition:
+    background-color 0.2s ease,
+    border-color 0.2s ease,
+    box-shadow 0.2s ease;
 }
 
 /* 버튼 스타일 */
@@ -469,21 +474,57 @@ button:focus {
 }
 
 .label-backend {
-  background: #E3F2FD;
-  color: #1976D2;
+  background: #e3f2fd;
+  color: #1976d2;
 }
 
 .label-frontend {
-  background: #F3E5F5;
-  color: #7B1FA2;
+  background: #f3e5f5;
+  color: #7b1fa2;
 }
 
 .label-design {
-  background: #FFF3E0;
-  color: #F57C00;
+  background: #fff3e0;
+  color: #f57c00;
 }
 
 .label-auth {
-  background: #F1F8E9;
-  color: #689F38;
-} 
+  background: #e1f5fe;
+  color: #0277bd;
+}
+
+/* 입력 필드 텍스트 색상 문제 해결 */
+input,
+textarea,
+select {
+  color: #172b4d !important; /* 검정색 텍스트 */
+  background-color: white !important; /* 흰색 배경 */
+}
+
+input::placeholder,
+textarea::placeholder {
+  color: #97a0af !important; /* 회색 플레이스홀더 */
+}
+
+/* 특정 input 타입별 색상 명시 */
+input[type='text'],
+input[type='email'],
+input[type='password'],
+input[type='date'],
+input[type='datetime-local'],
+input[type='search'],
+input[type='url'],
+input[type='tel'],
+input[type='number'] {
+  color: #172b4d !important;
+  background-color: white !important;
+}
+
+/* 다크 모드에서도 입력 필드는 밝게 유지 */
+.dark input,
+.dark textarea,
+.dark select {
+  color: #172b4d !important;
+  background-color: white !important;
+  border-color: #dfe1e6 !important;
+}

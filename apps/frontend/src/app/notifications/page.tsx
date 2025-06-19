@@ -8,31 +8,51 @@ import { useAuthStore } from '../../store/auth';
 
 export default function NotificationsPage() {
   const router = useRouter();
-  const { isAuthenticated } = useAuthStore();
+  const { isAuthenticated, user } = useAuthStore();
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedFilter, setSelectedFilter] = useState<'all' | 'unread' | 'read'>('all');
   const [searchTerm, setSearchTerm] = useState('');
+  const [authChecked, setAuthChecked] = useState(false);
 
-  // Check authentication
+  // Check authentication with delay to prevent immediate redirect
   useEffect(() => {
-    if (!isAuthenticated) {
-      router.replace('/login');
+    const checkAuth = () => {
+      console.log('🔐 알림 페이지 인증 확인:', { isAuthenticated, user: user?.email });
+
+      if (!isAuthenticated && authChecked) {
+        console.log('❌ 인증되지 않은 사용자, 로그인 페이지로 이동');
+        router.replace('/login');
+        return;
+      }
+
+      if (!authChecked) {
+        // Give some time for auth to initialize
+        setTimeout(() => {
+          setAuthChecked(true);
+        }, 500);
+      }
+    };
+
+    checkAuth();
+  }, [isAuthenticated, user, authChecked, router]);
+
+  // Load notifications only when authenticated
+  useEffect(() => {
+    if (!isAuthenticated || !authChecked) {
+      console.log('⏳ 인증 대기 중...');
       return;
     }
-  }, [isAuthenticated, router]);
-
-  // Load notifications
-  useEffect(() => {
-    if (!isAuthenticated) return;
 
     const fetchNotifications = async () => {
       try {
+        console.log('📥 알림 데이터 로드 시작');
         setLoading(true);
         const data = await notificationsApi.getNotifications();
+        console.log('알림 데이터 로드 성공:', data);
         setNotifications(data);
       } catch (error) {
-        console.error('Failed to load notifications:', error);
+        console.error('❌ 알림 데이터 로드 실패:', error);
         setNotifications([]);
       } finally {
         setLoading(false);
@@ -40,7 +60,37 @@ export default function NotificationsPage() {
     };
 
     fetchNotifications();
-  }, [isAuthenticated]);
+  }, [isAuthenticated, authChecked]);
+
+  // Show loading spinner while checking auth
+  if (!authChecked) {
+    return (
+      <div className='min-h-screen bg-gray-50 flex items-center justify-center'>
+        <div className='text-center'>
+          <div className='animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-4'></div>
+          <p className='text-gray-500'>인증 확인 중...</p>
+        </div>
+      </div>
+    );
+  }
+
+  // Show login message if not authenticated after check
+  if (!isAuthenticated) {
+    return (
+      <div className='min-h-screen bg-gray-50 flex items-center justify-center'>
+        <div className='text-center'>
+          <Bell className='w-16 h-16 text-gray-300 mx-auto mb-4' />
+          <p className='text-gray-500'>로그인이 필요합니다.</p>
+          <button
+            onClick={() => router.push('/login')}
+            className='mt-4 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700'
+          >
+            로그인하기
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   const filteredNotifications = notifications.filter(notification => {
     // Filter by read status
@@ -60,6 +110,8 @@ export default function NotificationsPage() {
   });
 
   const handleNotificationClick = async (notification: Notification) => {
+    console.log('🔔 알림 클릭:', notification.title);
+
     // Mark as read if not already read
     if (!notification.isRead) {
       try {
@@ -67,21 +119,24 @@ export default function NotificationsPage() {
         setNotifications(prev =>
           prev.map(n => (n.id === notification.id ? { ...n, isRead: true } : n))
         );
+        console.log('알림 읽음 표시 완료');
       } catch (error) {
-        console.error('Failed to mark notification as read:', error);
+        console.error('❌ 알림 읽음 표시 실패:', error);
       }
     }
 
     // For now, just mark as read - navigation can be added later based on notification type
-    console.log('Notification clicked:', notification);
+    console.log('📝 알림 상세 정보:', notification);
   };
 
   const handleMarkAllAsRead = async () => {
     try {
+      console.log('📖 모든 알림 읽음 표시 시작');
       await notificationsApi.markAllAsRead();
       setNotifications(prev => prev.map(n => ({ ...n, isRead: true })));
+      console.log('모든 알림 읽음 표시 완료');
     } catch (error) {
-      console.error('Failed to mark all as read:', error);
+      console.error('❌ 모든 알림 읽음 표시 실패:', error);
     }
   };
 
@@ -112,9 +167,9 @@ export default function NotificationsPage() {
       case 'PROJECT_INVITATION':
         return '📧';
       case 'DUE_DATE_APPROACHING':
-        return '';
+        return '⏰';
       default:
-        return '';
+        return '🔔';
     }
   };
 
@@ -138,13 +193,15 @@ export default function NotificationsPage() {
             </div>
           </div>
 
-          <button
-            onClick={handleMarkAllAsRead}
-            className='flex items-center gap-2 px-4 py-2 text-sm text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-lg transition-colors'
-          >
-            <CheckCheck className='w-4 h-4' />
-            모두 읽음
-          </button>
+          {notifications.some(n => !n.isRead) && (
+            <button
+              onClick={handleMarkAllAsRead}
+              className='flex items-center gap-2 px-4 py-2 text-sm text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-lg transition-colors'
+            >
+              <CheckCheck className='w-4 h-4' />
+              모두 읽음
+            </button>
+          )}
         </div>
 
         {/* Filters */}
@@ -199,51 +256,48 @@ export default function NotificationsPage() {
           <div className='text-center py-12'>
             <Bell className='w-16 h-16 text-gray-300 mx-auto mb-4' />
             <h3 className='text-lg font-medium text-gray-900 mb-2'>
-              {selectedFilter === 'all'
-                ? '알림이 없습니다'
-                : selectedFilter === 'unread'
-                  ? '읽지 않은 알림이 없습니다'
-                  : '읽은 알림이 없습니다'}
+              {searchTerm || selectedFilter !== 'all'
+                ? '조건에 맞는 알림이 없습니다'
+                : '알림이 없습니다'}
             </h3>
-            <p className='text-gray-600'>새로운 알림이 도착하면 여기에 표시됩니다.</p>
+            <p className='text-gray-500'>
+              {searchTerm || selectedFilter !== 'all'
+                ? '다른 조건으로 검색해보세요'
+                : '새로운 알림이 있을 때 여기에 표시됩니다'}
+            </p>
           </div>
         ) : (
-          <div className='space-y-2'>
+          <div className='space-y-4'>
             {filteredNotifications.map(notification => (
               <div
                 key={notification.id}
                 onClick={() => handleNotificationClick(notification)}
-                className={`bg-white border border-gray-200 rounded-lg p-4 cursor-pointer hover:bg-gray-50 transition-colors ${
+                className={`bg-white border border-gray-200 rounded-lg p-4 cursor-pointer hover:shadow-md transition-shadow ${
                   !notification.isRead ? 'border-l-4 border-l-blue-500' : ''
                 }`}
               >
                 <div className='flex items-start gap-3'>
-                  <div className='text-2xl'>{getNotificationIcon(notification.type)}</div>
-
+                  <span className='text-2xl'>{getNotificationIcon(notification.type)}</span>
                   <div className='flex-1'>
                     <div className='flex items-start justify-between'>
-                      <h3
-                        className={`font-medium ${!notification.isRead ? 'text-gray-900' : 'text-gray-700'}`}
-                      >
-                        {notification.title}
-                      </h3>
-                      <div className='flex items-center gap-2 ml-4 text-xs text-gray-500'>
-                        <Clock className='w-3 h-3' />
-                        <span title={new Date(notification.createdAt).toLocaleString('ko-KR')}>
+                      <div>
+                        <h4
+                          className={`font-medium ${!notification.isRead ? 'text-gray-900' : 'text-gray-700'}`}
+                        >
+                          {notification.title}
+                        </h4>
+                        <p className='text-gray-600 text-sm mt-1'>{notification.message}</p>
+                      </div>
+                      <div className='flex items-center gap-2 ml-4'>
+                        <Clock className='w-4 h-4 text-gray-400' />
+                        <span className='text-sm text-gray-500'>
                           {formatDate(notification.createdAt)}
                         </span>
+                        {!notification.isRead && (
+                          <div className='w-2 h-2 bg-blue-500 rounded-full'></div>
+                        )}
                       </div>
                     </div>
-
-                    <p
-                      className={`mt-1 text-sm ${!notification.isRead ? 'text-gray-700' : 'text-gray-500'}`}
-                    >
-                      {notification.message}
-                    </p>
-
-                    {!notification.isRead && (
-                      <div className='w-2 h-2 bg-blue-500 rounded-full mt-2'></div>
-                    )}
                   </div>
                 </div>
               </div>

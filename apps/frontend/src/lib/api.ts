@@ -372,6 +372,18 @@ export const authApi = {
     return extractData(response);
   },
 
+  updateProfile: async (name: string, profileColor: string): Promise<User> => {
+    const response = await axios.patch<StandardApiResponse<User>>((process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001') + '/api/auth/profile', {
+      name,
+      profileColor,
+    }, {
+      headers: {
+        Authorization: `Bearer ${localStorage.getItem('auth-token')}`
+      }
+    });
+    return extractData(response);
+  },
+
   changePassword: async (currentPassword: string, newPassword: string): Promise<{ message: string }> => {
     const response = await axios.patch<StandardApiResponse<{ message: string }>>((process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001') + '/api/auth/change-password', {
       currentPassword,
@@ -381,11 +393,6 @@ export const authApi = {
         Authorization: `Bearer ${localStorage.getItem('auth-token')}`
       }
     });
-    return extractData(response);
-  },
-
-  updateProfile: async (name: string, profileColor?: string, organization?: string): Promise<User> => {
-    const response = await api.patch<StandardApiResponse<User>>('/auth/profile', { name, profileColor, organization });
     return extractData(response);
   },
 
@@ -520,7 +527,16 @@ export const tasksApi = {
     return extractData(response);
   },
 
-  updateTask: async (taskId: string, data: Partial<Task>): Promise<Task> => {
+  updateTask: async (taskId: string, data: {
+    title?: string;
+    description?: string;
+    status?: 'TODO' | 'IN_PROGRESS' | 'COMPLETED';
+    priority?: 'LOW' | 'MEDIUM' | 'HIGH' | 'URGENT';
+    assigneeId?: string;
+    dueDate?: string;
+    tags?: string[];
+    projectId?: string;
+  }): Promise<Task> => {
     const response = await api.put<StandardApiResponse<Task>>(`/tasks/${taskId}`, data);
     return extractData(response);
   },
@@ -539,11 +555,6 @@ export const tasksApi = {
 
   assignTask: async (taskId: string, assigneeId: string): Promise<Task> => {
     const response = await api.put<StandardApiResponse<Task>>(`/tasks/${taskId}`, { assigneeId });
-    return extractData(response);
-  },
-
-  reorderTask: async (taskId: string, newLexoRank: string): Promise<Task> => {
-    const response = await api.put<StandardApiResponse<Task>>(`/tasks/${taskId}/reorder-lexo`, { lexoRank: newLexoRank });
     return extractData(response);
   },
 
@@ -667,11 +678,6 @@ export const userLogsApi = {
       return {};
     }
   },
-};
-
-// Utility function to safely get lexoRank
-export const safeLexoRank = (task: Task): string => {
-  return task.lexoRank ?? 'U';
 };
 
 // Users API

@@ -1,6 +1,6 @@
 'use client';
 
-import { ArrowLeft, Building, Mail, Save, User } from 'lucide-react';
+import { ArrowLeft, Mail, Save, User } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import { Button } from '../../components/ui/button';
@@ -12,7 +12,6 @@ export default function ProfilePage() {
   const [formData, setFormData] = useState({
     name: '',
     email: '',
-    organization: '',
     profileColor: '#3B82F6',
   });
   const [isEditing, setIsEditing] = useState(false);
@@ -42,7 +41,6 @@ export default function ProfilePage() {
       setFormData({
         name: user.name || '',
         email: user.email || '',
-        organization: (user as any).organization || '',
         profileColor: user.profileColor || '#3B82F6',
       });
     }
@@ -60,11 +58,7 @@ export default function ProfilePage() {
     try {
       // API 호출로 사용자 정보 업데이트
       const { authApi } = await import('@/lib/api');
-      const updatedUser = await authApi.updateProfile(
-        formData.name,
-        formData.profileColor,
-        formData.organization
-      );
+      const updatedUser = await authApi.updateProfile(formData.name, formData.profileColor);
 
       // Auth store 업데이트
       setUser(updatedUser);
@@ -87,7 +81,6 @@ export default function ProfilePage() {
       setFormData({
         name: user.name || '',
         email: user.email || '',
-        organization: (user as any).organization || '',
         profileColor: user.profileColor || '#3B82F6',
       });
     }
@@ -124,9 +117,6 @@ export default function ProfilePage() {
                 </div>
                 <h3 className='text-lg font-semibold text-gray-900'>{formData.name || '사용자'}</h3>
                 <p className='text-gray-600'>{formData.email}</p>
-                {formData.organization && (
-                  <p className='text-sm text-gray-500 mt-1'>{formData.organization}</p>
-                )}
               </div>
 
               {/* 프로필 색상 선택 */}
@@ -224,27 +214,6 @@ export default function ProfilePage() {
                   ) : (
                     <div className='px-3 py-2 bg-gray-50 border border-gray-200 rounded-lg text-gray-900'>
                       {formData.email || '이메일이 설정되지 않았습니다'}
-                    </div>
-                  )}
-                </div>
-
-                {/* 소속 */}
-                <div>
-                  <label className='flex items-center gap-2 text-sm font-medium text-gray-700 mb-2'>
-                    <Building className='w-4 h-4' />
-                    소속
-                  </label>
-                  {isEditing ? (
-                    <input
-                      type='text'
-                      value={formData.organization}
-                      onChange={e => handleInputChange('organization', e.target.value)}
-                      className='w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500'
-                      placeholder='소속을 입력하세요 (선택사항)'
-                    />
-                  ) : (
-                    <div className='px-3 py-2 bg-gray-50 border border-gray-200 rounded-lg text-gray-900'>
-                      {formData.organization || '소속이 설정되지 않았습니다'}
                     </div>
                   )}
                 </div>

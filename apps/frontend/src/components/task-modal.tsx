@@ -146,7 +146,6 @@ export function TaskModal({
     e.preventDefault();
     const taskData = {
       ...formData,
-      assignerId: user?.id,
       assigneeId: formData.assigneeId || undefined,
       dueDate: formData.dueDate || undefined,
       tags: formData.tags
@@ -225,7 +224,10 @@ export function TaskModal({
 
   const canSelectAssignee = currentUserRole === 'OWNER' || currentUserRole === 'MANAGER';
   const canDeleteTask =
-    currentUserRole === 'OWNER' || currentUserRole === 'MANAGER' || task?.assignerId === user?.id;
+    currentUserRole === 'OWNER' ||
+    currentUserRole === 'MANAGER' ||
+    task?.assignerId === user?.id ||
+    task?.assigneeId === user?.id; // 할당받은 사용자도 삭제 가능
   const isEditMode = !!task?.id;
 
   return (

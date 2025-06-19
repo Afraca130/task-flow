@@ -3,6 +3,7 @@
 import { Bell } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 import { invitationsApi, notificationsApi } from '../../lib/api';
+import { useAuthStore } from '../../store/auth';
 import { InvitationModal } from './invitation-modal';
 import { NotificationDropdown } from './notification-dropdown';
 
@@ -11,6 +12,7 @@ interface NotificationBellProps {
 }
 
 export function NotificationBell({ className = '' }: NotificationBellProps) {
+  const { user } = useAuthStore();
   const [isOpen, setIsOpen] = useState(false);
   const [unreadCount, setUnreadCount] = useState(0);
   const [notifications, setNotifications] = useState<any[]>([]);
@@ -37,13 +39,22 @@ export function NotificationBell({ className = '' }: NotificationBellProps) {
 
   // 읽지 않은 알림 개수 조회
   useEffect(() => {
+    if (!user) return;
+
     fetchUnreadCount();
     // 실시간 업데이트를 위한 폴링 (실제로는 WebSocket 사용 권장)
     const interval = setInterval(fetchUnreadCount, 30000); // 30초마다 업데이트
     return () => clearInterval(interval);
-  }, []);
+  }, [user]);
+
+  // 인증되지 않은 경우 렌더링하지 않음
+  if (!user) {
+    return null;
+  }
 
   const fetchUnreadCount = async () => {
+    if (!user) return;
+
     try {
       const data = await notificationsApi.getUnreadCount();
       setUnreadCount(data.unreadCount);
@@ -53,7 +64,7 @@ export function NotificationBell({ className = '' }: NotificationBellProps) {
   };
 
   const fetchNotifications = async () => {
-    if (loading) return;
+    if (loading || !user) return;
 
     setLoading(true);
     try {
@@ -91,7 +102,7 @@ export function NotificationBell({ className = '' }: NotificationBellProps) {
 
     // 초대 알림인 경우 특별 처리
     if (notification.type === 'PROJECT_INVITATION') {
-      console.log(' Project invitation notification clicked:', notification);
+      console.log('🎯 Project invitation notification clicked:', notification);
 
       try {
         // Get actual invitation data using token
@@ -121,10 +132,10 @@ export function NotificationBell({ className = '' }: NotificationBellProps) {
           setIsOpen(false);
           return;
         } else {
-          console.warn('No invitation token found in notification data');
+          console.warn('⚠️ No invitation token found in notification data');
         }
       } catch (error) {
-        console.error('Failed to fetch invitation details:', error);
+        console.error('❌ Failed to fetch invitation details:', error);
         // Fallback to original notification data
       }
 
@@ -155,7 +166,7 @@ export function NotificationBell({ className = '' }: NotificationBellProps) {
   const handleAcceptInvitation = async () => {
     if (!currentInvitation) return;
 
-    console.log(' Accept invitation called with:', currentInvitation);
+    console.log('🎯 Accept invitation called with:', currentInvitation);
 
     try {
       // Try to get token from data, fallback to invitationId for backward compatibility
@@ -163,11 +174,11 @@ export function NotificationBell({ className = '' }: NotificationBellProps) {
         currentInvitation.data?.invitationToken || currentInvitation.metadata?.invitationId;
 
       console.log('🔑 Token found:', token);
-      console.log('Invitation data:', currentInvitation.data);
+      console.log('📋 Invitation data:', currentInvitation.data);
       console.log('📋 Invitation metadata:', currentInvitation.metadata);
 
       if (token) {
-        console.log('Calling accept invitation API with token:', token);
+        console.log('📞 Calling accept invitation API with token:', token);
         // 실제 초대 수락 API 호출
         await invitationsApi.acceptInvitation(token);
         console.log('Accept invitation API call successful');
@@ -192,7 +203,7 @@ export function NotificationBell({ className = '' }: NotificationBellProps) {
         alert('초대 정보를 찾을 수 없습니다.');
       }
     } catch (error) {
-      console.error('Failed to accept invitation:', error);
+      console.error('❌ Failed to accept invitation:', error);
       alert('초대 수락에 실패했습니다.');
     } finally {
       setShowInvitationModal(false);
@@ -203,7 +214,7 @@ export function NotificationBell({ className = '' }: NotificationBellProps) {
   const handleDeclineInvitation = async () => {
     if (!currentInvitation) return;
 
-    console.log(' Decline invitation called with:', currentInvitation);
+    console.log('🎯 Decline invitation called with:', currentInvitation);
 
     try {
       // Try to get token from data, fallback to invitationId for backward compatibility
@@ -213,7 +224,7 @@ export function NotificationBell({ className = '' }: NotificationBellProps) {
       console.log('🔑 Token found:', token);
 
       if (token) {
-        console.log('Calling decline invitation API with token:', token);
+        console.log('📞 Calling decline invitation API with token:', token);
         // 실제 초대 거절 API 호출
         await invitationsApi.declineInvitation(token);
         console.log('Decline invitation API call successful');
@@ -231,7 +242,7 @@ export function NotificationBell({ className = '' }: NotificationBellProps) {
         alert('초대 정보를 찾을 수 없습니다.');
       }
     } catch (error) {
-      console.error('Failed to decline invitation:', error);
+      console.error('❌ Failed to decline invitation:', error);
       alert('초대 거절에 실패했습니다.');
     } finally {
       setShowInvitationModal(false);

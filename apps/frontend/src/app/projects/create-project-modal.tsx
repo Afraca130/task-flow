@@ -17,6 +17,7 @@ export function CreateProjectModal({ isOpen, onClose, onProjectCreated }: Create
     color: '#3B82F6',
     priority: 'MEDIUM' as 'LOW' | 'MEDIUM' | 'HIGH' | 'URGENT',
     dueDate: '',
+    isPublic: true,
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -32,6 +33,7 @@ export function CreateProjectModal({ isOpen, onClose, onProjectCreated }: Create
         color: formData.color,
         priority: formData.priority,
         dueDate: formData.dueDate || undefined,
+        isPublic: formData.isPublic,
       };
 
       const createdProject = await projectsApi.createProject(projectData);
@@ -44,6 +46,7 @@ export function CreateProjectModal({ isOpen, onClose, onProjectCreated }: Create
         color: '#3B82F6',
         priority: 'MEDIUM',
         dueDate: '',
+        isPublic: true,
       });
       onClose();
     } catch (error) {
@@ -123,6 +126,19 @@ export function CreateProjectModal({ isOpen, onClose, onProjectCreated }: Create
               onChange={e => setFormData({ ...formData, dueDate: e.target.value })}
               className='w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500'
             />
+          </div>
+
+          <div className='flex items-center gap-2'>
+            <input
+              type='checkbox'
+              id='isPrivate'
+              checked={!formData.isPublic}
+              onChange={e => setFormData({ ...formData, isPublic: !e.target.checked })}
+              className='w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500 focus:ring-2'
+            />
+            <label htmlFor='isPrivate' className='text-sm font-medium text-gray-700'>
+              비공개 프로젝트
+            </label>
           </div>
 
           <div className='flex justify-end gap-3 pt-4 border-t border-gray-200'>

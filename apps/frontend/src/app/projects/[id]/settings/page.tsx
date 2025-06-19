@@ -4,7 +4,6 @@ import {
   ArrowLeft,
   Check,
   Crown,
-  Globe,
   Lock,
   Mail,
   Plus,
@@ -452,31 +451,22 @@ export default function ProjectSettingsPage() {
                   <label className='flex items-center'>
                     <input
                       type='checkbox'
-                      checked={isPublic}
-                      onChange={e => isOwner && setIsPublic(e.target.checked)}
+                      checked={!isPublic}
+                      onChange={e => isOwner && setIsPublic(!e.target.checked)}
                       disabled={!isOwner}
                       className={`rounded border-gray-300 text-blue-600 shadow-sm focus:border-blue-300 focus:ring focus:ring-blue-200 focus:ring-opacity-50 ${
                         !isOwner ? 'cursor-not-allowed' : ''
                       }`}
                     />
                     <span className='ml-3 text-sm font-medium text-gray-700'>
-                      {isPublic ? (
-                        <>
-                          <Globe className='w-4 h-4 inline-block mr-1' />
-                          공개 프로젝트
-                        </>
-                      ) : (
-                        <>
-                          <Lock className='w-4 h-4 inline-block mr-1' />
-                          비공개 프로젝트
-                        </>
-                      )}
+                      <Lock className='w-4 h-4 inline-block mr-1' />
+                      비공개 프로젝트
                     </span>
                   </label>
                   <p className='mt-1 text-sm text-gray-500'>
-                    {isPublic
-                      ? '모든 사용자가 이 프로젝트를 볼 수 있습니다.'
-                      : '프로젝트 멤버만 이 프로젝트를 볼 수 있습니다.'}
+                    {!isPublic
+                      ? '프로젝트 멤버만 이 프로젝트를 볼 수 있습니다.'
+                      : '모든 사용자가 이 프로젝트를 볼 수 있습니다.'}
                   </p>
                   {!isOwner && (
                     <p className='mt-1 text-xs text-gray-500'>
