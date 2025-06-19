@@ -61,7 +61,7 @@ export class TasksService {
     /**
      * Create a new task
      */
-    async createTask(command: CreateTaskDto): Promise<Task> {
+    async createTask(command: CreateTaskDto, assignerId: string): Promise<Task> {
         this.logger.log(`Creating task: ${command.title}`);
 
         try {
@@ -74,7 +74,7 @@ export class TasksService {
                 throw new BadRequestException('Project ID is required');
             }
 
-            if (!command.assignerId) {
+            if (!assignerId) {
                 throw new BadRequestException('Assigner ID is required');
             }
 
@@ -103,7 +103,7 @@ export class TasksService {
             // Create new task object
             const task = new Task();
             task.projectId = command.projectId;
-            task.assignerId = command.assignerId;
+            task.assignerId = assignerId;
             task.title = command.title.trim();
             task.description = command.description?.trim();
             task.assigneeId = command.assigneeId;
@@ -118,7 +118,7 @@ export class TasksService {
 
             // Log task creation activity
             await this.activityLogService.logTaskCreated(
-                command.assignerId,
+                assignerId,
                 command.projectId,
                 savedTask.id,
                 savedTask.title,
@@ -126,9 +126,9 @@ export class TasksService {
             );
 
             // Log assignment if task is assigned to someone else
-            if (command.assigneeId && command.assigneeId !== command.assignerId) {
+            if (command.assigneeId && command.assigneeId !== assignerId) {
                 await this.activityLogService.logTaskAssigned(
-                    command.assignerId,
+                    assignerId,
                     command.projectId,
                     savedTask.id,
                     savedTask.title,
@@ -138,14 +138,14 @@ export class TasksService {
             }
 
             // Notify assignee
-            if (command.assigneeId && command.assigneeId !== command.assignerId) {
+            if (command.assigneeId && command.assigneeId !== assignerId) {
                 try {
                     this.logger.log(`Preparing to send task assignment notification to: ${command.assigneeId}`);
 
-                    const assigner = await this.usersService.findById(command.assignerId);
+                    const assigner = await this.usersService.findById(assignerId);
                     const assignerName = assigner?.name || 'Someone';
 
-                    this.logger.log(`Assigner details: ${assignerName} (${command.assignerId})`);
+                    this.logger.log(`Assigner details: ${assignerName} (${assignerId})`);
 
                     const notification = await this.notificationsService.createTaskAssignmentNotification(
                         command.assigneeId,

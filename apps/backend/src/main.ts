@@ -2,7 +2,7 @@ import { ValidationPipe } from '@nestjs/common';
 import { NestFactory } from '@nestjs/core';
 import { AppModule } from './app.module';
 import { SwaggerConfig } from './config/swagger.config';
-import { AllExceptionsFilter, HttpExceptionFilter } from './filters/http-exception.filter';
+import { HttpExceptionFilter } from './filters/http-exception.filter';
 
 async function bootstrap() {
   console.log('Starting TaskFlow Backend API...');
@@ -28,7 +28,6 @@ async function bootstrap() {
 
   // 전역 필터 설정
   app.useGlobalFilters(
-    new AllExceptionsFilter(),
     new HttpExceptionFilter(),
   );
 
@@ -36,22 +35,11 @@ async function bootstrap() {
   app.enableCors({
     origin: true, // Allow all origins
     credentials: true,
-    methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
-    allowedHeaders: ['Content-Type', 'Authorization', 'Accept', 'X-Requested-With'],
-  });
-
-  // 보안 헤더 설정
-  app.use((req: any, res: any, next: any) => {
-    res.header('X-Content-Type-Options', 'nosniff');
-    res.header('X-Frame-Options', 'DENY');
-    res.header('X-XSS-Protection', '1; mode=block');
-    next();
   });
 
   // Swagger 설정 (개발 환경에서만)
   if (process.env.NODE_ENV !== 'production') {
     SwaggerConfig.setup(app);
-    console.log('Swagger documentation enabled');
   }
 
   // 글로벌 프리픽스 설정

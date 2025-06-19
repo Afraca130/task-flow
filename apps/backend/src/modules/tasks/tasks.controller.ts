@@ -110,8 +110,9 @@ export class TasksController {
     @ApiCreateTask()
     async createTask(
         @Body() createTaskDto: CreateTaskDto,
+        @GetUser() user: User,
     ): Promise<TaskResponseDto> {
-        const task = await this.tasksService.createTask(createTaskDto);
+        const task = await this.tasksService.createTask(createTaskDto, user.id);
         return TaskResponseDto.fromEntity(task);
     }
 

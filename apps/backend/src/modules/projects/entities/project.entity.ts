@@ -26,7 +26,7 @@ export class Project extends BaseEntity {
   @Column({ name: 'owner_id' })
   ownerId: string;
 
-  @Column({ name: 'is_public', type: 'boolean', default: false })
+  @Column({ name: 'is_public', type: 'boolean', default: true })
   isPublic: boolean;
 
   @Column({ type: 'varchar', length: 7, default: '#3B82F6' })
