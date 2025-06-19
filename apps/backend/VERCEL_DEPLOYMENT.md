@@ -50,7 +50,7 @@ DATABASE_URL=postgresql://postgres:password@db.project-id.supabase.co:5432/postg
 MONGODB_URI=mongodb+srv://username:password@cluster.mongodb.net/taskflow
 ```
 
-## 🚀 배포 방법
+## 배포 방법
 
 ### 방법 1: Vercel CLI 사용
 
@@ -158,7 +158,7 @@ Vercel Serverless는 첫 번째 요청 시 지연이 발생할 수 있습니다.
 - 연결 풀 설정 확인
 - 데이터베이스 호스트가 외부 접근을 허용하는지 확인
 
-## 📊 성능 최적화
+## 성능 최적화
 
 ### 1. 연결 풀 설정
 

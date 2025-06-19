@@ -49,7 +49,7 @@ export function NotificationDropdown({
       case 'TASK_STATUS_CHANGED':
         return '🔄';
       case 'TASK_COMPLETED':
-        return '✅';
+        return '';
       case 'COMMENT_ADDED':
         return '💬';
       case 'PROJECT_INVITED':
@@ -57,11 +57,11 @@ export function NotificationDropdown({
       case 'PROJECT_MEMBER_JOINED':
         return '🎉';
       case 'TASK_DUE_SOON':
-        return '⏰';
+        return '';
       case 'TASK_OVERDUE':
         return '🚨';
       default:
-        return '🔔';
+        return '';
     }
   };
 
@@ -179,7 +179,7 @@ export function NotificationDropdown({
                           <div className='flex items-center gap-2 mt-2 text-xs text-gray-500'>
                             {notification.metadata.projectName && (
                               <span className='bg-gray-100 px-2 py-1 rounded'>
-                                📁 {notification.metadata.projectName}
+                                {notification.metadata.projectName}
                               </span>
                             )}
                             {notification.metadata.taskTitle && (

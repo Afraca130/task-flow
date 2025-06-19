@@ -139,15 +139,15 @@ export function between(left: string, right: string): string {
 
     // If left >= right, create a new rank after left
     if (leftNorm >= rightNorm) {
-        console.warn('⚠️ Left rank >= right rank, creating rank after left');
+        console.warn('Left rank >= right rank, creating rank after left');
         const newRank = leftNorm + 'a';
-        console.log('✅ Generated rank:', newRank);
+        console.log('Generated rank:', newRank);
         return newRank;
     }
 
     // Find the midpoint using character codes
     const result = findStringMidpoint(leftNorm, rightNorm);
-    console.log('✅ Generated between rank:', result);
+    console.log('Generated between rank:', result);
     return result;
 }
 
@@ -161,7 +161,7 @@ export function before(rank: string): string {
 
     // Create a rank that comes before by prepending 'a'
     const result = 'a' + normalized;
-    console.log('✅ Generated before rank:', result);
+    console.log('Generated before rank:', result);
     return result;
 }
 
@@ -173,7 +173,7 @@ export function after(rank: string): string {
 
     const normalized = rank || 'm'; // Use middle character as default
     const result = normalized + 'z';
-    console.log('✅ Generated after rank:', result);
+    console.log('Generated after rank:', result);
     return result;
 }
 
@@ -219,7 +219,7 @@ function findStringMidpoint(left: string, right: string): string {
         result += 'm';
     }
 
-    console.log('🎯 Midpoint result:', result);
+    console.log(' Midpoint result:', result);
     return result;
 }
 

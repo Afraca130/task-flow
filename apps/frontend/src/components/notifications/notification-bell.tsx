@@ -91,7 +91,7 @@ export function NotificationBell({ className = '' }: NotificationBellProps) {
 
     // 초대 알림인 경우 특별 처리
     if (notification.type === 'PROJECT_INVITATION') {
-      console.log('🎯 Project invitation notification clicked:', notification);
+      console.log(' Project invitation notification clicked:', notification);
 
       try {
         // Get actual invitation data using token
@@ -101,7 +101,7 @@ export function NotificationBell({ className = '' }: NotificationBellProps) {
         if (token) {
           console.log('📞 Fetching invitation details...');
           const invitationData = await invitationsApi.getInvitation(token);
-          console.log('📧 Invitation data received:', invitationData);
+          console.log('Invitation data received:', invitationData);
 
           // Create enhanced notification with actual invitation data
           const enhancedNotification = {
@@ -121,10 +121,10 @@ export function NotificationBell({ className = '' }: NotificationBellProps) {
           setIsOpen(false);
           return;
         } else {
-          console.warn('⚠️ No invitation token found in notification data');
+          console.warn('No invitation token found in notification data');
         }
       } catch (error) {
-        console.error('💥 Failed to fetch invitation details:', error);
+        console.error('Failed to fetch invitation details:', error);
         // Fallback to original notification data
       }
 
@@ -155,7 +155,7 @@ export function NotificationBell({ className = '' }: NotificationBellProps) {
   const handleAcceptInvitation = async () => {
     if (!currentInvitation) return;
 
-    console.log('🎯 Accept invitation called with:', currentInvitation);
+    console.log(' Accept invitation called with:', currentInvitation);
 
     try {
       // Try to get token from data, fallback to invitationId for backward compatibility
@@ -163,14 +163,14 @@ export function NotificationBell({ className = '' }: NotificationBellProps) {
         currentInvitation.data?.invitationToken || currentInvitation.metadata?.invitationId;
 
       console.log('🔑 Token found:', token);
-      console.log('📧 Invitation data:', currentInvitation.data);
+      console.log('Invitation data:', currentInvitation.data);
       console.log('📋 Invitation metadata:', currentInvitation.metadata);
 
       if (token) {
-        console.log('✅ Calling accept invitation API with token:', token);
+        console.log('Calling accept invitation API with token:', token);
         // 실제 초대 수락 API 호출
         await invitationsApi.acceptInvitation(token);
-        console.log('✅ Accept invitation API call successful');
+        console.log('Accept invitation API call successful');
 
         // 알림을 읽음 처리
         await notificationsApi.markAsRead(currentInvitation.id);
@@ -192,7 +192,7 @@ export function NotificationBell({ className = '' }: NotificationBellProps) {
         alert('초대 정보를 찾을 수 없습니다.');
       }
     } catch (error) {
-      console.error('💥 Failed to accept invitation:', error);
+      console.error('Failed to accept invitation:', error);
       alert('초대 수락에 실패했습니다.');
     } finally {
       setShowInvitationModal(false);
@@ -203,7 +203,7 @@ export function NotificationBell({ className = '' }: NotificationBellProps) {
   const handleDeclineInvitation = async () => {
     if (!currentInvitation) return;
 
-    console.log('🎯 Decline invitation called with:', currentInvitation);
+    console.log(' Decline invitation called with:', currentInvitation);
 
     try {
       // Try to get token from data, fallback to invitationId for backward compatibility
@@ -213,10 +213,10 @@ export function NotificationBell({ className = '' }: NotificationBellProps) {
       console.log('🔑 Token found:', token);
 
       if (token) {
-        console.log('✅ Calling decline invitation API with token:', token);
+        console.log('Calling decline invitation API with token:', token);
         // 실제 초대 거절 API 호출
         await invitationsApi.declineInvitation(token);
-        console.log('✅ Decline invitation API call successful');
+        console.log('Decline invitation API call successful');
 
         // 알림을 읽음 처리
         await notificationsApi.markAsRead(currentInvitation.id);
@@ -231,7 +231,7 @@ export function NotificationBell({ className = '' }: NotificationBellProps) {
         alert('초대 정보를 찾을 수 없습니다.');
       }
     } catch (error) {
-      console.error('💥 Failed to decline invitation:', error);
+      console.error('Failed to decline invitation:', error);
       alert('초대 거절에 실패했습니다.');
     } finally {
       setShowInvitationModal(false);

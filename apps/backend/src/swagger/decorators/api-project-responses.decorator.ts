@@ -14,7 +14,7 @@ import {
     ApiUnauthorizedResponse,
 } from '@nestjs/swagger';
 import { ErrorResponseDto } from '../../common/dto/response/error-response.dto';
-import { ProjectResponseDto } from '../../projects/dto/response/project-response.dto';
+import { ProjectResponseDto } from '../../modules/projects/dto/response/project-response.dto';
 
 // 프로젝트 생성 API 데코레이터
 export const ApiCreateProject = (bodyType: Type<any>) => {

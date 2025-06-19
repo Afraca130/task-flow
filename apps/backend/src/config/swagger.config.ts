@@ -1,5 +1,5 @@
-import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import { INestApplication } from '@nestjs/common';
+import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 
 /**
  * Swagger 문서화 설정
@@ -27,7 +27,6 @@ export class SwaggerConfig {
         'JWT-auth'
       )
       .addServer('http://localhost:3001', 'Development Server')
-      .addServer('https://api.taskflow.com', 'Production Server')
       .build();
 
     const document = SwaggerModule.createDocument(app, config, {
@@ -59,4 +58,4 @@ export class SwaggerConfig {
 
     SwaggerModule.setup('api/docs', app, document, swaggerOptions);
   }
-} 
+}

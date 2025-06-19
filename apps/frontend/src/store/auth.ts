@@ -81,7 +81,7 @@ class AuthStore {
       }
 
       const responseText = await response.text();
-      console.log('✅ Login response - raw text:', responseText);
+      console.log('Login response - raw text:', responseText);
 
       let data;
       try {
@@ -92,7 +92,7 @@ class AuthStore {
         throw new Error('Invalid JSON response from server');
       }
 
-      console.log('✅ Login response - parsed data:', data);
+      console.log('Login response - parsed data:', data);
       console.log('🔍 Response structure check:', {
         hasSuccess: !!data.success,
         hasData: !!data.data,
@@ -168,7 +168,7 @@ class AuthStore {
       }
 
     } catch (error) {
-      console.error('💥 Login error:', error);
+      console.error('Login error:', error);
 
       // Clear any existing auth data on error
       if (typeof window !== 'undefined') {

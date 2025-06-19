@@ -13,7 +13,7 @@ import {
     ApiUnauthorizedResponse,
 } from '@nestjs/swagger';
 import { ErrorResponseDto } from '../../common/dto/response/error-response.dto';
-import { InvitationStatus } from '../../invitations/entities/project-invitation.entity';
+import { InvitationStatus } from '../../modules/invitations/entities/project-invitation.entity';
 
 // 초대 생성 API 데코레이터
 export const ApiCreateInvitation = (bodyType: Type<any>) => {

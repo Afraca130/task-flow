@@ -112,9 +112,9 @@ export default function NotificationsPage() {
       case 'PROJECT_INVITATION':
         return '📧';
       case 'DUE_DATE_APPROACHING':
-        return '⏰';
+        return '';
       default:
-        return '🔔';
+        return '';
     }
   };
 

@@ -4,13 +4,13 @@ import { APP_FILTER, APP_GUARD, APP_INTERCEPTOR } from '@nestjs/core';
 import { TypeOrmModule } from '@nestjs/typeorm';
 
 // Feature Modules
-import { AuthModule } from './auth/auth.module';
-import { InvitationsModule } from './invitations/invitations.module';
-import { IssueModule } from './issues/issues.module';
-import { ProjectsModule } from './projects/projects.module';
-import { CommentsModule } from './tasks/comments/comments.module';
-import { TasksModule } from './tasks/tasks.module';
-import { UsersModule } from './users/users.module';
+import { AuthModule } from './modules/auth/auth.module';
+import { InvitationsModule } from './modules/invitations/invitations.module';
+import { IssueModule } from './modules/issues/issues.module';
+import { ProjectsModule } from './modules/projects/projects.module';
+import { CommentsModule } from './modules/tasks/comments/comments.module';
+import { TasksModule } from './modules/tasks/tasks.module';
+import { UsersModule } from './modules/users/users.module';
 
 // Config
 import { databaseConfig } from './config/database.config';
@@ -23,12 +23,12 @@ import { AppController } from './app.controller';
 import { AppService } from './app.service';
 
 // Global Guards, Filters, Interceptors
-import { ActivityLogModule } from './activity-logs/activity-log.module';
 import { HttpExceptionFilter } from './filters/http-exception.filter';
-import { JwtAuthGuard } from './guards/jwt-auth.guard';
 import { LoggingInterceptor } from './interceptors/logging.interceptor';
 import { ResponseInterceptor } from './interceptors/response.interceptor';
-import { NotificationsModule } from './notifications/notifications.module';
+import { ActivityLogModule } from './modules/activity-logs/activity-log.module';
+import { JwtAuthGuard } from './modules/auth/guards/jwt-auth.guard';
+import { NotificationsModule } from './modules/notifications/notifications.module';
 
 @Module({
   imports: [
@@ -62,7 +62,6 @@ import { NotificationsModule } from './notifications/notifications.module';
     LoggingConfigService,
     JwtConfig,
     JwtStrategy,
-
     AppService,
 
     // Global Filters
@@ -92,8 +91,8 @@ export class AppModule {
   constructor(
     private readonly configService: ConfigService
   ) {
-    console.log('🌍 Environment:', this.configService.get('NODE_ENV'));
-    console.log('🚀 Server Port:', this.configService.get('PORT') || '3000');
-    console.log('📊 Database Host:', this.configService.get('DB_HOST'));
+    console.log('Environment:', this.configService.get('NODE_ENV'));
+    console.log('Server Port:', this.configService.get('PORT') || '3000');
+    console.log('Database Host:', this.configService.get('DB_HOST'));
   }
 }

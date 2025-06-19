@@ -5,7 +5,7 @@ import { SwaggerConfig } from './config/swagger.config';
 import { AllExceptionsFilter, HttpExceptionFilter } from './filters/http-exception.filter';
 
 async function bootstrap() {
-  console.log('🚀 Starting TaskFlow Backend API...');
+  console.log('Starting TaskFlow Backend API...');
 
   const app = await NestFactory.create(AppModule, {
     logger: process.env.NODE_ENV === 'production'
@@ -62,7 +62,7 @@ async function bootstrap() {
   const port = process.env.PORT || 3001;
   await app.listen(port);
 
-  console.log(`🚀 TaskFlow Backend API is running on: http://localhost:${port}`);
+  console.log(`TaskFlow Backend API is running on: http://localhost:${port}`);
   if (process.env.NODE_ENV !== 'production') {
     console.log(`📚 Swagger docs available at: http://localhost:${port}/api/docs`);
   }

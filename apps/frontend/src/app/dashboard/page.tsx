@@ -480,7 +480,7 @@ export default function DashboardPage() {
     const activeId = active.id as string;
     const overId = over.id as string;
 
-    console.log('🎯 Drag ended:', { activeId, overId });
+    console.log(' Drag ended:', { activeId, overId });
 
     const task = tasks.find(t => t.id === activeId);
     if (!task) return;
@@ -524,14 +524,14 @@ export default function DashboardPage() {
         const tasksInStatus = getTasksByStatus(newStatus);
         const oldIndex = tasksInStatus.findIndex(t => t.id === activeId);
 
-        console.log('📊 Reorder details:', {
+        console.log('Reorder details:', {
           oldIndex,
           newIndex,
           tasksInStatus: tasksInStatus.map(t => ({ id: t.id, lexoRank: t.lexoRank })),
         });
 
         if (oldIndex === newIndex) {
-          console.log('✅ No change needed');
+          console.log('No change needed');
           return; // No change needed
         }
 
@@ -548,11 +548,11 @@ export default function DashboardPage() {
 
         // Server update
         await tasksApi.reorderTask(activeId, newLexoRank);
-        console.log('✅ Server update completed');
+        console.log('Server update completed');
 
         // Reload to ensure consistency
         await loadTasks();
-        console.log('✅ Tasks reloaded');
+        console.log('Tasks reloaded');
         return;
       }
 
@@ -581,13 +581,13 @@ export default function DashboardPage() {
         status: newStatus,
         lexoRank: newLexoRank,
       });
-      console.log('✅ Status change server update completed');
+      console.log('Status change server update completed');
 
       // Reload to ensure consistency
       await loadTasks();
-      console.log('✅ Tasks reloaded after status change');
+      console.log('Tasks reloaded after status change');
     } catch (error) {
-      console.error('💥 Failed to update task:', error);
+      console.error('Failed to update task:', error);
       // Revert on error
       await loadTasks();
     }

@@ -34,7 +34,7 @@ export default function LoginPage() {
     console.log('🔍 Auth state changed:', { isAuthenticated, isLoading });
 
     if (isAuthenticated && !isLoading) {
-      console.log('🚀 User is already authenticated, redirecting to dashboard...');
+      console.log('User is already authenticated, redirecting to dashboard...');
       // Use replace to prevent going back to login page
       router.replace('/dashboard');
     }
@@ -87,11 +87,11 @@ export default function LoginPage() {
     try {
       console.log('📝 Submitting login form...');
       await login(formData.email, formData.password);
-      console.log('✅ Login completed, auth state should be updated');
+      console.log('Login completed, auth state should be updated');
 
       // Don't manually redirect here - let the useEffect handle it
     } catch (error) {
-      console.error('💥 Login submission error:', error);
+      console.error('Login submission error:', error);
       setErrors(prev => ({
         ...prev,
         general:

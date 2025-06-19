@@ -25,7 +25,7 @@ const api = axios.create({
   withCredentials: true, // CORS 이슈 방지
 });
 
-console.log('🚀 API instance created with baseURL:', api.defaults.baseURL);
+console.log('API instance created with baseURL:', api.defaults.baseURL);
 
 // 통합 에러 처리 클래스
 class ApiErrorHandler {
@@ -740,7 +740,7 @@ export const issuesApi = {
     mentionedUserIds?: string[];
   }): Promise<Issue> => {
     const { mentionedUserIds, ...issueData } = data;
-    console.log('🚀 Creating issue with mentions:', { issueData, mentionedUserIds });
+    console.log('Creating issue with mentions:', { issueData, mentionedUserIds });
     const response = await api.post<StandardApiResponse<Issue>>('/issues/with-mentions', {
       issue: issueData,
       mentionedUserIds: mentionedUserIds || [],
