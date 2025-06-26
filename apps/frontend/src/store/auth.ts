@@ -1,4 +1,5 @@
 import { User, authApi } from '../lib/api';
+import api from '../lib/api';
 
 // Simple auth state management without external dependencies
 interface AuthState {
@@ -47,116 +48,22 @@ class AuthStore {
 
       console.log('🔐 Attempting login for:', email);
 
-      // Use direct fetch to backend API
-      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
-      const loginUrl = `${apiUrl}/api/v1/auth/login`;
-
-      console.log('🌐 Login URL:', loginUrl);
-
-      const response = await fetch(loginUrl, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ email, password }),
-        credentials: 'include', // Include cookies
-      });
-
-      console.log('📡 Login response status:', response.status);
-      console.log('📡 Login response headers:', Object.fromEntries(response.headers.entries()));
-
-      if (!response.ok) {
-        const errorText = await response.text();
-        console.error('❌ Login failed - raw response:', errorText);
-
-        let errorData;
-        try {
-          errorData = JSON.parse(errorText);
-        } catch {
-          errorData = { message: `HTTP ${response.status}: ${response.statusText}` };
-        }
-
-        console.error('❌ Login failed - parsed error:', errorData);
-        throw new Error(errorData.message || `Login failed with status ${response.status}`);
-      }
-
-      const responseText = await response.text();
-      console.log('Login response - raw text:', responseText);
-
-      let data;
-      try {
-        data = JSON.parse(responseText);
-      } catch (parseError) {
-        console.error('❌ Failed to parse response JSON:', parseError);
-        console.error('❌ Raw response was:', responseText);
-        throw new Error('Invalid JSON response from server');
-      }
-
-      console.log('Login response - parsed data:', data);
-      console.log('🔍 Response structure check:', {
-        hasSuccess: !!data.success,
-        hasData: !!data.data,
-        hasAccessToken: !!data.data?.accessToken,
-        hasUser: !!data.data?.user,
-        userEmail: data.data?.user?.email,
-        allKeys: Object.keys(data),
-        dataKeys: data.data ? Object.keys(data.data) : 'no data field'
-      });
-
-      // Handle standardized API response structure
-      let authData;
-      if (data.success && data.data) {
-        // Backend uses standard response wrapper
-        authData = data.data;
-        console.log('📦 Using wrapped response data:', authData);
-      } else if (data.accessToken && data.user) {
-        // Direct response structure
-        authData = data;
-        console.log('📦 Using direct response data:', authData);
-      } else {
-        console.error('❌ Invalid response structure:', {
-          receivedData: data,
-          expectedFields: ['accessToken', 'user'],
-          hasStandardWrapper: !!data.success && !!data.data,
-          hasDirectStructure: !!data.accessToken && !!data.user
-        });
-        throw new Error('Invalid response from server - missing required fields');
-      }
-
-      // Validate auth data structure
-      if (!authData.accessToken || !authData.user) {
-        console.error('❌ Invalid auth data structure:', {
-          authData,
-          missingFields: {
-            accessToken: !authData.accessToken,
-            user: !authData.user
-          }
-        });
-        throw new Error('Invalid response from server - missing required authentication fields');
-      }
-
-      // Store tokens and user data
-      if (typeof window !== 'undefined') {
-        localStorage.setItem('auth-token', authData.accessToken);
-        if (authData.refreshToken) {
-          localStorage.setItem('refresh-token', authData.refreshToken);
-        }
-        localStorage.setItem('auth-user', JSON.stringify(authData.user));
-        console.log('💾 Stored auth data in localStorage');
-      }
+      // Use authApi which now uses the api instance
+      const authData = await authApi.login(email, password);
+      console.log('🎉 Login successful via authApi:', authData);
 
       // Update state BEFORE any navigation
       this.setState({
         user: authData.user,
         token: authData.accessToken,
-        refreshToken: authData.refreshToken,
+        refreshToken: null, // authApi.login doesn't return refreshToken
         isAuthenticated: true,
         isLoading: false,
       });
 
       console.log('🎉 Login successful - state updated:', {
         isAuthenticated: true,
-        userEmail: authData.user.email
+        userEmail: authData.user.email,
       });
 
       // Redirect to dashboard page after successful login
@@ -166,7 +73,6 @@ class AuthStore {
           window.location.href = '/dashboard';
         }, 100);
       }
-
     } catch (error) {
       console.error('Login error:', error);
 
@@ -199,7 +105,6 @@ class AuthStore {
       // Registration successful, but don't auto-login
       this.setState({ isLoading: false });
       return result;
-
     } catch (error: any) {
       this.setState({ isLoading: false });
 
@@ -251,16 +156,8 @@ class AuthStore {
 
       if (token || refreshToken) {
         try {
-          const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
-          await fetch(`${apiUrl}/api/v1/auth/logout`, {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-              'Authorization': token ? `Bearer ${token}` : '',
-            },
-            body: JSON.stringify({ refreshToken }),
-            credentials: 'include',
-          });
+          // Use api instance for logout request
+          await api.post('/auth/logout', { refreshToken });
         } catch (error) {
           console.warn('Failed to notify backend of logout:', error);
           // 백엔드 요청이 실패해도 로컬에서는 로그아웃 진행
@@ -270,12 +167,8 @@ class AuthStore {
       console.warn('Logout request failed, proceeding with local logout:', error);
     }
 
-    // Clear localStorage first
-    if (typeof window !== 'undefined') {
-      localStorage.removeItem('auth-token');
-      localStorage.removeItem('refresh-token');
-      localStorage.removeItem('auth-user');
-    }
+    // Use authApi.logout which handles localStorage cleanup
+    authApi.logout();
 
     // Clear state
     this.setState({
@@ -285,11 +178,6 @@ class AuthStore {
       isAuthenticated: false,
       isLoading: false,
     });
-
-    // Immediate redirect to prevent any intermediate page rendering
-    if (typeof window !== 'undefined') {
-      window.location.replace('/login');
-    }
   };
 
   // Initialize from localStorage
@@ -305,7 +193,8 @@ class AuthStore {
 
           // 토큰이 있지만 만료되었는지 간단히 확인
           const tokenPayload = this.parseJwtPayload(token);
-          const isExpired = tokenPayload && tokenPayload.exp && Date.now() >= tokenPayload.exp * 1000;
+          const isExpired =
+            tokenPayload && tokenPayload.exp && Date.now() >= tokenPayload.exp * 1000;
 
           if (isExpired) {
             console.warn('Token expired, clearing auth state');
@@ -361,9 +250,14 @@ class AuthStore {
     try {
       const base64Url = token.split('.')[1];
       const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
-      const jsonPayload = decodeURIComponent(atob(base64).split('').map(function (c) {
-        return '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2);
-      }).join(''));
+      const jsonPayload = decodeURIComponent(
+        atob(base64)
+          .split('')
+          .map(function (c) {
+            return '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2);
+          })
+          .join('')
+      );
       return JSON.parse(jsonPayload);
     } catch (error) {
       console.error('Failed to parse JWT payload:', error);

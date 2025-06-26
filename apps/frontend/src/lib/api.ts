@@ -10,7 +10,7 @@ const getBaseURL = () => {
 
   // Development environment
   const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
-  const fullUrl = `${apiUrl}/api/v1`;
+  const fullUrl = process.env.NODE_ENV === 'production' ? `${apiUrl}/v1` : `${apiUrl}/api/v1`;
   console.log('🔗 API Base URL:', fullUrl);
 
   return fullUrl;
@@ -354,8 +354,8 @@ function extractData<T>(response: { data: StandardApiResponse<T> }): T {
 // Auth API - Auth는 버전이 없음
 export const authApi = {
   login: async (email: string, password: string): Promise<{ accessToken: string; user: User }> => {
-    const response = await axios.post<StandardApiResponse<{ accessToken: string; user: User }>>(
-      (process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001') + '/api/v1/auth/login',
+    const response = await api.post<StandardApiResponse<{ accessToken: string; user: User }>>(
+      '/auth/login',
       { email, password }
     );
     const result = extractData(response);
@@ -374,38 +374,23 @@ export const authApi = {
     password: string,
     name: string
   ): Promise<{ user: User; message: string }> => {
-    const response = await axios.post<StandardApiResponse<{ user: User; message: string }>>(
-      (process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001') + '/api/v1/auth/register',
+    const response = await api.post<StandardApiResponse<{ user: User; message: string }>>(
+      '/auth/register',
       { email, password, name }
     );
     return extractData(response);
   },
 
   getProfile: async (): Promise<User> => {
-    const response = await axios.get<StandardApiResponse<User>>(
-      (process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001') + '/api/v1/auth/profile',
-      {
-        headers: {
-          Authorization: `Bearer ${localStorage.getItem('auth-token')}`,
-        },
-      }
-    );
+    const response = await api.get<StandardApiResponse<User>>('/auth/profile');
     return extractData(response);
   },
 
   updateProfile: async (name: string, profileColor: string): Promise<User> => {
-    const response = await axios.patch<StandardApiResponse<User>>(
-      (process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001') + '/api/v1/auth/profile',
-      {
-        name,
-        profileColor,
-      },
-      {
-        headers: {
-          Authorization: `Bearer ${localStorage.getItem('auth-token')}`,
-        },
-      }
-    );
+    const response = await api.patch<StandardApiResponse<User>>('/auth/profile', {
+      name,
+      profileColor,
+    });
     return extractData(response);
   },
 
@@ -413,16 +398,11 @@ export const authApi = {
     currentPassword: string,
     newPassword: string
   ): Promise<{ message: string }> => {
-    const response = await axios.patch<StandardApiResponse<{ message: string }>>(
-      (process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001') + '/api/v1/auth/change-password',
+    const response = await api.patch<StandardApiResponse<{ message: string }>>(
+      '/auth/change-password',
       {
         currentPassword,
         newPassword,
-      },
-      {
-        headers: {
-          Authorization: `Bearer ${localStorage.getItem('auth-token')}`,
-        },
       }
     );
     return extractData(response);
