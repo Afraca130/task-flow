@@ -4,13 +4,13 @@ import axios from 'axios';
 const getBaseURL = () => {
   // Production environment check
   if (typeof window !== 'undefined' && window.location.origin.includes('vercel.app')) {
-    console.log('🌐 Using Vercel proxy:', '/api');
-    return '/api';
+    console.log('🌐 Using Vercel proxy:', '/api/v1');
+    return '/api/v1';
   }
 
   // Development environment
   const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
-  const fullUrl = `${apiUrl}/api`;
+  const fullUrl = `${apiUrl}/api/v1`;
   console.log('🔗 API Base URL:', fullUrl);
 
   return fullUrl;
@@ -103,9 +103,10 @@ class ApiErrorHandler {
   }
 
   private showValidationError(details: string[]): void {
-    const message = details.length > 0
-      ? `입력 데이터 검증 실패:\n${details.join('\n')}`
-      : '입력 데이터를 확인해주세요.';
+    const message =
+      details.length > 0
+        ? `입력 데이터 검증 실패:\n${details.join('\n')}`
+        : '입력 데이터를 확인해주세요.';
     this.showError(message);
   }
 }
@@ -130,32 +131,34 @@ const processQueue = (error: any, token: string | null = null) => {
 
 // Add request interceptor to include auth token
 api.interceptors.request.use(
-  (config) => {
+  config => {
     const token = localStorage.getItem('auth-token');
     if (token && config.headers) {
       config.headers.Authorization = `Bearer ${token}`;
     }
     return config;
   },
-  (error) => Promise.reject(error)
+  error => Promise.reject(error)
 );
 
 // Add response interceptor to handle token refresh
 api.interceptors.response.use(
-  (response) => response,
-  async (error) => {
+  response => response,
+  async error => {
     const originalRequest = error.config;
 
     if (error.response?.status === 401 && !originalRequest._retry) {
       if (isRefreshing) {
         return new Promise((resolve, reject) => {
           failedQueue.push({ resolve, reject });
-        }).then((token) => {
-          originalRequest.headers.Authorization = `Bearer ${token}`;
-          return api(originalRequest);
-        }).catch((err) => {
-          return Promise.reject(err);
-        });
+        })
+          .then(token => {
+            originalRequest.headers.Authorization = `Bearer ${token}`;
+            return api(originalRequest);
+          })
+          .catch(err => {
+            return Promise.reject(err);
+          });
       }
 
       originalRequest._retry = true;
@@ -174,7 +177,7 @@ api.interceptors.response.use(
 
       try {
         const response = await api.post('/auth/refresh', {
-          refreshToken: refreshToken
+          refreshToken: refreshToken,
         });
 
         const { accessToken, refreshToken: newRefreshToken } = response.data;
@@ -228,7 +231,6 @@ export interface Project {
   taskCount?: number;
   isPublic?: boolean;
   owner?: User;
-  creator?: User;
   members?: ProjectMember[];
   tasks?: Task[];
 }
@@ -326,13 +328,19 @@ export interface Issue {
   project?: Project;
 }
 
+export interface MetaResponse {
+  total: number;
+  page: number;
+  limit: number;
+  totalPages: number;
+}
+
 // Standard API Response Interface
 export interface StandardApiResponse<T = any> {
   success: boolean;
-  status: number;
   message: string;
   data: T;
-  timestamp: string;
+  meta?: MetaResponse;
 }
 
 // Helper function to extract data from standard response
@@ -346,7 +354,10 @@ function extractData<T>(response: { data: StandardApiResponse<T> }): T {
 // Auth API - Auth는 버전이 없음
 export const authApi = {
   login: async (email: string, password: string): Promise<{ accessToken: string; user: User }> => {
-    const response = await axios.post<StandardApiResponse<{ accessToken: string; user: User }>>((process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001') + '/api/auth/login', { email, password });
+    const response = await axios.post<StandardApiResponse<{ accessToken: string; user: User }>>(
+      (process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001') + '/api/v1/auth/login',
+      { email, password }
+    );
     const result = extractData(response);
 
     // 토큰과 사용자 정보 저장
@@ -358,41 +369,62 @@ export const authApi = {
     return result;
   },
 
-  register: async (email: string, password: string, name: string): Promise<{ user: User; message: string }> => {
-    const response = await axios.post<StandardApiResponse<{ user: User; message: string }>>((process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001') + '/api/auth/register', { email, password, name });
+  register: async (
+    email: string,
+    password: string,
+    name: string
+  ): Promise<{ user: User; message: string }> => {
+    const response = await axios.post<StandardApiResponse<{ user: User; message: string }>>(
+      (process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001') + '/api/v1/auth/register',
+      { email, password, name }
+    );
     return extractData(response);
   },
 
   getProfile: async (): Promise<User> => {
-    const response = await axios.get<StandardApiResponse<User>>((process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001') + '/api/auth/profile', {
-      headers: {
-        Authorization: `Bearer ${localStorage.getItem('auth-token')}`
+    const response = await axios.get<StandardApiResponse<User>>(
+      (process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001') + '/api/v1/auth/profile',
+      {
+        headers: {
+          Authorization: `Bearer ${localStorage.getItem('auth-token')}`,
+        },
       }
-    });
+    );
     return extractData(response);
   },
 
   updateProfile: async (name: string, profileColor: string): Promise<User> => {
-    const response = await axios.patch<StandardApiResponse<User>>((process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001') + '/api/auth/profile', {
-      name,
-      profileColor,
-    }, {
-      headers: {
-        Authorization: `Bearer ${localStorage.getItem('auth-token')}`
+    const response = await axios.patch<StandardApiResponse<User>>(
+      (process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001') + '/api/v1/auth/profile',
+      {
+        name,
+        profileColor,
+      },
+      {
+        headers: {
+          Authorization: `Bearer ${localStorage.getItem('auth-token')}`,
+        },
       }
-    });
+    );
     return extractData(response);
   },
 
-  changePassword: async (currentPassword: string, newPassword: string): Promise<{ message: string }> => {
-    const response = await axios.patch<StandardApiResponse<{ message: string }>>((process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001') + '/api/auth/change-password', {
-      currentPassword,
-      newPassword,
-    }, {
-      headers: {
-        Authorization: `Bearer ${localStorage.getItem('auth-token')}`
+  changePassword: async (
+    currentPassword: string,
+    newPassword: string
+  ): Promise<{ message: string }> => {
+    const response = await axios.patch<StandardApiResponse<{ message: string }>>(
+      (process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001') + '/api/v1/auth/change-password',
+      {
+        currentPassword,
+        newPassword,
+      },
+      {
+        headers: {
+          Authorization: `Bearer ${localStorage.getItem('auth-token')}`,
+        },
       }
-    });
+    );
     return extractData(response);
   },
 
@@ -410,18 +442,58 @@ export const projectsApi = {
     limit?: number;
     search?: string;
     isActive?: boolean;
-  }): Promise<{ projects: Project[]; total: number; page: number; limit: number; totalPages: number }> => {
-    const response = await api.get<StandardApiResponse<{ projects: Project[]; total: number; page: number; limit: number; totalPages: number }>>('/projects', { params });
-    return extractData(response);
+  }): Promise<{
+    data: Project[];
+    meta: {
+      total: number;
+      page: number;
+      limit: number;
+      totalPages: number;
+    };
+  }> => {
+    const response = await api.get<StandardApiResponse<Project[]>>('/projects', { params });
+    const projects = extractData(response);
+    const meta = response.data.meta || {
+      total: projects.length,
+      page: 1,
+      limit: 100,
+      totalPages: 1,
+    };
+
+    return {
+      data: projects,
+      meta,
+    };
   },
 
   getAllPublicProjects: async (params?: {
     page?: number;
     limit?: number;
     search?: string;
-  }): Promise<{ projects: Project[]; total: number; page: number; limit: number; totalPages: number }> => {
-    const response = await api.get<StandardApiResponse<{ projects: Project[]; total: number; page: number; limit: number; totalPages: number }>>('/projects/all/public', { params });
-    return extractData(response);
+  }): Promise<{
+    data: Project[];
+    meta: {
+      total: number;
+      page: number;
+      limit: number;
+      totalPages: number;
+    };
+  }> => {
+    const response = await api.get<StandardApiResponse<Project[]>>('/projects?isPublic=true', {
+      params,
+    });
+    const projects = extractData(response);
+    const meta = response.data.meta || {
+      total: projects.length,
+      page: 1,
+      limit: 100,
+      totalPages: 1,
+    };
+
+    return {
+      data: projects,
+      meta,
+    };
   },
 
   getProject: async (id: string): Promise<Project> => {
@@ -440,15 +512,18 @@ export const projectsApi = {
     return extractData(response);
   },
 
-  updateProject: async (id: string, data: {
-    name?: string;
-    description?: string;
-    isPublic?: boolean;
-    color?: string;
-    priority?: 'LOW' | 'MEDIUM' | 'HIGH' | 'URGENT';
-    dueDate?: string;
-    isActive?: boolean;
-  }): Promise<Project> => {
+  updateProject: async (
+    id: string,
+    data: {
+      name?: string;
+      description?: string;
+      isPublic?: boolean;
+      color?: string;
+      priority?: 'LOW' | 'MEDIUM' | 'HIGH' | 'URGENT';
+      dueDate?: string;
+      isActive?: boolean;
+    }
+  ): Promise<Project> => {
     const response = await api.put<StandardApiResponse<Project>>(`/projects/${id}`, data);
     return extractData(response);
   },
@@ -459,11 +534,17 @@ export const projectsApi = {
 
   // Project member management
   getProjectMembers: async (projectId: string): Promise<ProjectMember[]> => {
-    const response = await api.get<StandardApiResponse<ProjectMember[]>>(`/projects/${projectId}/members`);
+    const response = await api.get<StandardApiResponse<ProjectMember[]>>(
+      `/projects/${projectId}/members`
+    );
     return extractData(response);
   },
 
-  updateMemberRole: async (projectId: string, userId: string, role: 'OWNER' | 'MANAGER' | 'MEMBER'): Promise<void> => {
+  updateMemberRole: async (
+    projectId: string,
+    userId: string,
+    role: 'OWNER' | 'MANAGER' | 'MEMBER'
+  ): Promise<void> => {
     await api.patch(`/projects/${projectId}/members/${userId}/role`, { role });
   },
 
@@ -471,19 +552,24 @@ export const projectsApi = {
     await api.delete(`/projects/${projectId}/members/${userId}`);
   },
 
-  inviteToProject: async (projectId: string, data: {
-    inviteeId?: string;
-    message?: string;
-  }): Promise<ProjectInvitation> => {
+  inviteToProject: async (
+    projectId: string,
+    data: {
+      inviteeId?: string;
+      message?: string;
+    }
+  ): Promise<ProjectInvitation> => {
     const response = await api.post<StandardApiResponse<ProjectInvitation>>('/invitations', {
       projectId,
-      ...data
+      ...data,
     });
     return extractData(response);
   },
 
   getProjectInvitations: async (projectId: string): Promise<ProjectInvitation[]> => {
-    const response = await api.get<StandardApiResponse<ProjectInvitation[]>>(`/invitations/project/${projectId}`);
+    const response = await api.get<StandardApiResponse<ProjectInvitation[]>>(
+      `/invitations/project/${projectId}`
+    );
     return extractData(response);
   },
 };
@@ -499,7 +585,15 @@ export const tasksApi = {
     limit?: number;
     lexoRank?: string;
   }): Promise<{ data: Task[]; total: number; page: number; limit: number; totalPages: number }> => {
-    const response = await api.get<StandardApiResponse<{ data: Task[]; total: number; page: number; limit: number; totalPages: number }>>('/tasks', { params });
+    const response = await api.get<
+      StandardApiResponse<{
+        data: Task[];
+        total: number;
+        page: number;
+        limit: number;
+        totalPages: number;
+      }>
+    >('/tasks', { params });
     return extractData(response);
   },
 
@@ -527,16 +621,19 @@ export const tasksApi = {
     return extractData(response);
   },
 
-  updateTask: async (taskId: string, data: {
-    title?: string;
-    description?: string;
-    status?: 'TODO' | 'IN_PROGRESS' | 'COMPLETED';
-    priority?: 'LOW' | 'MEDIUM' | 'HIGH' | 'URGENT';
-    assigneeId?: string;
-    dueDate?: string;
-    tags?: string[];
-    projectId?: string;
-  }): Promise<Task> => {
+  updateTask: async (
+    taskId: string,
+    data: {
+      title?: string;
+      description?: string;
+      status?: 'TODO' | 'IN_PROGRESS' | 'COMPLETED';
+      priority?: 'LOW' | 'MEDIUM' | 'HIGH' | 'URGENT';
+      assigneeId?: string;
+      dueDate?: string;
+      tags?: string[];
+      projectId?: string;
+    }
+  ): Promise<Task> => {
     const response = await api.put<StandardApiResponse<Task>>(`/tasks/${taskId}`, data);
     return extractData(response);
   },
@@ -549,7 +646,9 @@ export const tasksApi = {
     taskId: string,
     status: 'TODO' | 'IN_PROGRESS' | 'COMPLETED'
   ): Promise<Task> => {
-    const response = await api.put<StandardApiResponse<Task>>(`/tasks/${taskId}/status`, { status });
+    const response = await api.put<StandardApiResponse<Task>>(`/tasks/${taskId}/status`, {
+      status,
+    });
     return extractData(response);
   },
 
@@ -564,9 +663,12 @@ export const tasksApi = {
     page: number = 1,
     limit: number = 20
   ): Promise<{ data: Task[]; meta: any }> => {
-    const response = await api.get<StandardApiResponse<{ data: Task[]; meta: any }>>(`/tasks/project/${projectId}/status/${status}/all`, {
-      params: { page, limit }
-    });
+    const response = await api.get<StandardApiResponse<{ data: Task[]; meta: any }>>(
+      `/tasks/project/${projectId}/status/${status}/all`,
+      {
+        params: { page, limit },
+      }
+    );
     return extractData(response);
   },
 };
@@ -588,7 +690,9 @@ export const commentsApi = {
   },
 
   updateComment: async (commentId: string, content: string): Promise<Comment> => {
-    const response = await api.put<StandardApiResponse<Comment>>(`/comments/${commentId}`, { content });
+    const response = await api.put<StandardApiResponse<Comment>>(`/comments/${commentId}`, {
+      content,
+    });
     return extractData(response);
   },
 
@@ -609,9 +713,19 @@ export const notificationsApi = {
     }
   },
 
-  getUnreadCount: async (): Promise<{ unreadCount: number; totalCount: number; lastNotificationAt?: string }> => {
+  getUnreadCount: async (): Promise<{
+    unreadCount: number;
+    totalCount: number;
+    lastNotificationAt?: string;
+  }> => {
     try {
-      const response = await api.get<StandardApiResponse<{ unreadCount: number; totalCount: number; lastNotificationAt?: string }>>('/notifications/unread-count');
+      const response = await api.get<
+        StandardApiResponse<{
+          unreadCount: number;
+          totalCount: number;
+          lastNotificationAt?: string;
+        }>
+      >('/notifications/unread-count');
       return extractData(response);
     } catch (error) {
       console.warn('Unread count API not available:', error);
@@ -629,7 +743,9 @@ export const notificationsApi = {
 
   markAllAsRead: async (): Promise<{ message: string; count: number }> => {
     try {
-      const response = await api.put<StandardApiResponse<{ message: string; count: number }>>('/notifications/mark-all-read');
+      const response = await api.put<StandardApiResponse<{ message: string; count: number }>>(
+        '/notifications/mark-all-read'
+      );
       return extractData(response);
     } catch (error) {
       console.warn('Mark all as read API not available:', error);
@@ -643,7 +759,9 @@ export const activityLogsApi = {
   getActivityLogs: async (projectId?: string): Promise<ActivityLog[]> => {
     try {
       const params = projectId ? { projectId } : undefined;
-      const response = await api.get<StandardApiResponse<ActivityLog[]>>('/activity-logs', { params });
+      const response = await api.get<StandardApiResponse<ActivityLog[]>>('/activity-logs', {
+        params,
+      });
       return extractData(response);
     } catch (error) {
       console.warn('Activity logs API not available:', error);
@@ -661,7 +779,10 @@ export const userLogsApi = {
     level?: string;
   }): Promise<{ data: any[]; meta: any }> => {
     try {
-      const response = await api.get<StandardApiResponse<{ data: any[]; meta: any }>>('/user-logs', { params });
+      const response = await api.get<StandardApiResponse<{ data: any[]; meta: any }>>(
+        '/user-logs',
+        { params }
+      );
       return extractData(response);
     } catch (error) {
       console.warn('User logs API not available:', error);
@@ -694,7 +815,7 @@ export const usersApi = {
 
   searchUsers: async (query: string, limit?: number): Promise<User[]> => {
     const response = await api.get<StandardApiResponse<User[]>>('/users/search', {
-      params: { q: query, limit: limit || 10 }
+      params: { q: query, limit: limit || 10 },
     });
     return extractData(response);
   },
@@ -718,8 +839,22 @@ export const issuesApi = {
     page?: number;
     limit?: number;
     search?: string;
-  }): Promise<{ data: Issue[]; total: number; page: number; limit: number; totalPages: number }> => {
-    const response = await api.get<StandardApiResponse<{ data: Issue[]; total: number; page: number; limit: number; totalPages: number }>>('/issues', { params });
+  }): Promise<{
+    data: Issue[];
+    total: number;
+    page: number;
+    limit: number;
+    totalPages: number;
+  }> => {
+    const response = await api.get<
+      StandardApiResponse<{
+        data: Issue[];
+        total: number;
+        page: number;
+        limit: number;
+        totalPages: number;
+      }>
+    >('/issues', { params });
     return extractData(response);
   },
 
@@ -789,19 +924,28 @@ export const invitationsApi = {
   },
 
   getProjectInvitations: async (projectId: string): Promise<ProjectInvitation[]> => {
-    const response = await api.get<StandardApiResponse<ProjectInvitation[]>>(`/invitations/project/${projectId}`);
+    const response = await api.get<StandardApiResponse<ProjectInvitation[]>>(
+      `/invitations/project/${projectId}`
+    );
     return extractData(response);
   },
 
-  getReceivedInvitations: async (status?: 'PENDING' | 'ACCEPTED' | 'REJECTED' | 'EXPIRED'): Promise<ProjectInvitation[]> => {
-    const response = await api.get<StandardApiResponse<ProjectInvitation[]>>('/invitations/user/received', {
-      params: status ? { status } : {}
-    });
+  getReceivedInvitations: async (
+    status?: 'PENDING' | 'ACCEPTED' | 'REJECTED' | 'EXPIRED'
+  ): Promise<ProjectInvitation[]> => {
+    const response = await api.get<StandardApiResponse<ProjectInvitation[]>>(
+      '/invitations/user/received',
+      {
+        params: status ? { status } : {},
+      }
+    );
     return extractData(response);
   },
 
   getPendingInvitations: async (): Promise<ProjectInvitation[]> => {
-    const response = await api.get<StandardApiResponse<ProjectInvitation[]>>('/invitations/user/pending');
+    const response = await api.get<StandardApiResponse<ProjectInvitation[]>>(
+      '/invitations/user/pending'
+    );
     return extractData(response);
   },
 

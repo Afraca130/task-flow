@@ -326,7 +326,7 @@ export default function DashboardPage() {
         console.log('Projects API response:', result);
 
         // 새로운 응답 형식에 맞게 프로젝트 배열 추출
-        const projectList = result.projects || [];
+        const projectList = result.data || [];
         console.log('Extracted projects:', projectList);
         setProjects(projectList);
 

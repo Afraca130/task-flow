@@ -86,6 +86,7 @@ export default function LoginPage() {
 
     try {
       console.log('📝 Submitting login form...');
+      console.log('formData', formData);
       await login(formData.email, formData.password);
       console.log('Login completed, auth state should be updated');
 

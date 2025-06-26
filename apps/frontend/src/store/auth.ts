@@ -49,7 +49,7 @@ class AuthStore {
 
       // Use direct fetch to backend API
       const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
-      const loginUrl = `${apiUrl}/api/auth/login`;
+      const loginUrl = `${apiUrl}/api/v1/auth/login`;
 
       console.log('🌐 Login URL:', loginUrl);
 
@@ -252,7 +252,7 @@ class AuthStore {
       if (token || refreshToken) {
         try {
           const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
-          await fetch(`${apiUrl}/api/auth/logout`, {
+          await fetch(`${apiUrl}/api/v1/auth/logout`, {
             method: 'POST',
             headers: {
               'Content-Type': 'application/json',
