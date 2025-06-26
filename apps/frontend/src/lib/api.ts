@@ -3,16 +3,22 @@ import axios from 'axios';
 // API 기본 설정
 const getBaseURL = () => {
   // Production environment - use TaskFlow backend on Vercel
-  if (process.env.NODE_ENV === 'production') {
+  const appEnv = process.env.NEXT_PUBLIC_APP_ENV || process.env.NODE_ENV;
+
+  console.log('🔍 App Environment:', appEnv);
+  console.log('🔍 NODE_ENV:', process.env.NODE_ENV);
+
+  // Production environment - use TaskFlow backend on Vercel
+  if (appEnv === 'production') {
     const productionUrl = 'https://task-flow-backend-pearl.vercel.app/v1';
     console.log('🚀 Production API Base URL:', productionUrl);
     return productionUrl;
   }
 
-  // Development environment
+  // Development/Local environment
   const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
   const fullUrl = `${apiUrl}/api/v1`;
-  console.log('🔗 Development API Base URL:', fullUrl);
+  console.log('🔗 Local/Dev API Base URL:', fullUrl);
 
   return fullUrl;
 };
@@ -137,6 +143,17 @@ api.interceptors.request.use(
     if (token && config.headers) {
       config.headers.Authorization = `Bearer ${token}`;
     }
+
+    // Log PATCH requests to users endpoint
+    if (config.method === 'patch' && config.url?.includes('/users/')) {
+      console.log('🚀 API Request interceptor - PATCH /users:', {
+        url: config.url,
+        method: config.method,
+        data: config.data,
+        hasAuth: !!config.headers.Authorization,
+      });
+    }
+
     return config;
   },
   error => Promise.reject(error)
@@ -215,6 +232,8 @@ export interface User {
   isActive?: boolean;
   createdAt?: string;
   updatedAt?: string;
+  lastLoginAt?: string;
+  lastProjectId?: string;
 }
 
 export interface Project {
@@ -422,7 +441,7 @@ export const projectsApi = {
     page?: number;
     limit?: number;
     search?: string;
-    isActive?: boolean;
+    isPublic?: boolean;
   }): Promise<{
     data: Project[];
     meta: {
@@ -464,6 +483,33 @@ export const projectsApi = {
       params,
     });
     const projects = extractData(response);
+    const meta = response.data.meta || {
+      total: projects.length,
+      page: 1,
+      limit: 100,
+      totalPages: 1,
+    };
+
+    return {
+      data: projects,
+      meta,
+    };
+  },
+
+  getUserProjects: async (
+    userId: string
+  ): Promise<{
+    data: Project[];
+    meta: {
+      total: number;
+      page: number;
+      limit: number;
+      totalPages: number;
+    };
+  }> => {
+    const response = await api.get<StandardApiResponse<Project[]>>(`/users/${userId}/projects`);
+    const projects = extractData(response);
+    console.log('🔍 User projects:', projects);
     const meta = response.data.meta || {
       total: projects.length,
       page: 1,
@@ -802,8 +848,20 @@ export const usersApi = {
   },
 
   updateUser: async (id: string, data: Partial<User>): Promise<User> => {
-    const response = await api.patch<StandardApiResponse<User>>(`/users/${id}`, data);
-    return extractData(response);
+    console.log('🔄 usersApi.updateUser called:', { userId: id, updateData: data });
+    console.log('🔄 Making PATCH request to:', `/users/${id}`);
+
+    try {
+      const response = await api.patch<StandardApiResponse<User>>(`/users/${id}`, data);
+      console.log('✅ usersApi.updateUser response status:', response.status);
+      console.log('✅ usersApi.updateUser response data:', response.data);
+      const result = extractData(response);
+      console.log('✅ usersApi.updateUser extracted result:', result);
+      return result;
+    } catch (error) {
+      console.error('❌ usersApi.updateUser error:', error);
+      throw error;
+    }
   },
 
   deleteUser: async (id: string): Promise<void> => {

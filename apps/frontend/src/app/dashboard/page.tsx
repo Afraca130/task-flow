@@ -26,7 +26,7 @@ import {
   Settings,
   TrendingUp,
 } from 'lucide-react';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { useEffect, useMemo, useState } from 'react';
 import { NotificationBell } from '../../components/notifications/notification-bell';
 import { TaskModal } from '../../components/task-modal';
@@ -280,6 +280,7 @@ function DroppableColumn({
 
 export default function DashboardPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const { user, isAuthenticated, isLoading: authLoading } = useAuthStore();
   const { projects, setProjects } = useProjectsStore();
   const [tasks, setTasks] = useState<Task[]>([]);
@@ -331,8 +332,7 @@ export default function DashboardPage() {
         setProjects(projectList);
 
         // URL 파라미터에서 projectId 확인
-        const urlParams = new URLSearchParams(window.location.search);
-        const projectIdFromUrl = urlParams.get('projectId');
+        const projectIdFromUrl = searchParams.get('projectId');
 
         // localStorage에서 마지막으로 선택한 프로젝트 ID 확인
         const savedProjectId = localStorage.getItem('selectedProjectId');
@@ -369,6 +369,16 @@ export default function DashboardPage() {
         } else if (projectList.length === 0) {
           // 프로젝트가 없어도 dashboard에 머물러서 빈 상태 표시
           console.log('No projects found, showing empty state');
+
+          // URL에서 projectId 파라미터 제거
+          if (typeof window !== 'undefined' && window.location.search) {
+            const newUrl = new URL(window.location.href);
+            newUrl.searchParams.delete('projectId');
+            window.history.replaceState({}, '', newUrl.toString());
+          }
+
+          // localStorage에서도 제거
+          localStorage.removeItem('selectedProjectId');
         }
       } catch (error) {
         console.error('Failed to load projects:', error);

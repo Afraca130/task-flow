@@ -4,8 +4,9 @@ import { Activity, ArrowLeft, Calendar, FolderOpen, Plus, Users, X } from 'lucid
 import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import { Button } from '../../components/ui/button';
-import { Project, projectsApi } from '../../lib/api';
+import { Project, projectsApi, usersApi } from '../../lib/api';
 import { useAuthStore } from '../../store/auth';
+import authStore from '../../store/auth';
 import { useProjectsStore } from '../../store/projects';
 
 export default function ProjectsPage() {
@@ -48,7 +49,7 @@ export default function ProjectsPage() {
         console.log('All projects API response:', allProjectsResult);
 
         // Get user's projects (projects where user is a member)
-        const userProjectsResult = await projectsApi.getProjects({ page: 1, limit: 100 });
+        const userProjectsResult = await projectsApi.getUserProjects(user?.id);
         console.log('User projects API response:', userProjectsResult);
 
         const allProjectsList = allProjectsResult.data || [];
@@ -83,13 +84,53 @@ export default function ProjectsPage() {
     loadProjects();
   }, [isAuthenticated, user?.id, setProjects]);
 
-  const handleProjectClick = (project: Project) => {
+  const handleProjectClick = async (project: Project) => {
+    console.log('🔘 Project clicked:', { projectId: project.id, projectName: project.name });
+    console.log('🔘 Current user:', { userId: user?.id, userEmail: user?.email });
+    console.log(
+      '🔘 MyProjects array:',
+      myProjects.map(p => ({ id: p.id, name: p.name }))
+    );
+
     // Check if user is a member of this project
     const isMyProject = myProjects.some(p => p.id === project.id);
+    console.log('🔘 Is my project:', isMyProject);
+
+    // Additional debug info
+    console.log('🔘 Auth state:', {
+      isAuthenticated,
+      hasUserId: !!user?.id,
+      userObject: user,
+    });
 
     if (isMyProject) {
-      // 사용자가 속한 프로젝트 - 대시보드로 이동
-      router.push(`/dashboard?projectId=${project.id}`);
+      try {
+        // Update user's lastProjectId before navigation
+        if (user?.id) {
+          console.log('🔄 Attempting to update lastProjectId...', {
+            userId: user.id,
+            newLastProjectId: project.id,
+          });
+
+          const updatedUser = await usersApi.updateUser(user.id, { lastProjectId: project.id });
+          console.log('✅ Updated lastProjectId successfully:', {
+            projectId: project.id,
+            updatedUser: updatedUser,
+          });
+
+          // Update auth store with the updated user info
+          authStore.setUser(updatedUser);
+        } else {
+          console.warn('⚠️ No user ID available for lastProjectId update');
+        }
+
+        // 사용자가 속한 프로젝트 - 대시보드로 이동
+        router.push(`/dashboard?projectId=${project.id}`);
+      } catch (error) {
+        console.error('❌ Failed to update lastProjectId:', error);
+        // Still navigate even if update fails
+        router.push(`/dashboard?projectId=${project.id}`);
+      }
     } else {
       // 사용자가 속하지 않은 프로젝트 - 접근 불가 메시지
       alert('이 프로젝트에 접근할 권한이 없습니다. 프로젝트 관리자에게 초대를 요청하세요.');
@@ -128,6 +169,19 @@ export default function ProjectsPage() {
       // Update projects list
       setProjects([...projects, newProject]);
       handleCloseModal();
+
+      // Update user's lastProjectId and navigate to the new project
+      try {
+        if (user?.id) {
+          const updatedUser = await usersApi.updateUser(user.id, { lastProjectId: newProject.id });
+          console.log('✅ Updated lastProjectId for new project:', newProject.id);
+
+          // Update auth store with the updated user info
+          authStore.setUser(updatedUser);
+        }
+      } catch (error) {
+        console.error('Failed to update lastProjectId for new project:', error);
+      }
 
       // Navigate to the new project
       router.push(`/dashboard?projectId=${newProject.id}`);

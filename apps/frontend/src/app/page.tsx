@@ -9,9 +9,35 @@ export default function HomePage() {
   useEffect(() => {
     // auth store에서 사용하는 토큰 키로 확인
     const token = localStorage.getItem('auth-token');
-    if (token) {
-      router.push('/dashboard');
+    const userStr = localStorage.getItem('auth-user');
+
+    if (token && userStr) {
+      try {
+        const user = JSON.parse(userStr);
+        console.log('🏠 HomePage redirect check:', {
+          hasToken: !!token,
+          hasUser: !!user,
+          lastProjectId: user.lastProjectId,
+        });
+
+        // lastProjectId가 있으면 해당 프로젝트 dashboard로, 없으면 일반 dashboard로
+        if (user.lastProjectId) {
+          console.log('🎯 Redirecting to last project dashboard:', user.lastProjectId);
+          // localStorage에도 저장
+          localStorage.setItem('selectedProjectId', user.lastProjectId);
+          router.push(`/dashboard?projectId=${user.lastProjectId}`);
+        } else {
+          console.log('🏠 Redirecting to general dashboard (no lastProjectId)');
+          // lastProjectId가 없으면 localStorage도 정리
+          localStorage.removeItem('selectedProjectId');
+          router.push('/dashboard');
+        }
+      } catch (error) {
+        console.error('Failed to parse user data:', error);
+        router.push('/dashboard');
+      }
     } else {
+      console.log('🔐 No auth token, redirecting to login');
       router.push('/login');
     }
   }, [router]);

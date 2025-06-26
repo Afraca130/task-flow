@@ -85,6 +85,10 @@ export function NotificationBell({ className = '' }: NotificationBellProps) {
   };
 
   const handleNotificationClick = async (notification: any) => {
+    console.log('🔔 Notification clicked - START:', notification);
+    console.log('🔔 Notification type:', notification.type);
+    console.log('🔔 Notification action:', notification.action);
+
     // 읽지 않은 알림인 경우 읽음 처리
     if (!notification.isRead) {
       try {
@@ -100,9 +104,10 @@ export function NotificationBell({ className = '' }: NotificationBellProps) {
       }
     }
 
-    // 초대 알림인 경우 특별 처리
-    if (notification.type === 'PROJECT_INVITATION') {
+    // 초대 알림인 경우 특별 처리 (두 가지 타입 모두 지원)
+    if (notification.type === 'PROJECT_INVITATION' || notification.type === 'PROJECT_INVITED') {
       console.log('🎯 Project invitation notification clicked:', notification);
+      console.log('🔍 Notification type detected:', notification.type);
 
       try {
         // Get actual invitation data using token
@@ -127,9 +132,11 @@ export function NotificationBell({ className = '' }: NotificationBellProps) {
             },
           };
 
+          console.log('🎪 Setting enhanced invitation modal to show');
           setCurrentInvitation(enhancedNotification);
           setShowInvitationModal(true);
           setIsOpen(false);
+          console.log('✅ Modal state should now be visible');
           return;
         } else {
           console.warn('⚠️ No invitation token found in notification data');
@@ -139,27 +146,69 @@ export function NotificationBell({ className = '' }: NotificationBellProps) {
         // Fallback to original notification data
       }
 
+      console.log('🎪 Setting fallback invitation modal to show');
       setCurrentInvitation(notification);
       setShowInvitationModal(true);
       setIsOpen(false);
+      console.log('✅ Fallback modal state should now be visible');
       return;
     }
 
     // 다른 알림의 경우 기본 처리
+    console.log('🔄 Handling non-invitation notification');
+
     if (notification.action?.type === 'navigate' && notification.action.url) {
+      console.log('🚀 Navigation action detected:', notification.action);
       let url = notification.action.url;
 
       // URL 파라미터 치환
       if (notification.action.params) {
+        console.log('🔧 Replacing URL parameters:', notification.action.params);
         Object.entries(notification.action.params).forEach(([key, value]) => {
           url = url.replace(`:${key}`, String(value));
         });
       }
 
+      console.log('🎯 Final navigation URL:', url);
       // 페이지 이동
       window.location.href = url;
+    } else {
+      console.log('❓ No navigation action defined for notification:', {
+        hasAction: !!notification.action,
+        actionType: notification.action?.type,
+        hasUrl: !!notification.action?.url,
+      });
+
+      // 기본 동작: 알림 타입에 따른 처리
+      switch (notification.type) {
+        case 'TASK_ASSIGNED':
+        case 'TASK_STATUS_CHANGED':
+        case 'TASK_COMPLETED':
+          console.log('📋 Task-related notification, considering navigation to tasks');
+          if (notification.metadata?.projectId) {
+            console.log('🎯 Navigating to project tasks:', notification.metadata.projectId);
+            window.location.href = `/projects/${notification.metadata.projectId}/tasks`;
+          } else {
+            console.log('🎯 Navigating to general tasks page');
+            window.location.href = '/tasks';
+          }
+          break;
+
+        case 'PROJECT_MEMBER_JOINED':
+          console.log('👥 Project member notification');
+          if (notification.metadata?.projectId) {
+            console.log('🎯 Navigating to project people:', notification.metadata.projectId);
+            window.location.href = `/projects/${notification.metadata.projectId}`;
+          }
+          break;
+
+        default:
+          console.log('ℹ️ Notification clicked but no specific action defined');
+        // 단순히 읽음 처리만 하고 특별한 동작 없음
+      }
     }
 
+    console.log('🔔 Closing notification dropdown');
     setIsOpen(false);
   };
 
@@ -289,6 +338,16 @@ export function NotificationBell({ className = '' }: NotificationBellProps) {
       </div>
 
       {/* 초대 모달 */}
+      {console.log('🎭 Rendering InvitationModal with:', {
+        isOpen: showInvitationModal,
+        currentInvitation: currentInvitation,
+        inviterName:
+          currentInvitation?.data?.inviterName || currentInvitation?.metadata?.userName || '누군가',
+        projectName:
+          currentInvitation?.data?.projectName ||
+          currentInvitation?.metadata?.projectName ||
+          '프로젝트',
+      })}
       <InvitationModal
         isOpen={showInvitationModal}
         inviterName={
@@ -303,6 +362,7 @@ export function NotificationBell({ className = '' }: NotificationBellProps) {
         onAccept={handleAcceptInvitation}
         onDecline={handleDeclineInvitation}
         onClose={() => {
+          console.log('🎭 Closing invitation modal');
           setShowInvitationModal(false);
           setCurrentInvitation(null);
         }}

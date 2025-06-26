@@ -37,6 +37,13 @@ export default function LoginPage() {
       console.log('User is already authenticated, redirecting to dashboard...');
       // Use replace to prevent going back to login page
       router.replace('/dashboard');
+      localStorage.removeItem('selectedProjectId'); // 이전 사용자 프로젝트 선택 정리
+      // URL 파라미터도 정리
+      if (window.location.pathname === '/dashboard' && window.location.search) {
+        const newUrl = new URL(window.location.href);
+        newUrl.search = '';
+        window.history.replaceState({}, '', newUrl.toString());
+      }
     }
   }, [isAuthenticated, isLoading, router]);
 

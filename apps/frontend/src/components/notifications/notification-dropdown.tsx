@@ -137,7 +137,10 @@ export function NotificationDropdown({
             {notifications.map(notification => (
               <div
                 key={notification.id}
-                onClick={() => onNotificationClick(notification)}
+                onClick={() => {
+                  console.log('🔄 Notification dropdown item clicked:', notification);
+                  onNotificationClick(notification);
+                }}
                 className={`p-4 hover:bg-gray-50 cursor-pointer transition-colors ${
                   !notification.isRead ? 'bg-blue-50 border-l-4 border-l-blue-500' : ''
                 }`}

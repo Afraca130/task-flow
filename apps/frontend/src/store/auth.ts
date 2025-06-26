@@ -48,6 +48,21 @@ class AuthStore {
 
       console.log('🔐 Attempting login for:', email);
 
+      // Clear any existing auth data before login to prevent data mixing
+      if (typeof window !== 'undefined') {
+        const previousUser = localStorage.getItem('auth-user');
+        const previousUserData = previousUser ? JSON.parse(previousUser) : null;
+
+        console.log('🧹 Clearing previous session:', {
+          previousUserEmail: previousUserData?.email,
+        });
+
+        localStorage.removeItem('auth-token');
+        localStorage.removeItem('refresh-token');
+        localStorage.removeItem('auth-user');
+        localStorage.removeItem('selectedProjectId'); // Clear previous user's project selection
+      }
+
       // Use authApi which now uses the api instance
       const authData = await authApi.login(email, password);
       console.log('🎉 Login successful via authApi:', authData);
@@ -66,11 +81,25 @@ class AuthStore {
         userEmail: authData.user.email,
       });
 
-      // Redirect to dashboard page after successful login
+      // Redirect after successful login
       if (typeof window !== 'undefined') {
         // Use setTimeout to ensure state is fully updated before navigation
         setTimeout(() => {
-          window.location.href = '/dashboard';
+          // Get the updated user from state to ensure we have the latest data
+          const currentUser = this.state.user;
+
+          // For new users or users without lastProjectId, always go to general dashboard
+          if (!currentUser?.lastProjectId) {
+            console.log(
+              '🏠 Redirecting to general dashboard (new user or no lastProjectId for:',
+              currentUser?.email,
+              ')'
+            );
+            window.location.href = '/dashboard';
+          } else {
+            console.log('🎯 Redirecting to last project:', currentUser.lastProjectId);
+            window.location.href = `/dashboard?projectId=${currentUser.lastProjectId}`;
+          }
         }, 100);
       }
     } catch (error) {
@@ -81,6 +110,7 @@ class AuthStore {
         localStorage.removeItem('auth-token');
         localStorage.removeItem('refresh-token');
         localStorage.removeItem('auth-user');
+        localStorage.removeItem('selectedProjectId'); // Clear project selection on error
       }
 
       this.setState({
@@ -99,6 +129,14 @@ class AuthStore {
     this.setState({ isLoading: true });
 
     try {
+      // Clear any existing auth data before registration to prevent data mixing
+      if (typeof window !== 'undefined') {
+        localStorage.removeItem('auth-token');
+        localStorage.removeItem('refresh-token');
+        localStorage.removeItem('auth-user');
+        localStorage.removeItem('selectedProjectId'); // Clear previous user's project selection
+      }
+
       // authApi.register now returns { user: User; message: string } directly
       const result = await authApi.register(email, password, name);
 
@@ -170,6 +208,17 @@ class AuthStore {
     // Use authApi.logout which handles localStorage cleanup
     authApi.logout();
 
+    // Additional cleanup for project-related data
+    if (typeof window !== 'undefined') {
+      localStorage.removeItem('selectedProjectId');
+      // Clear URL parameters if on dashboard
+      if (window.location.pathname === '/dashboard' && window.location.search) {
+        const newUrl = new URL(window.location.href);
+        newUrl.search = '';
+        window.history.replaceState({}, '', newUrl.toString());
+      }
+    }
+
     // Clear state
     this.setState({
       user: null,
@@ -186,6 +235,12 @@ class AuthStore {
       const token = localStorage.getItem('auth-token');
       const refreshToken = localStorage.getItem('refresh-token');
       const userStr = localStorage.getItem('auth-user');
+
+      console.log('🔍 Initialize auth store:', {
+        hasToken: !!token,
+        hasUser: !!userStr,
+        user: userStr ? JSON.parse(userStr) : null,
+      });
 
       if (token && userStr) {
         try {
