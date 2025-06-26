@@ -2,16 +2,17 @@ import axios from 'axios';
 
 // API 기본 설정
 const getBaseURL = () => {
-  // Production environment check
-  if (typeof window !== 'undefined' && window.location.origin.includes('vercel.app')) {
-    console.log('🌐 Using Vercel proxy:', '/api/v1');
-    return '/api/v1';
+  // Production environment - use TaskFlow backend on Vercel
+  if (process.env.NODE_ENV === 'production') {
+    const productionUrl = 'https://task-flow-backend-pearl.vercel.app/v1';
+    console.log('🚀 Production API Base URL:', productionUrl);
+    return productionUrl;
   }
 
   // Development environment
   const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
-  const fullUrl = process.env.NODE_ENV === 'production' ? `${apiUrl}/v1` : `${apiUrl}/api/v1`;
-  console.log('🔗 API Base URL:', fullUrl);
+  const fullUrl = `${apiUrl}/api/v1`;
+  console.log('🔗 Development API Base URL:', fullUrl);
 
   return fullUrl;
 };
